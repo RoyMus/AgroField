@@ -3,18 +3,29 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronDown } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
   
-  // Dynamic list of strings for the dropdown
+  // Dynamic list of strings for the dropdown - expanded to 15 items
   const pageOptions = [
     "Cosmic Dashboard",
     "Neural Network Hub", 
     "Quantum Workspace",
     "Digital Sanctuary",
-    "Infinity Portal"
+    "Infinity Portal",
+    "Stellar Observatory",
+    "Cyber Genesis Lab",
+    "Ethereal Interface",
+    "Galactic Command Center",
+    "Holographic Studio",
+    "Matrix Control Room",
+    "Virtual Reality Nexus",
+    "AI Processing Unit",
+    "Data Visualization Hub",
+    "Future Tech Pavilion"
   ];
 
   const handlePageSelect = (option: string) => {
@@ -49,15 +60,17 @@ const Index = () => {
               className="w-64 bg-white/95 backdrop-blur-sm border-white/20 rounded-xl shadow-2xl"
               align="center"
             >
-              {pageOptions.map((option, index) => (
-                <DropdownMenuItem
-                  key={index}
-                  onClick={() => handlePageSelect(option)}
-                  className="text-slate-800 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 cursor-pointer py-3 px-4 text-base rounded-lg mx-1 my-1 transition-all duration-200"
-                >
-                  {option}
-                </DropdownMenuItem>
-              ))}
+              <ScrollArea className="h-80">
+                {pageOptions.map((option, index) => (
+                  <DropdownMenuItem
+                    key={index}
+                    onClick={() => handlePageSelect(option)}
+                    className="text-slate-800 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 cursor-pointer py-3 px-4 text-base rounded-lg mx-1 my-1 transition-all duration-200"
+                  >
+                    {option}
+                  </DropdownMenuItem>
+                ))}
+              </ScrollArea>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
