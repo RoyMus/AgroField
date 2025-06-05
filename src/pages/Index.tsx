@@ -57,19 +57,21 @@ const Index = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent 
-              className="w-64 bg-white/95 backdrop-blur-sm border-white/20 rounded-xl shadow-2xl"
+              className="w-64 bg-white/95 backdrop-blur-sm border-white/20 rounded-xl shadow-2xl max-h-80 overflow-hidden"
               align="center"
             >
-              <ScrollArea className="h-80">
-                {pageOptions.map((option, index) => (
-                  <DropdownMenuItem
-                    key={index}
-                    onClick={() => handlePageSelect(option)}
-                    className="text-slate-800 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 cursor-pointer py-3 px-4 text-base rounded-lg mx-1 my-1 transition-all duration-200"
-                  >
-                    {option}
-                  </DropdownMenuItem>
-                ))}
+              <ScrollArea className="h-80 w-full">
+                <div className="p-1">
+                  {pageOptions.map((option, index) => (
+                    <DropdownMenuItem
+                      key={index}
+                      onClick={() => handlePageSelect(option)}
+                      className="text-slate-800 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 cursor-pointer py-3 px-4 text-base rounded-lg mx-1 my-1 transition-all duration-200"
+                    >
+                      {option}
+                    </DropdownMenuItem>
+                  ))}
+                </div>
               </ScrollArea>
             </DropdownMenuContent>
           </DropdownMenu>
