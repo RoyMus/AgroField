@@ -1,97 +1,78 @@
 
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChevronDown } from "lucide-react";
+import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 
 const Index = () => {
   const navigate = useNavigate();
-  
-  // Dynamic list of strings for the dropdown - expanded to 15 items
-  const pageOptions = [
-    "Cosmic Dashboard",
-    "Neural Network Hub", 
-    "Quantum Workspace",
-    "Digital Sanctuary",
-    "Infinity Portal",
-    "Stellar Observatory",
-    "Cyber Genesis Lab",
-    "Ethereal Interface",
-    "Galactic Command Center",
-    "Holographic Studio",
-    "Matrix Control Room",
-    "Virtual Reality Nexus",
-    "AI Processing Unit",
-    "Data Visualization Hub",
-    "Future Tech Pavilion"
-  ];
-
-  const handlePageSelect = (option: string) => {
-    navigate(`/page/${encodeURIComponent(option)}`);
-  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-      <div className="text-center space-y-8 px-6">
-        <div className="space-y-4">
-          <h1 className="text-6xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-            Welcome to the Future
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center">
+      <div className="text-center space-y-8 px-6 max-w-4xl">
+        <div className="space-y-6">
+          <div className="flex items-center justify-center space-x-4 mb-6">
+            <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-white rounded-sm"></div>
+            </div>
+            <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-white rounded-sm"></div>
+            </div>
+            <div className="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-white rounded-sm"></div>
+            </div>
+            <div className="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-white rounded-sm"></div>
+            </div>
+          </div>
+          
+          <h1 className="text-6xl font-bold text-gray-800 mb-4">
+            <span className="bg-gradient-to-r from-blue-600 via-green-600 to-red-600 bg-clip-text text-transparent">
+              Connect to Drive
+            </span>
           </h1>
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
-            Discover innovative digital experiences crafted with precision and designed for tomorrow
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+            Access your Google Sheets directly from our platform. Select any spreadsheet from your Google Drive to get started.
           </p>
         </div>
         
         <div className="pt-8">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="lg"
-                className="bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20 transition-all duration-300 text-lg px-8 py-6 rounded-xl"
-              >
-                Choose Your Destination
-                <ChevronDown className="ml-2 h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent 
-              className="w-64 bg-white/95 backdrop-blur-sm border-white/20 rounded-xl shadow-2xl max-h-80 overflow-hidden"
-              align="center"
-            >
-              <ScrollArea className="h-80 w-full">
-                <div className="p-1">
-                  {pageOptions.map((option, index) => (
-                    <DropdownMenuItem
-                      key={index}
-                      onClick={() => handlePageSelect(option)}
-                      className="text-slate-800 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 cursor-pointer py-3 px-4 text-base rounded-lg mx-1 my-1 transition-all duration-200"
-                    >
-                      {option}
-                    </DropdownMenuItem>
-                  ))}
-                </div>
-              </ScrollArea>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <GoogleDriveFilePicker />
         </div>
         
         <div className="pt-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-              <h3 className="text-lg font-semibold text-white mb-2">Interactive</h3>
-              <p className="text-slate-300 text-sm">Dynamic content that responds to your actions</p>
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-gray-200 shadow-lg">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                <div className="w-6 h-6 bg-blue-500 rounded"></div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Secure Access</h3>
+              <p className="text-gray-600 text-sm">Your data stays in Google Drive. We only access what you explicitly share.</p>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-              <h3 className="text-lg font-semibold text-white mb-2">Modern</h3>
-              <p className="text-slate-300 text-sm">Built with cutting-edge web technologies</p>
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-gray-200 shadow-lg">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                <div className="w-6 h-6 bg-green-500 rounded"></div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Real-time Sync</h3>
+              <p className="text-gray-600 text-sm">Changes in your Google Sheets are reflected immediately in our platform.</p>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-              <h3 className="text-lg font-semibold text-white mb-2">Responsive</h3>
-              <p className="text-slate-300 text-sm">Perfect experience on any device</p>
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-gray-200 shadow-lg">
+              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                <div className="w-6 h-6 bg-red-500 rounded"></div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Easy Integration</h3>
+              <p className="text-gray-600 text-sm">One-click connection to access all your spreadsheets and data.</p>
             </div>
           </div>
+        </div>
+
+        <div className="pt-8">
+          <Button
+            variant="outline"
+            onClick={() => navigate("/page/workspace")}
+            className="text-gray-600 border-gray-300 hover:bg-gray-50"
+          >
+            Or explore our demo workspace
+          </Button>
         </div>
       </div>
     </div>

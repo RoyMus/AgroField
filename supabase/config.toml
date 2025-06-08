@@ -1,1 +1,5 @@
+
 project_id = "kipnquumtaneeuhxinqf"
+
+[functions.google-drive-auth]
+verify_jwt = false
