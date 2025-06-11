@@ -14,7 +14,11 @@ serve(async (req) => {
   }
 
   try {
-    const { action, code, authUrl } = await req.json()
+    // Read the request body once and store it
+    const requestBody = await req.json()
+    const { action, code, accessToken } = requestBody
+    
+    console.log('Request action:', action)
     
     const CLIENT_ID = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID')
     const CLIENT_SECRET = Deno.env.get('GOOGLE_DRIVE_CLIENT_SECRET')
@@ -33,6 +37,8 @@ serve(async (req) => {
         `access_type=offline&` +
         `prompt=consent`
 
+      console.log('Generated auth URL for redirect URI:', redirectUri)
+
       return new Response(JSON.stringify({ authUrl }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -40,6 +46,8 @@ serve(async (req) => {
 
     if (action === 'exchangeCode') {
       const redirectUri = `${req.headers.get('origin')}/`
+      
+      console.log('Exchanging code for access token with redirect URI:', redirectUri)
       
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -56,16 +64,18 @@ serve(async (req) => {
       const tokenData = await tokenResponse.json()
       
       if (!tokenResponse.ok) {
+        console.error('Token exchange failed:', tokenData)
         throw new Error(`Token exchange failed: ${tokenData.error}`)
       }
 
+      console.log('Token exchange successful')
       return new Response(JSON.stringify(tokenData), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
     if (action === 'listFiles') {
-      const { accessToken } = await req.json()
+      console.log('Listing Google Drive files')
       
       const filesResponse = await fetch(
         'https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.spreadsheet"&fields=files(id,name,modifiedTime)',
@@ -79,9 +89,11 @@ serve(async (req) => {
       const filesData = await filesResponse.json()
       
       if (!filesResponse.ok) {
+        console.error('Failed to fetch files:', filesData)
         throw new Error(`Failed to fetch files: ${filesData.error}`)
       }
 
+      console.log('Successfully fetched', filesData.files?.length || 0, 'files')
       return new Response(JSON.stringify(filesData), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
