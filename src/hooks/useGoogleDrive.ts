@@ -8,14 +8,25 @@ interface GoogleDriveFile {
   modifiedTime: string;
 }
 
+interface SheetData {
+  sheetName: string;
+  values: string[][];
+  metadata: {
+    title: string;
+    sheetCount: number;
+  };
+}
+
 interface UseGoogleDriveReturn {
   isAuthenticated: boolean;
   isLoading: boolean;
   files: GoogleDriveFile[];
   selectedFile: GoogleDriveFile | null;
+  sheetData: SheetData | null;
   error: string | null;
   authenticate: () => Promise<void>;
   selectFile: (file: GoogleDriveFile) => void;
+  readSheet: (fileId: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -24,6 +35,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   const [isLoading, setIsLoading] = useState(false);
   const [files, setFiles] = useState<GoogleDriveFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<GoogleDriveFile | null>(null);
+  const [sheetData, setSheetData] = useState<SheetData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
@@ -39,6 +51,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     // Load saved state
     const savedToken = localStorage.getItem('google_drive_token');
     const savedFile = localStorage.getItem('google_drive_selected_file');
+    const savedSheetData = localStorage.getItem('google_drive_sheet_data');
     
     if (savedToken) {
       setAccessToken(savedToken);
@@ -46,6 +59,10 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       
       if (savedFile) {
         setSelectedFile(JSON.parse(savedFile));
+      }
+      
+      if (savedSheetData) {
+        setSheetData(JSON.parse(savedSheetData));
       }
     }
   }, []);
@@ -117,6 +134,30 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   const selectFile = (file: GoogleDriveFile) => {
     setSelectedFile(file);
     localStorage.setItem('google_drive_selected_file', JSON.stringify(file));
+    
+    // Clear previous sheet data when selecting a new file
+    setSheetData(null);
+    localStorage.removeItem('google_drive_sheet_data');
+  };
+
+  const readSheet = async (fileId: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const { data, error } = await supabase.functions.invoke('google-drive-auth', {
+        body: { action: 'readSheet', accessToken, fileId }
+      });
+
+      if (error) throw error;
+
+      setSheetData(data);
+      localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to read sheet');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const logout = () => {
@@ -124,8 +165,10 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     setAccessToken(null);
     setFiles([]);
     setSelectedFile(null);
+    setSheetData(null);
     localStorage.removeItem('google_drive_token');
     localStorage.removeItem('google_drive_selected_file');
+    localStorage.removeItem('google_drive_sheet_data');
   };
 
   useEffect(() => {
@@ -139,9 +182,11 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     isLoading,
     files,
     selectedFile,
+    sheetData,
     error,
     authenticate,
     selectFile,
+    readSheet,
     logout,
   };
 };

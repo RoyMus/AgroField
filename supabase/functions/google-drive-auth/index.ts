@@ -16,7 +16,7 @@ serve(async (req) => {
   try {
     // Read the request body once and store it
     const requestBody = await req.json()
-    const { action, code, accessToken } = requestBody
+    const { action, code, accessToken, fileId } = requestBody
     
     console.log('Request action:', action)
     
@@ -33,7 +33,7 @@ serve(async (req) => {
         `client_id=${CLIENT_ID}&` +
         `redirect_uri=${encodeURIComponent(redirectUri)}&` +
         `response_type=code&` +
-        `scope=${encodeURIComponent('https://www.googleapis.com/auth/drive.readonly')}&` +
+        `scope=${encodeURIComponent('https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets')}&` +
         `access_type=offline&` +
         `prompt=consent`
 
@@ -95,6 +95,63 @@ serve(async (req) => {
 
       console.log('Successfully fetched', filesData.files?.length || 0, 'files')
       return new Response(JSON.stringify(filesData), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (action === 'readSheet') {
+      console.log('Reading Google Sheet data for file:', fileId)
+      
+      // First, get sheet metadata to find available sheets
+      const metadataResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${fileId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        }
+      )
+
+      if (!metadataResponse.ok) {
+        const errorData = await metadataResponse.json()
+        console.error('Failed to fetch sheet metadata:', errorData)
+        throw new Error(`Failed to fetch sheet metadata: ${errorData.error?.message}`)
+      }
+
+      const metadata = await metadataResponse.json()
+      const firstSheet = metadata.sheets[0]
+      const sheetName = firstSheet.properties.title
+
+      console.log('Reading data from sheet:', sheetName)
+
+      // Get the data from the first sheet
+      const dataResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(sheetName)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        }
+      )
+
+      if (!dataResponse.ok) {
+        const errorData = await dataResponse.json()
+        console.error('Failed to fetch sheet data:', errorData)
+        throw new Error(`Failed to fetch sheet data: ${errorData.error?.message}`)
+      }
+
+      const sheetData = await dataResponse.json()
+      
+      console.log('Successfully read sheet data with', sheetData.values?.length || 0, 'rows')
+      
+      return new Response(JSON.stringify({
+        sheetName,
+        values: sheetData.values || [],
+        metadata: {
+          title: metadata.properties.title,
+          sheetCount: metadata.sheets.length
+        }
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }

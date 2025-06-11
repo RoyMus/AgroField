@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChevronDown, Sheet, LogOut, Loader2 } from "lucide-react";
+import { ChevronDown, Sheet, LogOut, Loader2, FileText } from "lucide-react";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { useToast } from "@/hooks/use-toast";
 
@@ -13,9 +13,11 @@ const GoogleDriveFilePicker = () => {
     isLoading, 
     files, 
     selectedFile, 
+    sheetData,
     error,
     authenticate, 
     selectFile, 
+    readSheet,
     logout 
   } = useGoogleDrive();
   
@@ -41,6 +43,24 @@ const GoogleDriveFilePicker = () => {
       title: "File Selected",
       description: `Selected: ${file.name}`,
     });
+  };
+
+  const handleReadSheet = async () => {
+    if (selectedFile) {
+      try {
+        await readSheet(selectedFile.id);
+        toast({
+          title: "Sheet Loaded",
+          description: "Successfully loaded sheet data",
+        });
+      } catch (err) {
+        toast({
+          title: "Failed to Load Sheet",
+          description: "Could not read the sheet data. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   const handleLogout = () => {
@@ -160,6 +180,27 @@ const GoogleDriveFilePicker = () => {
           </ScrollArea>
         </DropdownMenuContent>
       </DropdownMenu>
+      
+      {selectedFile && !sheetData && (
+        <Button
+          onClick={handleReadSheet}
+          disabled={isLoading}
+          size="lg"
+          className="w-full bg-green-600 hover:bg-green-700 text-white"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Reading Sheet...
+            </>
+          ) : (
+            <>
+              <FileText className="mr-2 h-4 w-4" />
+              Read Sheet Data
+            </>
+          )}
+        </Button>
+      )}
     </div>
   );
 };
