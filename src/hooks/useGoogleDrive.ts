@@ -177,10 +177,15 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       }
 
       console.log('Sheet data received:', data);
-      setSheetData(data);
-      localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
       
-      console.log('Sheet data set successfully, sheetData state should now be:', data);
+      // Force a state update by using a callback
+      setSheetData(prevData => {
+        console.log('Setting sheet data, previous:', prevData, 'new:', data);
+        localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
+        return data;
+      });
+      
+      console.log('Sheet data set successfully');
     } catch (err) {
       console.error('Error in readSheet:', err);
       setError(err instanceof Error ? err.message : 'Failed to read sheet');
@@ -208,7 +213,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
 
   // Debug logging for sheetData changes
   useEffect(() => {
-    console.log('Sheet data changed:', sheetData);
+    console.log('Sheet data changed in hook:', sheetData);
   }, [sheetData]);
 
   return {

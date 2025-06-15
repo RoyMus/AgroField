@@ -14,6 +14,7 @@ const Index = () => {
   useEffect(() => {
     console.log('Index component - sheetData:', sheetData);
     console.log('Index component - selectedFile:', selectedFile);
+    console.log('Index component - should show editor:', !!sheetData);
   }, [sheetData, selectedFile]);
 
   return (
