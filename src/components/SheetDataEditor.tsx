@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronLeft, ChevronRight, SkipForward, Save, Mic, MicOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, SkipForward, Save, Mic, MicOff, Type } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 
 interface SheetData {
   sheetName: string;
@@ -31,7 +31,9 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const [currentColumnIndex, setCurrentColumnIndex] = useState(0);
   const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
   const [currentValue, setCurrentValue] = useState<string>("");
+  const [isTextMode, setIsTextMode] = useState(true);
   const { toast } = useToast();
+  const { isRecording, startRecording, stopRecording, error: recordingError } = useVoiceRecording();
 
   const headers = sheetData.values[0] || [];
   const dataRows = sheetData.values.slice(1);
@@ -67,28 +69,73 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
 
   const getCellKey = (rowIndex: number, columnIndex: number) => `${rowIndex}-${columnIndex}`;
 
-  const recordCurrentValue = () => {
-    const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
-    const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
-    
-    const newModifiedData = {
-      ...modifiedData,
-      [cellKey]: {
-        originalValue,
-        modifiedValue: currentValue,
-        rowIndex: currentRowIndex,
-        columnIndex: currentColumnIndex
+  const recordCurrentValue = async () => {
+    if (isTextMode) {
+      // Text mode - use the current input value
+      const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
+      const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
+      
+      const newModifiedData = {
+        ...modifiedData,
+        [cellKey]: {
+          originalValue,
+          modifiedValue: currentValue,
+          rowIndex: currentRowIndex,
+          columnIndex: currentColumnIndex
+        }
+      };
+      setModifiedData(newModifiedData);
+      localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
+      
+      toast({
+        title: "Value Recorded",
+        description: `Recorded value for ${headers[currentColumnIndex]}`,
+      });
+      
+      moveToNextCell();
+    } else {
+      // Voice mode - start/stop recording
+      if (isRecording) {
+        const transcription = await stopRecording();
+        if (transcription) {
+          setCurrentValue(transcription);
+          
+          const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
+          const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
+          
+          const newModifiedData = {
+            ...modifiedData,
+            [cellKey]: {
+              originalValue,
+              modifiedValue: transcription,
+              rowIndex: currentRowIndex,
+              columnIndex: currentColumnIndex
+            }
+          };
+          setModifiedData(newModifiedData);
+          localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
+          
+          toast({
+            title: "Voice Recorded",
+            description: `Transcribed: "${transcription}"`,
+          });
+          
+          moveToNextCell();
+        } else {
+          toast({
+            title: "Recording Failed",
+            description: "Could not transcribe audio. Please try again.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        await startRecording();
+        toast({
+          title: "Recording Started",
+          description: "Speak now... Click Record again to stop.",
+        });
       }
-    };
-    setModifiedData(newModifiedData);
-    localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
-    
-    toast({
-      title: "Value Recorded",
-      description: `Recorded value for ${headers[currentColumnIndex]}`,
-    });
-    
-    moveToNextCell();
+    }
   };
 
   const skipCurrentValue = () => {
@@ -142,6 +189,16 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const getCurrentCellKey = () => getCellKey(currentRowIndex, currentColumnIndex);
   const isCurrentCellModified = modifiedData[getCurrentCellKey()] !== undefined;
   const stats = getModificationStats();
+
+  useEffect(() => {
+    if (recordingError) {
+      toast({
+        title: "Recording Error",
+        description: recordingError,
+        variant: "destructive",
+      });
+    }
+  }, [recordingError, toast]);
 
   if (dataRows.length === 0) {
     return (
@@ -207,6 +264,28 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
           </div>
         </div>
 
+        {/* Input Mode Toggle */}
+        <div className="flex gap-2 mb-4">
+          <Button
+            onClick={() => setIsTextMode(true)}
+            variant={isTextMode ? "default" : "outline"}
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <Type className="h-4 w-4" />
+            Text Input
+          </Button>
+          <Button
+            onClick={() => setIsTextMode(false)}
+            variant={!isTextMode ? "default" : "outline"}
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <Mic className="h-4 w-4" />
+            Voice Input
+          </Button>
+        </div>
+
         {/* Current Cell Focus */}
         <div className="space-y-4 mb-6">
           <div className="bg-gray-50 rounded-lg p-4">
@@ -220,15 +299,28 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              New Value:
+              {isTextMode ? 'New Value:' : 'Transcribed Value:'}
             </label>
-            <Input
-              value={currentValue}
-              onChange={(e) => setCurrentValue(e.target.value)}
-              placeholder={`Enter value for ${headers[currentColumnIndex]}`}
-              className="text-lg p-3 h-12"
-              autoFocus
-            />
+            {isTextMode ? (
+              <Input
+                value={currentValue}
+                onChange={(e) => setCurrentValue(e.target.value)}
+                placeholder={`Enter value for ${headers[currentColumnIndex]}`}
+                className="text-lg p-3 h-12"
+                autoFocus
+              />
+            ) : (
+              <div className="text-lg p-3 h-12 border rounded-md bg-gray-50 flex items-center">
+                {isRecording ? (
+                  <span className="text-red-600 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
+                    Recording... Click Record to stop
+                  </span>
+                ) : (
+                  currentValue || 'Click Record to start voice input'
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -255,11 +347,20 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
             </Button>
             <Button
               onClick={recordCurrentValue}
-              disabled={isLastCell}
-              className="bg-green-600 hover:bg-green-700 text-white"
+              disabled={isLastCell && isTextMode}
+              className={isRecording ? "bg-red-600 hover:bg-red-700 text-white animate-pulse" : "bg-green-600 hover:bg-green-700 text-white"}
             >
-              <Mic className="mr-1 h-4 w-4" />
-              Record
+              {isRecording ? (
+                <>
+                  <MicOff className="mr-1 h-4 w-4" />
+                  Stop Recording
+                </>
+              ) : (
+                <>
+                  {isTextMode ? <Type className="mr-1 h-4 w-4" /> : <Mic className="mr-1 h-4 w-4" />}
+                  {isTextMode ? 'Record Text' : 'Record Voice'}
+                </>
+              )}
             </Button>
           </div>
         </div>
