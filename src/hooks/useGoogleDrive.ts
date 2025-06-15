@@ -53,16 +53,22 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     const savedFile = localStorage.getItem('google_drive_selected_file');
     const savedSheetData = localStorage.getItem('google_drive_sheet_data');
     
+    console.log('Loading saved state:', { savedToken: !!savedToken, savedFile: !!savedFile, savedSheetData: !!savedSheetData });
+    
     if (savedToken) {
       setAccessToken(savedToken);
       setIsAuthenticated(true);
       
       if (savedFile) {
-        setSelectedFile(JSON.parse(savedFile));
+        const parsedFile = JSON.parse(savedFile);
+        console.log('Setting saved file:', parsedFile);
+        setSelectedFile(parsedFile);
       }
       
       if (savedSheetData) {
-        setSheetData(JSON.parse(savedSheetData));
+        const parsedSheetData = JSON.parse(savedSheetData);
+        console.log('Setting saved sheet data:', parsedSheetData);
+        setSheetData(parsedSheetData);
       }
     }
   }, []);
@@ -132,16 +138,19 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   };
 
   const selectFile = (file: GoogleDriveFile) => {
+    console.log('Selecting file:', file);
     setSelectedFile(file);
     localStorage.setItem('google_drive_selected_file', JSON.stringify(file));
     
     // Clear previous sheet data when selecting a new file
+    console.log('Clearing previous sheet data');
     setSheetData(null);
     localStorage.removeItem('google_drive_sheet_data');
   };
 
   const readSheet = async (fileId: string) => {
     try {
+      console.log('Starting readSheet for fileId:', fileId);
       setIsLoading(true);
       setError(null);
       
@@ -149,11 +158,18 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
         body: { action: 'readSheet', accessToken, fileId }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error from edge function:', error);
+        throw error;
+      }
 
+      console.log('Sheet data received:', data);
       setSheetData(data);
       localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
+      
+      console.log('Sheet data set successfully, sheetData state should now be:', data);
     } catch (err) {
+      console.error('Error in readSheet:', err);
       setError(err instanceof Error ? err.message : 'Failed to read sheet');
     } finally {
       setIsLoading(false);
@@ -176,6 +192,11 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       loadFiles();
     }
   }, [isAuthenticated, accessToken]);
+
+  // Debug logging for sheetData changes
+  useEffect(() => {
+    console.log('Sheet data changed:', sheetData);
+  }, [sheetData]);
 
   return {
     isAuthenticated,

@@ -4,10 +4,17 @@ import { Button } from "@/components/ui/button";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
+import { useEffect } from "react";
 
 const Index = () => {
   const navigate = useNavigate();
   const { sheetData, selectedFile } = useGoogleDrive();
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Index component - sheetData:', sheetData);
+    console.log('Index component - selectedFile:', selectedFile);
+  }, [sheetData, selectedFile]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
