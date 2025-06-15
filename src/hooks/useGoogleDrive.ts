@@ -46,30 +46,43 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     
     if (code && !isAuthenticated) {
       handleAuthCode(code);
+      return; // Don't load saved state yet, wait for auth to complete
     }
 
-    // Load saved state
+    // Load saved state - do this regardless of authentication status
     const savedToken = localStorage.getItem('google_drive_token');
     const savedFile = localStorage.getItem('google_drive_selected_file');
     const savedSheetData = localStorage.getItem('google_drive_sheet_data');
     
     console.log('Loading saved state:', { savedToken: !!savedToken, savedFile: !!savedFile, savedSheetData: !!savedSheetData });
     
-    if (savedToken) {
-      setAccessToken(savedToken);
-      setIsAuthenticated(true);
-      
-      if (savedFile) {
+    // Always load saved file and sheet data if they exist
+    if (savedFile) {
+      try {
         const parsedFile = JSON.parse(savedFile);
         console.log('Setting saved file:', parsedFile);
         setSelectedFile(parsedFile);
+      } catch (err) {
+        console.error('Error parsing saved file:', err);
+        localStorage.removeItem('google_drive_selected_file');
       }
-      
-      if (savedSheetData) {
+    }
+    
+    if (savedSheetData) {
+      try {
         const parsedSheetData = JSON.parse(savedSheetData);
         console.log('Setting saved sheet data:', parsedSheetData);
         setSheetData(parsedSheetData);
+      } catch (err) {
+        console.error('Error parsing saved sheet data:', err);
+        localStorage.removeItem('google_drive_sheet_data');
       }
+    }
+    
+    // Set authentication state and token if available
+    if (savedToken) {
+      setAccessToken(savedToken);
+      setIsAuthenticated(true);
     }
   }, []);
 
