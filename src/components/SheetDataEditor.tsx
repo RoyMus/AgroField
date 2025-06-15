@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronLeft, ChevronRight, SkipForward, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, SkipForward, Save, Mic, MicOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface SheetData {
@@ -15,10 +15,11 @@ interface SheetData {
   };
 }
 
-interface ModifiedRowData {
-  originalRow: string[];
-  modifiedRow: string[];
+interface ModifiedCellData {
+  originalValue: string;
+  modifiedValue: string;
   rowIndex: number;
+  columnIndex: number;
 }
 
 interface SheetDataEditorProps {
@@ -26,9 +27,10 @@ interface SheetDataEditorProps {
 }
 
 const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
-  const [currentRowIndex, setCurrentRowIndex] = useState(1); // Start from row 1 (skip header)
-  const [modifiedData, setModifiedData] = useState<Record<number, ModifiedRowData>>({});
-  const [currentRowValues, setCurrentRowValues] = useState<string[]>([]);
+  const [currentRowIndex, setCurrentRowIndex] = useState(0); // Start from row 0 (first data row)
+  const [currentColumnIndex, setCurrentColumnIndex] = useState(0);
+  const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
+  const [currentValue, setCurrentValue] = useState<string>("");
   const { toast } = useToast();
 
   const headers = sheetData.values[0] || [];
@@ -36,91 +38,110 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
 
   useEffect(() => {
     // Load saved modifications from localStorage
-    const savedModifications = localStorage.getItem('sheet_modifications');
+    const savedModifications = localStorage.getItem('sheet_cell_modifications');
     if (savedModifications) {
       setModifiedData(JSON.parse(savedModifications));
     }
   }, []);
 
   useEffect(() => {
-    // Set current row values when row index changes
-    if (dataRows[currentRowIndex - 1]) {
-      const savedModification = modifiedData[currentRowIndex - 1];
+    // Set current cell value when position changes
+    if (dataRows[currentRowIndex] && dataRows[currentRowIndex][currentColumnIndex] !== undefined) {
+      const cellKey = `${currentRowIndex}-${currentColumnIndex}`;
+      const savedModification = modifiedData[cellKey];
       if (savedModification) {
-        setCurrentRowValues([...savedModification.modifiedRow]);
+        setCurrentValue(savedModification.modifiedValue);
       } else {
-        setCurrentRowValues([...dataRows[currentRowIndex - 1]]);
+        setCurrentValue(dataRows[currentRowIndex][currentColumnIndex] || "");
       }
     }
-  }, [currentRowIndex, dataRows, modifiedData]);
+  }, [currentRowIndex, currentColumnIndex, dataRows, modifiedData]);
 
   const saveModifications = () => {
-    localStorage.setItem('sheet_modifications', JSON.stringify(modifiedData));
+    localStorage.setItem('sheet_cell_modifications', JSON.stringify(modifiedData));
     toast({
       title: "Progress Saved",
-      description: `Saved modifications for ${Object.keys(modifiedData).length} rows`,
+      description: `Saved modifications for ${Object.keys(modifiedData).length} cells`,
     });
   };
 
-  const handleValueChange = (columnIndex: number, value: string) => {
-    const newValues = [...currentRowValues];
-    newValues[columnIndex] = value;
-    setCurrentRowValues(newValues);
-  };
+  const getCellKey = (rowIndex: number, columnIndex: number) => `${rowIndex}-${columnIndex}`;
 
-  const saveCurrentRow = () => {
-    const originalRow = dataRows[currentRowIndex - 1];
+  const recordCurrentValue = () => {
+    const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
+    const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
+    
     const newModifiedData = {
       ...modifiedData,
-      [currentRowIndex - 1]: {
-        originalRow: [...originalRow],
-        modifiedRow: [...currentRowValues],
-        rowIndex: currentRowIndex - 1
+      [cellKey]: {
+        originalValue,
+        modifiedValue: currentValue,
+        rowIndex: currentRowIndex,
+        columnIndex: currentColumnIndex
       }
     };
     setModifiedData(newModifiedData);
-    localStorage.setItem('sheet_modifications', JSON.stringify(newModifiedData));
-  };
-
-  const handleNext = () => {
-    saveCurrentRow();
-    if (currentRowIndex < dataRows.length) {
-      setCurrentRowIndex(currentRowIndex + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    saveCurrentRow();
-    if (currentRowIndex > 1) {
-      setCurrentRowIndex(currentRowIndex - 1);
-    }
-  };
-
-  const handleSkip = () => {
-    if (currentRowIndex < dataRows.length) {
-      setCurrentRowIndex(currentRowIndex + 1);
-    }
-  };
-
-  const resetCurrentRow = () => {
-    const originalRow = dataRows[currentRowIndex - 1];
-    setCurrentRowValues([...originalRow]);
+    localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
     
+    toast({
+      title: "Value Recorded",
+      description: `Recorded value for ${headers[currentColumnIndex]}`,
+    });
+    
+    moveToNextCell();
+  };
+
+  const skipCurrentValue = () => {
+    const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
     // Remove from modified data if it exists
     const newModifiedData = { ...modifiedData };
-    delete newModifiedData[currentRowIndex - 1];
+    delete newModifiedData[cellKey];
     setModifiedData(newModifiedData);
-    localStorage.setItem('sheet_modifications', JSON.stringify(newModifiedData));
+    localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
+    
+    moveToNextCell();
+  };
+
+  const moveToNextCell = () => {
+    if (currentColumnIndex < headers.length - 1) {
+      setCurrentColumnIndex(currentColumnIndex + 1);
+    } else if (currentRowIndex < dataRows.length - 1) {
+      setCurrentRowIndex(currentRowIndex + 1);
+      setCurrentColumnIndex(0);
+    }
+  };
+
+  const moveToPreviousCell = () => {
+    if (currentColumnIndex > 0) {
+      setCurrentColumnIndex(currentColumnIndex - 1);
+    } else if (currentRowIndex > 0) {
+      setCurrentRowIndex(currentRowIndex - 1);
+      setCurrentColumnIndex(headers.length - 1);
+    }
+  };
+
+  const resetCurrentCell = () => {
+    const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
+    setCurrentValue(originalValue);
+    
+    // Remove from modified data if it exists
+    const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
+    const newModifiedData = { ...modifiedData };
+    delete newModifiedData[cellKey];
+    setModifiedData(newModifiedData);
+    localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
   };
 
   const getModificationStats = () => {
-    const totalRows = dataRows.length;
-    const modifiedRows = Object.keys(modifiedData).length;
-    return { totalRows, modifiedRows, remainingRows: totalRows - modifiedRows };
+    const totalCells = dataRows.length * headers.length;
+    const modifiedCells = Object.keys(modifiedData).length;
+    const currentCellPosition = currentRowIndex * headers.length + currentColumnIndex + 1;
+    return { totalCells, modifiedCells, currentCellPosition };
   };
 
+  const getCurrentCellKey = () => getCellKey(currentRowIndex, currentColumnIndex);
+  const isCurrentCellModified = modifiedData[getCurrentCellKey()] !== undefined;
   const stats = getModificationStats();
-  const isModified = modifiedData[currentRowIndex - 1] !== undefined;
 
   if (dataRows.length === 0) {
     return (
@@ -130,6 +151,9 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     );
   }
 
+  const isLastCell = currentRowIndex === dataRows.length - 1 && currentColumnIndex === headers.length - 1;
+  const isFirstCell = currentRowIndex === 0 && currentColumnIndex === 0;
+
   return (
     <div className="space-y-6">
       {/* Progress Stats */}
@@ -137,33 +161,38 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         <h3 className="font-semibold text-blue-900 mb-2">Progress Overview</h3>
         <div className="grid grid-cols-3 gap-4 text-sm">
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{stats.modifiedRows}</div>
+            <div className="text-2xl font-bold text-blue-600">{stats.modifiedCells}</div>
             <div className="text-blue-700">Modified</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-gray-600">{stats.remainingRows}</div>
-            <div className="text-gray-700">Remaining</div>
+            <div className="text-2xl font-bold text-gray-600">{stats.currentCellPosition}</div>
+            <div className="text-gray-700">Current Position</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-gray-800">{stats.totalRows}</div>
-            <div className="text-gray-700">Total</div>
+            <div className="text-2xl font-bold text-gray-800">{stats.totalCells}</div>
+            <div className="text-gray-700">Total Cells</div>
           </div>
         </div>
       </div>
 
-      {/* Current Row Editor */}
+      {/* Current Cell Editor */}
       <div className="bg-white border-2 border-gray-200 rounded-xl p-6 shadow-lg">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">
-            Row {currentRowIndex} of {dataRows.length}
-            {isModified && <span className="ml-2 text-sm text-green-600">(Modified)</span>}
-          </h3>
+          <div>
+            <h3 className="text-lg font-semibold">
+              Row {currentRowIndex + 1}, Column: {headers[currentColumnIndex]}
+              {isCurrentCellModified && <span className="ml-2 text-sm text-green-600">(Modified)</span>}
+            </h3>
+            <p className="text-sm text-gray-600">
+              Cell {stats.currentCellPosition} of {stats.totalCells}
+            </p>
+          </div>
           <div className="flex gap-2">
             <Button
-              onClick={resetCurrentRow}
+              onClick={resetCurrentCell}
               variant="outline"
               size="sm"
-              disabled={!isModified}
+              disabled={!isCurrentCellModified}
             >
               Reset
             </Button>
@@ -178,51 +207,59 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
           </div>
         </div>
 
-        {/* Editable Form */}
-        <div className="space-y-4">
-          {headers.map((header, index) => (
-            <div key={index} className="grid grid-cols-3 gap-4 items-center">
-              <label className="font-medium text-gray-700">{header}:</label>
-              <div className="text-sm text-gray-500">
-                Original: {dataRows[currentRowIndex - 1]?.[index] || ''}
-              </div>
-              <Input
-                value={currentRowValues[index] || ''}
-                onChange={(e) => handleValueChange(index, e.target.value)}
-                placeholder={`Enter ${header}`}
-                className="w-full"
-              />
+        {/* Current Cell Focus */}
+        <div className="space-y-4 mb-6">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Original Value:
+            </label>
+            <div className="text-lg text-gray-900 bg-white p-3 rounded border">
+              {dataRows[currentRowIndex][currentColumnIndex] || '(empty)'}
             </div>
-          ))}
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              New Value:
+            </label>
+            <Input
+              value={currentValue}
+              onChange={(e) => setCurrentValue(e.target.value)}
+              placeholder={`Enter value for ${headers[currentColumnIndex]}`}
+              className="text-lg p-3 h-12"
+              autoFocus
+            />
+          </div>
         </div>
 
-        {/* Navigation Buttons */}
-        <div className="flex justify-between items-center mt-6 pt-4 border-t">
+        {/* Action Buttons */}
+        <div className="flex justify-between items-center pt-4 border-t">
           <Button
-            onClick={handlePrevious}
-            disabled={currentRowIndex === 1}
+            onClick={moveToPreviousCell}
+            disabled={isFirstCell}
             variant="outline"
           >
             <ChevronLeft className="mr-1 h-4 w-4" />
             Previous
           </Button>
 
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <Button
-              onClick={handleSkip}
-              disabled={currentRowIndex === dataRows.length}
+              onClick={skipCurrentValue}
+              disabled={isLastCell}
               variant="outline"
+              className="text-orange-600 border-orange-300 hover:bg-orange-50"
             >
               <SkipForward className="mr-1 h-4 w-4" />
               Skip
             </Button>
             <Button
-              onClick={handleNext}
-              disabled={currentRowIndex === dataRows.length}
-              className="bg-blue-600 hover:bg-blue-700"
+              onClick={recordCurrentValue}
+              disabled={isLastCell}
+              className="bg-green-600 hover:bg-green-700 text-white"
             >
-              Next
-              <ChevronRight className="ml-1 h-4 w-4" />
+              <Mic className="mr-1 h-4 w-4" />
+              Record
             </Button>
           </div>
         </div>
@@ -237,35 +274,42 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
               <TableRow>
                 <TableHead className="w-12">#</TableHead>
                 {headers.map((header, index) => (
-                  <TableHead key={index}>{header}</TableHead>
+                  <TableHead key={index} className={index === currentColumnIndex ? 'bg-blue-100' : ''}>
+                    {header}
+                  </TableHead>
                 ))}
               </TableRow>
             </TableHeader>
             <TableBody>
               {dataRows.slice(0, 10).map((row, rowIndex) => {
-                const isCurrentRow = rowIndex + 1 === currentRowIndex;
-                const isRowModified = modifiedData[rowIndex] !== undefined;
+                const isCurrentRow = rowIndex === currentRowIndex;
                 
                 return (
                   <TableRow 
                     key={rowIndex}
-                    className={`
-                      ${isCurrentRow ? 'bg-blue-50 border-blue-200' : ''} 
-                      ${isRowModified ? 'bg-green-50' : ''}
-                    `}
+                    className={isCurrentRow ? 'bg-blue-50 border-blue-200' : ''}
                   >
                     <TableCell className="font-medium">
                       {rowIndex + 1}
-                      {isRowModified && <span className="ml-1 text-green-600">✓</span>}
                     </TableCell>
-                    {row.map((cell, cellIndex) => (
-                      <TableCell key={cellIndex} className="max-w-32 truncate">
-                        {isRowModified && modifiedData[rowIndex] 
-                          ? modifiedData[rowIndex].modifiedRow[cellIndex] || cell
-                          : cell
-                        }
-                      </TableCell>
-                    ))}
+                    {row.map((cell, cellIndex) => {
+                      const cellKey = getCellKey(rowIndex, cellIndex);
+                      const isCellModified = modifiedData[cellKey] !== undefined;
+                      const isCurrentCell = isCurrentRow && cellIndex === currentColumnIndex;
+                      
+                      return (
+                        <TableCell 
+                          key={cellIndex} 
+                          className={`max-w-32 truncate ${
+                            isCurrentCell ? 'bg-blue-200 font-semibold' : 
+                            isCellModified ? 'bg-green-50 text-green-800' : ''
+                          }`}
+                        >
+                          {isCellModified ? modifiedData[cellKey].modifiedValue : cell}
+                          {isCellModified && <span className="ml-1 text-green-600">✓</span>}
+                        </TableCell>
+                      );
+                    })}
                   </TableRow>
                 );
               })}
