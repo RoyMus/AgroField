@@ -12,7 +12,8 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const resultRef = useRef<string>('');
+  const accumulatedTranscriptRef = useRef<string>('');
+  const resolvePromiseRef = useRef<((value: string | null) => void) | null>(null);
 
   const startRecording = async () => {
     try {
@@ -32,7 +33,8 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       recognition.interimResults = true;
       recognition.lang = 'en-US';
       
-      resultRef.current = '';
+      // Reset accumulated transcript
+      accumulatedTranscriptRef.current = '';
       
       recognition.onstart = () => {
         setIsRecording(true);
@@ -40,18 +42,28 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       };
       
       recognition.onresult = (event) => {
+        let interimTranscript = '';
         let finalTranscript = '';
         
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
             finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
           }
         }
         
+        // Accumulate final transcripts
         if (finalTranscript) {
-          resultRef.current = finalTranscript;
-          console.log('Speech result:', finalTranscript);
+          accumulatedTranscriptRef.current += finalTranscript;
+          console.log('Final transcript added:', finalTranscript);
+          console.log('Total accumulated:', accumulatedTranscriptRef.current);
+        }
+        
+        // Log interim results for debugging
+        if (interimTranscript) {
+          console.log('Interim transcript:', interimTranscript);
         }
       };
       
@@ -59,11 +71,25 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         console.error('Speech recognition error:', event.error);
         setError(`Speech recognition error: ${event.error}`);
         setIsRecording(false);
+        
+        // Resolve promise with error
+        if (resolvePromiseRef.current) {
+          resolvePromiseRef.current(null);
+          resolvePromiseRef.current = null;
+        }
       };
       
       recognition.onend = () => {
         setIsRecording(false);
         console.log('Speech recognition ended');
+        console.log('Final accumulated transcript:', accumulatedTranscriptRef.current);
+        
+        // Resolve the promise when recognition ends
+        if (resolvePromiseRef.current) {
+          const finalResult = accumulatedTranscriptRef.current.trim();
+          resolvePromiseRef.current(finalResult || null);
+          resolvePromiseRef.current = null;
+        }
       };
       
       recognitionRef.current = recognition;
@@ -82,13 +108,10 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         return;
       }
 
-      recognitionRef.current.onend = () => {
-        setIsRecording(false);
-        const result = resultRef.current.trim();
-        console.log('Final speech result:', result);
-        resolve(result || null);
-      };
-
+      // Store the resolve function to be called when recognition ends
+      resolvePromiseRef.current = resolve;
+      
+      // Stop the recognition - this will trigger onend
       recognitionRef.current.stop();
     });
   };

@@ -27,11 +27,12 @@ interface SheetDataEditorProps {
 }
 
 const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
-  const [currentRowIndex, setCurrentRowIndex] = useState(0); // Start from row 0 (first data row)
+  const [currentRowIndex, setCurrentRowIndex] = useState(0);
   const [currentColumnIndex, setCurrentColumnIndex] = useState(0);
   const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
   const [currentValue, setCurrentValue] = useState<string>("");
   const [isTextMode, setIsTextMode] = useState(true);
+  const [hasUserTyped, setHasUserTyped] = useState(false);
   const { toast } = useToast();
   const { isRecording, startRecording, stopRecording, error: recordingError } = useVoiceRecording();
 
@@ -47,8 +48,8 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   }, []);
 
   useEffect(() => {
-    // Set current cell value when position changes
-    if (dataRows[currentRowIndex] && dataRows[currentRowIndex][currentColumnIndex] !== undefined) {
+    // Only set current cell value when position changes if user hasn't typed
+    if (!hasUserTyped && dataRows[currentRowIndex] && dataRows[currentRowIndex][currentColumnIndex] !== undefined) {
       const cellKey = `${currentRowIndex}-${currentColumnIndex}`;
       const savedModification = modifiedData[cellKey];
       if (savedModification) {
@@ -57,7 +58,14 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         setCurrentValue(dataRows[currentRowIndex][currentColumnIndex] || "");
       }
     }
+    // Reset the typing flag when position changes
+    setHasUserTyped(false);
   }, [currentRowIndex, currentColumnIndex, dataRows, modifiedData]);
+
+  const handleInputChange = (value: string) => {
+    setCurrentValue(value);
+    setHasUserTyped(true);
+  };
 
   const saveModifications = () => {
     localStorage.setItem('sheet_cell_modifications', JSON.stringify(modifiedData));
@@ -96,9 +104,13 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     } else {
       // Voice mode - start/stop recording
       if (isRecording) {
+        console.log('Stopping recording...');
         const transcription = await stopRecording();
+        console.log('Received transcription:', transcription);
+        
         if (transcription) {
           setCurrentValue(transcription);
+          setHasUserTyped(true);
           
           const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
           const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
@@ -129,6 +141,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
           });
         }
       } else {
+        console.log('Starting recording...');
         await startRecording();
         toast({
           title: "Recording Started",
@@ -170,6 +183,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const resetCurrentCell = () => {
     const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
     setCurrentValue(originalValue);
+    setHasUserTyped(false);
     
     // Remove from modified data if it exists
     const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
@@ -306,7 +320,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
             {isTextMode ? (
               <Input
                 value={currentValue}
-                onChange={(e) => setCurrentValue(e.target.value)}
+                onChange={(e) => handleInputChange(e.target.value)}
                 placeholder={`Enter value for ${headers[currentColumnIndex]}`}
                 className="text-lg p-3 h-12"
                 autoFocus
