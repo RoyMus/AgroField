@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
   const [currentValue, setCurrentValue] = useState<string>("");
   const [isTextMode, setIsTextMode] = useState(true);
-  const [hasUserTyped, setHasUserTyped] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const { toast } = useToast();
   const { isRecording, startRecording, stopRecording, error: recordingError } = useVoiceRecording();
 
@@ -48,8 +49,8 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   }, []);
 
   useEffect(() => {
-    // Only set current cell value when position changes if user hasn't typed
-    if (!hasUserTyped && dataRows[currentRowIndex] && dataRows[currentRowIndex][currentColumnIndex] !== undefined) {
+    // Only set current cell value when position changes AND user hasn't interacted with current cell
+    if (!hasUserInteracted && dataRows[currentRowIndex] && dataRows[currentRowIndex][currentColumnIndex] !== undefined) {
       const cellKey = `${currentRowIndex}-${currentColumnIndex}`;
       const savedModification = modifiedData[cellKey];
       if (savedModification) {
@@ -58,13 +59,18 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         setCurrentValue(dataRows[currentRowIndex][currentColumnIndex] || "");
       }
     }
-    // Reset the typing flag when position changes
-    setHasUserTyped(false);
+    // Reset the interaction flag when position changes
+    setHasUserInteracted(false);
   }, [currentRowIndex, currentColumnIndex, dataRows, modifiedData]);
 
   const handleInputChange = (value: string) => {
     setCurrentValue(value);
-    setHasUserTyped(true);
+    setHasUserInteracted(true);
+  };
+
+  const handleVoiceTranscription = (transcription: string) => {
+    setCurrentValue(transcription);
+    setHasUserInteracted(true);
   };
 
   const saveModifications = () => {
@@ -109,8 +115,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         console.log('Received transcription:', transcription);
         
         if (transcription) {
-          setCurrentValue(transcription);
-          setHasUserTyped(true);
+          handleVoiceTranscription(transcription);
           
           const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
           const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
@@ -183,7 +188,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const resetCurrentCell = () => {
     const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
     setCurrentValue(originalValue);
-    setHasUserTyped(false);
+    setHasUserInteracted(false);
     
     // Remove from modified data if it exists
     const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
@@ -326,7 +331,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
                 autoFocus
               />
             ) : (
-              <div className="text-lg p-3 h-12 border rounded-md bg-gray-50 flex items-center">
+              <div className="text-lg p-3 h-12 border rounded-md bg-white flex items-center">
                 {isRecording ? (
                   <span className="text-red-600 flex items-center gap-2">
                     <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
