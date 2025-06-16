@@ -218,15 +218,15 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         <h3 className="font-semibold text-blue-900 mb-2">Progress Overview</h3>
         <div className="grid grid-cols-3 gap-4 text-sm">
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{stats.modifiedCells}</div>
+            <div className="text-2xl font-bold text-blue-600">{Object.keys(modifiedData).length}</div>
             <div className="text-blue-700">Modified</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-gray-600">{stats.currentCellPosition}</div>
+            <div className="text-2xl font-bold text-gray-600">{currentRowIndex * headers.length + currentColumnIndex + 1}</div>
             <div className="text-gray-700">Current Position</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-gray-800">{stats.totalCells}</div>
+            <div className="text-2xl font-bold text-gray-800">{dataRows.length * headers.length}</div>
             <div className="text-gray-700">Total Cells</div>
           </div>
         </div>
@@ -238,10 +238,12 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
           <div>
             <h3 className="text-lg font-semibold">
               Row {currentRowIndex + 1}, Column: {headers[currentColumnIndex]}
-              {isCurrentCellModified && <span className="ml-2 text-sm text-green-600">(Modified)</span>}
+              {modifiedData[getCellKey(currentRowIndex, currentColumnIndex)] && 
+                <span className="ml-2 text-sm text-green-600">(Modified)</span>
+              }
             </h3>
             <p className="text-sm text-gray-600">
-              Cell {stats.currentCellPosition} of {stats.totalCells}
+              Cell {currentRowIndex * headers.length + currentColumnIndex + 1} of {dataRows.length * headers.length}
             </p>
           </div>
           <div className="flex gap-2">
@@ -249,7 +251,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
               onClick={resetCurrentCell}
               variant="outline"
               size="sm"
-              disabled={!isCurrentCellModified}
+              disabled={!modifiedData[getCellKey(currentRowIndex, currentColumnIndex)]}
             >
               Reset
             </Button>

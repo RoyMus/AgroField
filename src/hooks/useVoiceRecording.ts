@@ -11,98 +11,86 @@ interface UseVoiceRecordingReturn {
 export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const resultRef = useRef<string>('');
 
   const startRecording = async () => {
     try {
       setError(null);
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          sampleRate: 16000,
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
+      
+      // Check if Speech Recognition is supported
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      
+      if (!SpeechRecognition) {
+        throw new Error('Speech Recognition is not supported in this browser. Please use Chrome, Edge, or Safari.');
+      }
+
+      const recognition = new SpeechRecognition();
+      
+      // Configure recognition settings
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+      
+      resultRef.current = '';
+      
+      recognition.onstart = () => {
+        setIsRecording(true);
+        console.log('Speech recognition started');
+      };
+      
+      recognition.onresult = (event) => {
+        let finalTranscript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          }
         }
-      });
-      
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
-      
-      chunksRef.current = [];
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
+        
+        if (finalTranscript) {
+          resultRef.current = finalTranscript;
+          console.log('Speech result:', finalTranscript);
         }
       };
       
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(1000); // Collect data every second
-      setIsRecording(true);
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setError(`Speech recognition error: ${event.error}`);
+        setIsRecording(false);
+      };
+      
+      recognition.onend = () => {
+        setIsRecording(false);
+        console.log('Speech recognition ended');
+      };
+      
+      recognitionRef.current = recognition;
+      recognition.start();
+      
     } catch (err) {
-      setError('Failed to access microphone. Please check permissions.');
-      console.error('Error starting recording:', err);
+      setError(err instanceof Error ? err.message : 'Failed to start speech recognition');
+      console.error('Error starting speech recognition:', err);
     }
   };
 
   const stopRecording = async (): Promise<string | null> => {
     return new Promise((resolve) => {
-      if (!mediaRecorderRef.current || !isRecording) {
+      if (!recognitionRef.current || !isRecording) {
         resolve(null);
         return;
       }
 
-      mediaRecorderRef.current.onstop = async () => {
+      recognitionRef.current.onend = () => {
         setIsRecording(false);
-        
-        if (chunksRef.current.length === 0) {
-          setError('No audio data recorded');
-          resolve(null);
-          return;
-        }
-
-        try {
-          const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-          const transcription = await transcribeAudio(audioBlob);
-          resolve(transcription);
-        } catch (err) {
-          setError('Failed to transcribe audio');
-          console.error('Error transcribing audio:', err);
-          resolve(null);
-        }
+        const result = resultRef.current.trim();
+        console.log('Final speech result:', result);
+        resolve(result || null);
       };
 
-      mediaRecorderRef.current.stop();
-      
-      // Stop all tracks
-      mediaRecorderRef.current.stream.getTracks().forEach(track => {
-        track.stop();
-      });
+      recognitionRef.current.stop();
     });
-  };
-
-  const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
-    // Convert blob to base64
-    const arrayBuffer = await audioBlob.arrayBuffer();
-    const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-    
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-audio`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      },
-      body: JSON.stringify({ audio: base64Audio }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to transcribe audio');
-    }
-
-    const data = await response.json();
-    return data.text || '';
   };
 
   return {
