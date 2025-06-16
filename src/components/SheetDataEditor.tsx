@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,6 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
   const [currentValue, setCurrentValue] = useState<string>("");
   const [isTextMode, setIsTextMode] = useState(true);
-  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const { toast } = useToast();
   const { isRecording, startRecording, stopRecording, error: recordingError } = useVoiceRecording();
 
@@ -48,28 +48,28 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   }, []);
 
   useEffect(() => {
-    // Only set current cell value when position changes AND user hasn't interacted with current cell
-    if (!hasUserInteracted && dataRows[currentRowIndex] && dataRows[currentRowIndex][currentColumnIndex] !== undefined) {
-      const cellKey = `${currentRowIndex}-${currentColumnIndex}`;
-      const savedModification = modifiedData[cellKey];
-      if (savedModification) {
-        setCurrentValue(savedModification.modifiedValue);
-      } else {
-        setCurrentValue(dataRows[currentRowIndex][currentColumnIndex] || "");
-      }
+    // Only set current cell value when position changes
+    const cellKey = `${currentRowIndex}-${currentColumnIndex}`;
+    const savedModification = modifiedData[cellKey];
+    
+    if (savedModification) {
+      setCurrentValue(savedModification.modifiedValue);
+    } else {
+      setCurrentValue(dataRows[currentRowIndex]?.[currentColumnIndex] || "");
     }
-    // Reset the interaction flag when position changes
-    setHasUserInteracted(false);
-  }, [currentRowIndex, currentColumnIndex, dataRows, hasUserInteracted]);
+  }, [currentRowIndex, currentColumnIndex]);
 
   const handleInputChange = (value: string) => {
     setCurrentValue(value);
-    setHasUserInteracted(true);
   };
 
   const handleVoiceTranscription = (transcription: string) => {
-    setCurrentValue(transcription);
-    setHasUserInteracted(true);
+    // If in text mode, append to existing text, otherwise replace
+    if (isTextMode && currentValue.trim()) {
+      setCurrentValue(currentValue + " " + transcription);
+    } else {
+      setCurrentValue(transcription);
+    }
   };
 
   const saveModifications = () => {
@@ -83,73 +83,109 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const getCellKey = (rowIndex: number, columnIndex: number) => `${rowIndex}-${columnIndex}`;
 
   const recordCurrentValue = async () => {
-    if (isTextMode) {
-      // Text mode - use the current input value
-      const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
-      const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
-      
-      const newModifiedData = {
-        ...modifiedData,
-        [cellKey]: {
-          originalValue,
-          modifiedValue: currentValue,
-          rowIndex: currentRowIndex,
-          columnIndex: currentColumnIndex
-        }
-      };
-      setModifiedData(newModifiedData);
-      localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
-      
-      toast({
-        title: "Value Recorded",
-        description: `Recorded value for ${headers[currentColumnIndex]}`,
-      });
-      
-      moveToNextCell();
-    } else {
-      // Voice mode - start/stop recording
-      if (isRecording) {
-        console.log('Stopping recording...');
-        const transcription = await stopRecording();
-        console.log('Received transcription:', transcription);
+    if (!isRecording) {
+      // Recording the current text value or starting voice recording
+      if (isTextMode || currentValue.trim()) {
+        // Save the current value
+        const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
+        const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
         
-        if (transcription) {
-          handleVoiceTranscription(transcription);
-          
-          const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
-          const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
-          
-          const newModifiedData = {
-            ...modifiedData,
-            [cellKey]: {
-              originalValue,
-              modifiedValue: transcription,
-              rowIndex: currentRowIndex,
-              columnIndex: currentColumnIndex
-            }
-          };
-          setModifiedData(newModifiedData);
-          localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
-          
-          toast({
-            title: "Voice Recorded",
-            description: `Transcribed: "${transcription}"`,
-          });
-          
-          moveToNextCell();
-        } else {
-          toast({
-            title: "Recording Failed",
-            description: "Could not transcribe audio. Please try again.",
-            variant: "destructive",
-          });
-        }
-      } else {
+        const newModifiedData = {
+          ...modifiedData,
+          [cellKey]: {
+            originalValue,
+            modifiedValue: currentValue,
+            rowIndex: currentRowIndex,
+            columnIndex: currentColumnIndex
+          }
+        };
+        setModifiedData(newModifiedData);
+        localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
+        
+        toast({
+          title: "Value Recorded",
+          description: `Recorded value for ${headers[currentColumnIndex]}`,
+        });
+        
+        moveToNextCell();
+      } else if (!isTextMode) {
+        // Start voice recording
         console.log('Starting recording...');
         await startRecording();
         toast({
           title: "Recording Started",
           description: "Speak now... Click Record again to stop.",
+        });
+      }
+    } else {
+      // Stop voice recording
+      console.log('Stopping recording...');
+      const transcription = await stopRecording();
+      console.log('Received transcription:', transcription);
+      
+      if (transcription) {
+        handleVoiceTranscription(transcription);
+        
+        const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
+        const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
+        const finalValue = isTextMode && currentValue.trim() ? currentValue + " " + transcription : transcription;
+        
+        const newModifiedData = {
+          ...modifiedData,
+          [cellKey]: {
+            originalValue,
+            modifiedValue: finalValue,
+            rowIndex: currentRowIndex,
+            columnIndex: currentColumnIndex
+          }
+        };
+        setModifiedData(newModifiedData);
+        localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
+        
+        toast({
+          title: "Voice Recorded",
+          description: `Transcribed: "${transcription}"`,
+        });
+        
+        moveToNextCell();
+      } else {
+        toast({
+          title: "Recording Failed",
+          description: "Could not transcribe audio. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const startVoiceRecording = async () => {
+    if (!isRecording) {
+      console.log('Starting voice recording...');
+      await startRecording();
+      toast({
+        title: "Recording Started",
+        description: "Speak now... Click Stop to finish.",
+      });
+    }
+  };
+
+  const stopVoiceRecording = async () => {
+    if (isRecording) {
+      console.log('Stopping voice recording...');
+      const transcription = await stopRecording();
+      console.log('Received transcription:', transcription);
+      
+      if (transcription) {
+        handleVoiceTranscription(transcription);
+        toast({
+          title: "Voice Added",
+          description: `Added: "${transcription}"`,
+        });
+      } else {
+        toast({
+          title: "Recording Failed",
+          description: "Could not transcribe audio. Please try again.",
+          variant: "destructive",
         });
       }
     }
@@ -187,7 +223,6 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const resetCurrentCell = () => {
     const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
     setCurrentValue(originalValue);
-    setHasUserInteracted(false);
     
     // Remove from modified data if it exists
     const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
@@ -284,28 +319,6 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
           </div>
         </div>
 
-        {/* Input Mode Toggle */}
-        <div className="flex gap-2 mb-4">
-          <Button
-            onClick={() => setIsTextMode(true)}
-            variant={isTextMode ? "default" : "outline"}
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <Type className="h-4 w-4" />
-            Text Input
-          </Button>
-          <Button
-            onClick={() => setIsTextMode(false)}
-            variant={!isTextMode ? "default" : "outline"}
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <Mic className="h-4 w-4" />
-            Voice Input
-          </Button>
-        </div>
-
         {/* Current Cell Focus */}
         <div className="space-y-4 mb-6">
           <div className="bg-gray-50 rounded-lg p-4">
@@ -319,29 +332,56 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {isTextMode ? 'New Value:' : 'Transcribed Value:'}
+              New Value:
             </label>
-            {isTextMode ? (
-              <Input
-                value={currentValue}
-                onChange={(e) => handleInputChange(e.target.value)}
-                placeholder={`Enter value for ${headers[currentColumnIndex]}`}
-                className="text-lg p-3 h-12"
-                autoFocus
-              />
-            ) : (
-              <div className="text-lg p-3 h-12 border rounded-md bg-white flex items-center">
-                {isRecording ? (
-                  <span className="text-red-600 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
-                    Recording... Click Record to stop
-                  </span>
-                ) : (
-                  currentValue || 'Click Record to start voice input'
-                )}
-              </div>
-            )}
+            <Input
+              value={currentValue}
+              onChange={(e) => handleInputChange(e.target.value)}
+              placeholder={`Enter value for ${headers[currentColumnIndex]}`}
+              className="text-lg p-3 h-12"
+              autoFocus
+            />
           </div>
+        </div>
+
+        {/* Voice Recording Controls */}
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-700">Voice Input:</span>
+              {isRecording && (
+                <span className="text-red-600 flex items-center gap-2 text-sm">
+                  <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
+                  Recording...
+                </span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={startVoiceRecording}
+                disabled={isRecording}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Mic className="h-4 w-4" />
+                Start Recording
+              </Button>
+              <Button
+                onClick={stopVoiceRecording}
+                disabled={!isRecording}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <MicOff className="h-4 w-4" />
+                Stop Recording
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Voice input will be added to your existing text. You can type and use voice together.
+          </p>
         </div>
 
         {/* Action Buttons */}
@@ -367,20 +407,11 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
             </Button>
             <Button
               onClick={recordCurrentValue}
-              disabled={isLastCell && isTextMode}
-              className={isRecording ? "bg-red-600 hover:bg-red-700 text-white animate-pulse" : "bg-green-600 hover:bg-green-700 text-white"}
+              disabled={isLastCell}
+              className="bg-green-600 hover:bg-green-700 text-white"
             >
-              {isRecording ? (
-                <>
-                  <MicOff className="mr-1 h-4 w-4" />
-                  Stop Recording
-                </>
-              ) : (
-                <>
-                  {isTextMode ? <Type className="mr-1 h-4 w-4" /> : <Mic className="mr-1 h-4 w-4" />}
-                  {isTextMode ? 'Record Text' : 'Record Voice'}
-                </>
-              )}
+              <Type className="mr-1 h-4 w-4" />
+              Record Value
             </Button>
           </div>
         </div>
@@ -418,6 +449,13 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
                       const isCellModified = modifiedData[cellKey] !== undefined;
                       const isCurrentCell = isCurrentRow && cellIndex === currentColumnIndex;
                       
+                      // Show current value if it's the current cell and has been modified
+                      const displayValue = isCurrentCell && currentValue !== (dataRows[rowIndex][cellIndex] || '') 
+                        ? currentValue 
+                        : isCellModified 
+                        ? modifiedData[cellKey].modifiedValue 
+                        : cell;
+                      
                       return (
                         <TableCell 
                           key={cellIndex} 
@@ -426,8 +464,10 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
                             isCellModified ? 'bg-green-50 text-green-800' : ''
                           }`}
                         >
-                          {isCellModified ? modifiedData[cellKey].modifiedValue : cell}
-                          {isCellModified && <span className="ml-1 text-green-600">✓</span>}
+                          {displayValue}
+                          {(isCellModified || (isCurrentCell && currentValue !== (dataRows[rowIndex][cellIndex] || ''))) && 
+                            <span className="ml-1 text-green-600">✓</span>
+                          }
                         </TableCell>
                       );
                     })}
