@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,7 +60,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     }
     // Reset the interaction flag when position changes
     setHasUserInteracted(false);
-  }, [currentRowIndex, currentColumnIndex, dataRows, modifiedData]);
+  }, [currentRowIndex, currentColumnIndex, dataRows, hasUserInteracted]);
 
   const handleInputChange = (value: string) => {
     setCurrentValue(value);
