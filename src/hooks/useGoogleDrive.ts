@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -28,6 +27,7 @@ interface UseGoogleDriveReturn {
   selectFile: (file: GoogleDriveFile) => void;
   readSheet: (fileId: string) => Promise<void>;
   logout: () => void;
+  clearSheetData: () => void;
 }
 
 export const useGoogleDrive = (): UseGoogleDriveReturn => {
@@ -38,6 +38,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   const [sheetData, setSheetData] = useState<SheetData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [forceUpdate, setForceUpdate] = useState(0);
 
   useEffect(() => {
     // Check URL for authorization code
@@ -178,19 +179,17 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
 
       console.log('Sheet data received:', data);
       
-      // Force state update with a new object to ensure React detects the change
-      const newSheetData = { ...data, timestamp: Date.now() };
-      console.log('Setting new sheet data with timestamp:', newSheetData);
+      // Clear existing data first to force a clean state update
+      setSheetData(null);
       
-      setSheetData(newSheetData);
-      localStorage.setItem('google_drive_sheet_data', JSON.stringify(newSheetData));
-      
-      console.log('Sheet data set successfully, triggering re-render');
-      
-      // Force a re-render by updating a dummy state
+      // Use a timeout to ensure the null state is processed first
       setTimeout(() => {
-        console.log('Sheet data state after timeout:', newSheetData);
-      }, 100);
+        console.log('Setting new sheet data:', data);
+        setSheetData(data);
+        localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
+        setForceUpdate(prev => prev + 1); // Force re-render
+        console.log('Sheet data set successfully');
+      }, 50);
       
     } catch (err) {
       console.error('Error in readSheet:', err);
@@ -198,6 +197,13 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const clearSheetData = () => {
+    console.log('Clearing sheet data manually');
+    setSheetData(null);
+    localStorage.removeItem('google_drive_sheet_data');
+    setForceUpdate(prev => prev + 1);
   };
 
   const logout = () => {
@@ -221,7 +227,8 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   useEffect(() => {
     console.log('Sheet data changed in hook:', sheetData);
     console.log('Should show editor:', !!sheetData);
-  }, [sheetData]);
+    console.log('Force update counter:', forceUpdate);
+  }, [sheetData, forceUpdate]);
 
   return {
     isAuthenticated,
@@ -234,5 +241,6 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     selectFile,
     readSheet,
     logout,
+    clearSheetData,
   };
 };

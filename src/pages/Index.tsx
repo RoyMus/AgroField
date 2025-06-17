@@ -1,13 +1,15 @@
+
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const Index = () => {
   const navigate = useNavigate();
-  const { sheetData, selectedFile } = useGoogleDrive();
+  const { sheetData, selectedFile, clearSheetData } = useGoogleDrive();
+  const [renderKey, setRenderKey] = useState(0);
 
   // Debug logging
   useEffect(() => {
@@ -15,6 +17,7 @@ const Index = () => {
     console.log('Index component - selectedFile:', selectedFile);
     console.log('Index component - should show editor:', !!sheetData);
     console.log('Index component re-render triggered');
+    setRenderKey(prev => prev + 1); // Force component re-render
   }, [sheetData, selectedFile]);
 
   // Force re-render when sheetData changes
@@ -24,8 +27,13 @@ const Index = () => {
     }
   }, [sheetData]);
 
+  const handleBackToHome = () => {
+    console.log('Going back to home screen');
+    clearSheetData();
+  };
+
   const showEditor = !!sheetData;
-  console.log('Render decision - showEditor:', showEditor);
+  console.log('Render decision - showEditor:', showEditor, 'renderKey:', renderKey);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
@@ -115,12 +123,21 @@ const Index = () => {
                     Sheet: {sheetData.sheetName} • {sheetData.values.length - 1} data rows
                   </p>
                 </div>
-                <GoogleDriveFilePicker />
+                <div className="flex items-center space-x-4">
+                  <Button
+                    onClick={handleBackToHome}
+                    variant="outline"
+                    className="border-gray-300 text-gray-600 hover:bg-gray-50"
+                  >
+                    Back to Home
+                  </Button>
+                  <GoogleDriveFilePicker />
+                </div>
               </div>
             </div>
 
             {/* Sheet Data Editor */}
-            <SheetDataEditor sheetData={sheetData} />
+            <SheetDataEditor key={`editor-${renderKey}`} sheetData={sheetData} />
           </div>
         )}
       </div>
