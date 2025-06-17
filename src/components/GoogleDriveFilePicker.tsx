@@ -23,6 +23,7 @@ const GoogleDriveFilePicker = () => {
   
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
+  const [isReadingSheet, setIsReadingSheet] = useState(false);
 
   const handleAuthenticate = async () => {
     try {
@@ -48,17 +49,23 @@ const GoogleDriveFilePicker = () => {
   const handleReadSheet = async () => {
     if (selectedFile) {
       try {
+        setIsReadingSheet(true);
+        console.log('Starting to read sheet for file:', selectedFile.id);
         await readSheet(selectedFile.id);
+        console.log('Sheet read completed successfully');
         toast({
           title: "Sheet Loaded",
           description: "Successfully loaded sheet data",
         });
       } catch (err) {
+        console.error('Error reading sheet:', err);
         toast({
           title: "Failed to Load Sheet",
           description: "Could not read the sheet data. Please try again.",
           variant: "destructive",
         });
+      } finally {
+        setIsReadingSheet(false);
       }
     }
   };
@@ -184,11 +191,11 @@ const GoogleDriveFilePicker = () => {
       {selectedFile && !sheetData && (
         <Button
           onClick={handleReadSheet}
-          disabled={isLoading}
+          disabled={isLoading || isReadingSheet}
           size="lg"
           className="w-full bg-green-600 hover:bg-green-700 text-white"
         >
-          {isLoading ? (
+          {isLoading || isReadingSheet ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Reading Sheet...
@@ -197,6 +204,28 @@ const GoogleDriveFilePicker = () => {
             <>
               <FileText className="mr-2 h-4 w-4" />
               Read Sheet Data
+            </>
+          )}
+        </Button>
+      )}
+      
+      {selectedFile && sheetData && (
+        <Button
+          onClick={handleReadSheet}
+          disabled={isLoading || isReadingSheet}
+          size="lg"
+          variant="outline"
+          className="w-full"
+        >
+          {isLoading || isReadingSheet ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Reading Sheet...
+            </>
+          ) : (
+            <>
+              <FileText className="mr-2 h-4 w-4" />
+              Reload Sheet Data
             </>
           )}
         </Button>

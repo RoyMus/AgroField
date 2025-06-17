@@ -178,12 +178,9 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
 
       console.log('Sheet data received:', data);
       
-      // Force a state update by using a callback
-      setSheetData(prevData => {
-        console.log('Setting sheet data, previous:', prevData, 'new:', data);
-        localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
-        return data;
-      });
+      // Update state immediately and force re-render
+      setSheetData(data);
+      localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
       
       console.log('Sheet data set successfully');
     } catch (err) {
