@@ -178,11 +178,20 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
 
       console.log('Sheet data received:', data);
       
-      // Update state immediately and force re-render
-      setSheetData(data);
-      localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
+      // Force state update with a new object to ensure React detects the change
+      const newSheetData = { ...data, timestamp: Date.now() };
+      console.log('Setting new sheet data with timestamp:', newSheetData);
       
-      console.log('Sheet data set successfully');
+      setSheetData(newSheetData);
+      localStorage.setItem('google_drive_sheet_data', JSON.stringify(newSheetData));
+      
+      console.log('Sheet data set successfully, triggering re-render');
+      
+      // Force a re-render by updating a dummy state
+      setTimeout(() => {
+        console.log('Sheet data state after timeout:', newSheetData);
+      }, 100);
+      
     } catch (err) {
       console.error('Error in readSheet:', err);
       setError(err instanceof Error ? err.message : 'Failed to read sheet');
@@ -211,6 +220,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   // Debug logging for sheetData changes
   useEffect(() => {
     console.log('Sheet data changed in hook:', sheetData);
+    console.log('Should show editor:', !!sheetData);
   }, [sheetData]);
 
   return {

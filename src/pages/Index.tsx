@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
@@ -15,12 +14,23 @@ const Index = () => {
     console.log('Index component - sheetData:', sheetData);
     console.log('Index component - selectedFile:', selectedFile);
     console.log('Index component - should show editor:', !!sheetData);
+    console.log('Index component re-render triggered');
   }, [sheetData, selectedFile]);
+
+  // Force re-render when sheetData changes
+  useEffect(() => {
+    if (sheetData) {
+      console.log('Sheet data detected, should now show editor interface');
+    }
+  }, [sheetData]);
+
+  const showEditor = !!sheetData;
+  console.log('Render decision - showEditor:', showEditor);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
       <div className="container mx-auto px-6 py-8">
-        {!sheetData ? (
+        {!showEditor ? (
           // Landing/Selection Phase
           <div className="flex items-center justify-center min-h-[80vh]">
             <div className="text-center space-y-8 max-w-4xl">
