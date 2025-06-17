@@ -4,28 +4,18 @@ import { Button } from "@/components/ui/button";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 const Index = () => {
   const navigate = useNavigate();
   const { sheetData, selectedFile, clearSheetData } = useGoogleDrive();
-  const [renderKey, setRenderKey] = useState(0);
 
   // Debug logging
   useEffect(() => {
     console.log('Index component - sheetData:', sheetData);
     console.log('Index component - selectedFile:', selectedFile);
     console.log('Index component - should show editor:', !!sheetData);
-    console.log('Index component re-render triggered');
-    setRenderKey(prev => prev + 1); // Force component re-render
   }, [sheetData, selectedFile]);
-
-  // Force re-render when sheetData changes
-  useEffect(() => {
-    if (sheetData) {
-      console.log('Sheet data detected, should now show editor interface');
-    }
-  }, [sheetData]);
 
   const handleBackToHome = () => {
     console.log('Going back to home screen');
@@ -33,7 +23,7 @@ const Index = () => {
   };
 
   const showEditor = !!sheetData;
-  console.log('Render decision - showEditor:', showEditor, 'renderKey:', renderKey);
+  console.log('Render decision - showEditor:', showEditor);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
@@ -137,7 +127,7 @@ const Index = () => {
             </div>
 
             {/* Sheet Data Editor */}
-            <SheetDataEditor key={`editor-${renderKey}`} sheetData={sheetData} />
+            <SheetDataEditor sheetData={sheetData} />
           </div>
         )}
       </div>

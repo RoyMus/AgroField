@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -38,7 +39,6 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   const [sheetData, setSheetData] = useState<SheetData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [forceUpdate, setForceUpdate] = useState(0);
 
   useEffect(() => {
     // Check URL for authorization code
@@ -47,17 +47,17 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     
     if (code && !isAuthenticated) {
       handleAuthCode(code);
-      return; // Don't load saved state yet, wait for auth to complete
+      return;
     }
 
-    // Load saved state - do this regardless of authentication status
+    // Load saved state
     const savedToken = localStorage.getItem('google_drive_token');
     const savedFile = localStorage.getItem('google_drive_selected_file');
     const savedSheetData = localStorage.getItem('google_drive_sheet_data');
     
     console.log('Loading saved state:', { savedToken: !!savedToken, savedFile: !!savedFile, savedSheetData: !!savedSheetData });
     
-    // Always load saved file and sheet data if they exist
+    // Load saved file if it exists
     if (savedFile) {
       try {
         const parsedFile = JSON.parse(savedFile);
@@ -69,6 +69,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       }
     }
     
+    // Load saved sheet data if it exists
     if (savedSheetData) {
       try {
         const parsedSheetData = JSON.parse(savedSheetData);
@@ -157,7 +158,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     localStorage.setItem('google_drive_selected_file', JSON.stringify(file));
     
     // Clear previous sheet data when selecting a new file
-    console.log('Clearing previous sheet data');
+    console.log('Clearing previous sheet data due to file selection');
     setSheetData(null);
     localStorage.removeItem('google_drive_sheet_data');
   };
@@ -168,6 +169,9 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       setIsLoading(true);
       setError(null);
       
+      // Clear existing sheet data immediately
+      setSheetData(null);
+      
       const { data, error } = await supabase.functions.invoke('google-drive-auth', {
         body: { action: 'readSheet', accessToken, fileId }
       });
@@ -177,19 +181,13 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
         throw error;
       }
 
-      console.log('Sheet data received:', data);
+      console.log('Sheet data received, setting state:', data);
       
-      // Clear existing data first to force a clean state update
-      setSheetData(null);
+      // Set the new sheet data immediately
+      setSheetData(data);
+      localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
       
-      // Use a timeout to ensure the null state is processed first
-      setTimeout(() => {
-        console.log('Setting new sheet data:', data);
-        setSheetData(data);
-        localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
-        setForceUpdate(prev => prev + 1); // Force re-render
-        console.log('Sheet data set successfully');
-      }, 50);
+      console.log('Sheet data set successfully');
       
     } catch (err) {
       console.error('Error in readSheet:', err);
@@ -203,7 +201,6 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     console.log('Clearing sheet data manually');
     setSheetData(null);
     localStorage.removeItem('google_drive_sheet_data');
-    setForceUpdate(prev => prev + 1);
   };
 
   const logout = () => {
@@ -227,8 +224,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   useEffect(() => {
     console.log('Sheet data changed in hook:', sheetData);
     console.log('Should show editor:', !!sheetData);
-    console.log('Force update counter:', forceUpdate);
-  }, [sheetData, forceUpdate]);
+  }, [sheetData]);
 
   return {
     isAuthenticated,
