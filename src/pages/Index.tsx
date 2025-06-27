@@ -4,26 +4,34 @@ import { Button } from "@/components/ui/button";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const Index = () => {
   const navigate = useNavigate();
   const { sheetData, selectedFile, clearSheetData } = useGoogleDrive();
+  const [showEditor, setShowEditor] = useState(false);
 
-  // Debug logging
+  // Monitor sheetData changes and update showEditor state
   useEffect(() => {
-    console.log('Index component - sheetData:', sheetData);
+    console.log('Index component - sheetData changed:', sheetData);
     console.log('Index component - selectedFile:', selectedFile);
-    console.log('Index component - should show editor:', !!sheetData);
+    
+    if (sheetData) {
+      console.log('Setting showEditor to true');
+      setShowEditor(true);
+    } else {
+      console.log('Setting showEditor to false');
+      setShowEditor(false);
+    }
   }, [sheetData, selectedFile]);
 
   const handleBackToHome = () => {
     console.log('Going back to home screen');
     clearSheetData();
+    setShowEditor(false);
   };
 
-  const showEditor = !!sheetData;
-  console.log('Render decision - showEditor:', showEditor);
+  console.log('Render decision - showEditor:', showEditor, 'sheetData exists:', !!sheetData);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
@@ -110,7 +118,7 @@ const Index = () => {
                     Editing: {selectedFile?.name}
                   </h1>
                   <p className="text-gray-600">
-                    Sheet: {sheetData.sheetName} • {sheetData.values.length - 1} data rows
+                    Sheet: {sheetData?.sheetName} • {sheetData ? sheetData.values.length - 1 : 0} data rows
                   </p>
                 </div>
                 <div className="flex items-center space-x-4">
@@ -127,7 +135,7 @@ const Index = () => {
             </div>
 
             {/* Sheet Data Editor */}
-            <SheetDataEditor sheetData={sheetData} />
+            {sheetData && <SheetDataEditor sheetData={sheetData} />}
           </div>
         )}
       </div>
