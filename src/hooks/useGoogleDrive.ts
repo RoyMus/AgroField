@@ -170,6 +170,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       setError(null);
       
       // Clear existing sheet data immediately
+      console.log('Clearing existing sheet data before reading new data');
       setSheetData(null);
       
       const { data, error } = await supabase.functions.invoke('google-drive-auth', {
@@ -181,13 +182,17 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
         throw error;
       }
 
-      console.log('Sheet data received, setting state:', data);
+      console.log('Sheet data received from API:', data);
       
-      // Set the new sheet data immediately
-      setSheetData(data);
-      localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
+      // Force a state update by using a callback
+      setSheetData(prevData => {
+        console.log('Setting sheet data - Previous:', prevData);
+        console.log('Setting sheet data - New:', data);
+        localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
+        return data;
+      });
       
-      console.log('Sheet data set successfully');
+      console.log('Sheet data set successfully, triggering re-render');
       
     } catch (err) {
       console.error('Error in readSheet:', err);

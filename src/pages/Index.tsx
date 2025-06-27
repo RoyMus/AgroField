@@ -1,36 +1,28 @@
-
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 const Index = () => {
   const navigate = useNavigate();
   const { sheetData, selectedFile, clearSheetData } = useGoogleDrive();
-  const [showEditor, setShowEditor] = useState(false);
 
-  // Monitor sheetData changes and update showEditor state
+  // Debug logging
   useEffect(() => {
     console.log('Index component - sheetData changed:', sheetData);
     console.log('Index component - selectedFile:', selectedFile);
-    
-    if (sheetData) {
-      console.log('Setting showEditor to true');
-      setShowEditor(true);
-    } else {
-      console.log('Setting showEditor to false');
-      setShowEditor(false);
-    }
+    console.log('Index component - should show editor:', !!sheetData);
   }, [sheetData, selectedFile]);
 
   const handleBackToHome = () => {
     console.log('Going back to home screen');
     clearSheetData();
-    setShowEditor(false);
   };
 
+  // Use sheetData directly for rendering decision
+  const showEditor = !!sheetData;
   console.log('Render decision - showEditor:', showEditor, 'sheetData exists:', !!sheetData);
 
   return (
