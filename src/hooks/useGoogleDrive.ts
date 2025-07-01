@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -157,7 +156,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     setSelectedFile(file);
     localStorage.setItem('google_drive_selected_file', JSON.stringify(file));
     
-    // Clear previous sheet data when selecting a new file
+    // Clear previous sheet data immediately when selecting a new file
     console.log('Clearing previous sheet data due to file selection');
     setSheetData(null);
     localStorage.removeItem('google_drive_sheet_data');
@@ -169,7 +168,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       setIsLoading(true);
       setError(null);
       
-      // Clear existing sheet data immediately
+      // Clear existing sheet data immediately for responsive UI
       console.log('Clearing existing sheet data before reading new data');
       setSheetData(null);
       
@@ -184,13 +183,9 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
 
       console.log('Sheet data received from API:', data);
       
-      // Force a state update by using a callback
-      setSheetData(prevData => {
-        console.log('Setting sheet data - Previous:', prevData);
-        console.log('Setting sheet data - New:', data);
-        localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
-        return data;
-      });
+      // Set the sheet data immediately for responsive UI
+      setSheetData(data);
+      localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
       
       console.log('Sheet data set successfully, triggering re-render');
       
