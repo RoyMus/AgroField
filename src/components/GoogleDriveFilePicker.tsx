@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChevronDown, Sheet, LogOut, Loader2, FileText } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ChevronDown, Sheet, LogOut, Loader2, FileText, Search } from "lucide-react";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { useToast } from "@/hooks/use-toast";
 import SaveProgressDialog from "./SaveProgressDialog";
@@ -26,6 +27,7 @@ const GoogleDriveFilePicker = () => {
   const [isReadingSheet, setIsReadingSheet] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [pendingFile, setPendingFile] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleAuthenticate = async () => {
     try {
@@ -125,11 +127,17 @@ const GoogleDriveFilePicker = () => {
   const handleLogout = () => {
     logout();
     setIsOpen(false);
+    setSearchQuery(""); // Clear search when logging out
     toast({
       title: "Disconnected",
       description: "Disconnected from Google Drive",
     });
   };
+
+  // Filter files based on search query
+  const filteredFiles = files.filter(file =>
+    file.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (error) {
     return (
@@ -195,20 +203,31 @@ const GoogleDriveFilePicker = () => {
             className="w-80 bg-white border-2 border-gray-200 rounded-xl shadow-2xl max-h-96 overflow-hidden"
             align="center"
           >
-            <ScrollArea className="h-80 w-full">
+            <div className="p-3 border-b border-gray-200">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search sheets..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-gray-50 border-gray-200 focus:border-blue-300 focus:ring-blue-200"
+                />
+              </div>
+            </div>
+            <ScrollArea className="h-72 w-full">
               <div className="p-2">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
                     <span className="ml-2 text-gray-600">Loading files...</span>
                   </div>
-                ) : files.length === 0 ? (
+                ) : filteredFiles.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    No Google Sheets found
+                    {searchQuery ? `No sheets found matching "${searchQuery}"` : "No Google Sheets found"}
                   </div>
                 ) : (
                   <>
-                    {files.map((file) => (
+                    {filteredFiles.map((file) => (
                       <DropdownMenuItem
                         key={file.id}
                         onClick={() => handleFileSelect(file)}
