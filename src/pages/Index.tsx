@@ -28,8 +28,6 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
       <div className="container mx-auto px-6 py-8">
-        {!showEditor ? (
-          // Landing/Selection Phase
           <div className="flex items-center justify-center min-h-[80vh]">
             <div className="text-center space-y-8 max-w-4xl">
               <div className="space-y-6">
@@ -50,7 +48,7 @@ const Index = () => {
                 
                 <h1 className="text-6xl font-bold text-gray-800 mb-4">
                   <span className="bg-gradient-to-r from-blue-600 via-green-600 to-red-600 bg-clip-text text-transparent">
-                    Sheet Data Editor
+                    AgroField
                   </span>
                 </h1>
                 <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
@@ -87,49 +85,8 @@ const Index = () => {
                   </div>
                 </div>
               </div>
-
-              <div className="pt-8">
-                <Button
-                  variant="outline"
-                  onClick={() => navigate("/page/workspace")}
-                  className="text-gray-600 border-gray-300 hover:bg-gray-50"
-                >
-                  Or explore our demo workspace
-                </Button>
-              </div>
             </div>
           </div>
-        ) : (
-          // Data Editing Phase
-          <div className="space-y-6">
-            {/* Header with file info */}
-            <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-800">
-                    Editing: {selectedFile?.name}
-                  </h1>
-                  <p className="text-gray-600">
-                    Sheet: {sheetData?.sheetName} • {sheetData ? sheetData.values.length - 1 : 0} data rows
-                  </p>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <Button
-                    onClick={handleBackToHome}
-                    variant="outline"
-                    className="border-gray-300 text-gray-600 hover:bg-gray-50"
-                  >
-                    Back to Home
-                  </Button>
-                  <GoogleDriveFilePicker />
-                </div>
-              </div>
-            </div>
-
-            {/* Sheet Data Editor */}
-            {sheetData && <SheetDataEditor sheetData={sheetData} />}
-          </div>
-        )}
       </div>
     </div>
   );

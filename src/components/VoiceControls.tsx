@@ -13,7 +13,6 @@ const VoiceControls = ({ isRecording, onStartRecording, onStopRecording }: Voice
     <div className="p-4 bg-gray-50 rounded-lg">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-gray-700">Voice Input:</span>
           {isRecording && (
             <span className="text-red-600 flex items-center gap-2 text-sm">
               <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
@@ -44,9 +43,6 @@ const VoiceControls = ({ isRecording, onStartRecording, onStopRecording }: Voice
           </Button>
         </div>
       </div>
-      <p className="text-xs text-gray-500 mt-2">
-        Voice input will be added to your existing text. You can type and use voice together.
-      </p>
     </div>
   );
 };

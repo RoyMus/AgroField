@@ -62,12 +62,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   };
 
   const handleVoiceTranscription = (transcription: string) => {
-    // Append to existing text
-    if (currentValue.trim()) {
-      setCurrentValue(currentValue + " " + transcription);
-    } else {
-      setCurrentValue(transcription);
-    }
+    setCurrentValue(transcription);
   };
 
   const saveModifications = () => {
@@ -204,13 +199,6 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Progress Stats */}
-      <ProgressStats
-        modifiedCount={Object.keys(modifiedData).length}
-        currentPosition={currentRowIndex * headers.length + currentColumnIndex + 1}
-        totalCells={dataRows.length * headers.length}
-      />
-
       {/* Current Cell Editor */}
       <CellEditor
         currentRowIndex={currentRowIndex}
@@ -231,7 +219,12 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         isFirstCell={isFirstCell}
         isLastCell={isLastCell}
       />
-
+      {/* Progress Stats */}
+      <ProgressStats
+        modifiedCount={Object.keys(modifiedData).length}
+        currentPosition={currentRowIndex * headers.length + currentColumnIndex + 1}
+        totalCells={dataRows.length * headers.length}
+      />
       {/* Data Preview Table */}
       <DataPreviewTable
         headers={headers}

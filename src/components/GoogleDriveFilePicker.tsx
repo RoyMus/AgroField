@@ -7,8 +7,10 @@ import { ChevronDown, Sheet, LogOut, Loader2, FileText, Search } from "lucide-re
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { useToast } from "@/hooks/use-toast";
 import SaveProgressDialog from "./SaveProgressDialog";
+import { useNavigate } from "react-router-dom";
 
 const GoogleDriveFilePicker = () => {
+  const navigate = useNavigate();
   const { 
     isAuthenticated, 
     isLoading, 
@@ -111,6 +113,7 @@ const GoogleDriveFilePicker = () => {
           title: "Sheet Loaded",
           description: "Successfully loaded sheet data",
         });
+        navigate("/page/workspace"); // Navigate to workspace after loading
       } catch (err) {
         console.error('Error reading sheet:', err);
         toast({
