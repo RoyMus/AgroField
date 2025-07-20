@@ -22,10 +22,6 @@ const InteractivePage = () => {
     navigate("/");
   };
 
-  // Use sheetData directly for rendering decision
-  const showEditor = !!sheetData;
-  console.log('Render decision - showEditor:', showEditor, 'sheetData exists:', !!sheetData);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
       <div className="container mx-auto px-6 py-8">

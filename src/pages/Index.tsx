@@ -16,15 +16,6 @@ const Index = () => {
     console.log('Index component - should show editor:', !!sheetData);
   }, [sheetData, selectedFile]);
 
-  const handleBackToHome = () => {
-    console.log('Going back to home screen');
-    clearSheetData();
-  };
-
-  // Use sheetData directly for rendering decision
-  const showEditor = !!sheetData;
-  console.log('Render decision - showEditor:', showEditor, 'sheetData exists:', !!sheetData);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
       <div className="container mx-auto px-6 py-8">
@@ -58,32 +49,6 @@ const Index = () => {
               
               <div className="pt-8">
                 <GoogleDriveFilePicker />
-              </div>
-              
-              <div className="pt-12">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-                  <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-gray-200 shadow-lg">
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                      <div className="w-6 h-6 bg-blue-500 rounded"></div>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Read Sheet Data</h3>
-                    <p className="text-gray-600 text-sm">Load and display column names and row data from your Google Sheets.</p>
-                  </div>
-                  <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-gray-200 shadow-lg">
-                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                      <div className="w-6 h-6 bg-green-500 rounded"></div>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Edit Row by Row</h3>
-                    <p className="text-gray-600 text-sm">Navigate through rows with Next/Skip buttons and override values as needed.</p>
-                  </div>
-                  <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 border border-gray-200 shadow-lg">
-                    <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                      <div className="w-6 h-6 bg-red-500 rounded"></div>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Local Storage</h3>
-                    <p className="text-gray-600 text-sm">All modifications are automatically saved locally for safe data handling.</p>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
