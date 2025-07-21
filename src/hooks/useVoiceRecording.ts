@@ -31,7 +31,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       // Configure recognition settings
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = 'en-US';
+      recognition.lang = 'he-IL'; // Set language to Hebrew
       
       // Reset accumulated transcript
       accumulatedTranscriptRef.current = '';
