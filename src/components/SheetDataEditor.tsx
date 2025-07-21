@@ -53,7 +53,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     if (savedModification) {
       setCurrentValue(savedModification.modifiedValue);
     } else {
-      setCurrentValue(dataRows[currentRowIndex]?.[currentColumnIndex] || "");
+      setCurrentValue("");
     }
   }, [currentRowIndex, currentColumnIndex]);
 
@@ -165,9 +165,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   };
 
   const resetCurrentCell = () => {
-    const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
-    setCurrentValue(originalValue);
-    
+    setCurrentValue("");
     // Remove from modified data if it exists
     const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
     const newModifiedData = { ...modifiedData };
