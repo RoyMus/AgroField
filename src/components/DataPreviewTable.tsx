@@ -60,8 +60,10 @@ const DataPreviewTable = ({
                     const isCurrentCell = isCurrentRow && cellIndex === currentColumnIndex;
                     
                     // Show current value if it's the current cell and has been modified
-                    const displayValue = isCurrentCell && currentValue !== (dataRows[rowIndex][cellIndex] || '') 
-                      ? currentValue 
+                    const displayValue = isCurrentCell && currentValue == '' 
+                      ? dataRows[rowIndex][cellIndex] 
+                      : isCurrentCell && currentValue !== ''
+                      ? currentValue
                       : isCellModified 
                       ? modifiedData[cellKey].modifiedValue 
                       : cell;
@@ -75,7 +77,7 @@ const DataPreviewTable = ({
                         }`}
                       >
                         {displayValue}
-                        {(isCellModified || (isCurrentCell && currentValue !== (dataRows[rowIndex][cellIndex] || ''))) && 
+                        {(isCellModified || (isCurrentCell && currentValue !== (''))) && 
                           <span className="ml-1 text-green-600">✓</span>
                         }
                       </TableCell>
