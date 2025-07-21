@@ -95,6 +95,7 @@ const CellEditor = ({
             Value:
           </label>
           <Input
+            value={currentValue}
             onChange={(e) => onInputChange(e.target.value)}
             placeholder={dataRows[currentRowIndex][currentColumnIndex]}
             className="text-lg p-3 h-12"
