@@ -50,6 +50,11 @@ const Index = () => {
               <div className="pt-8">
                 <GoogleDriveFilePicker />
               </div>
+              
+              <div className="pt-12">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                </div>
+              </div>
             </div>
           </div>
       </div>

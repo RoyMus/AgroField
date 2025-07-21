@@ -89,24 +89,14 @@ const CellEditor = ({
       </div>
 
       {/* Current Cell Focus */}
-      <div className="space-y-4 mb-6">
-        <div className="bg-gray-50 rounded-lg p-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Original Value:
-          </label>
-          <div className="text-lg text-gray-900 bg-white p-3 rounded border">
-            {dataRows[currentRowIndex][currentColumnIndex] || '(empty)'}
-          </div>
-        </div>
-        
+      <div className="space-y-4 mb-6">        
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            New Value:
+            Value:
           </label>
           <Input
-            value={currentValue}
             onChange={(e) => onInputChange(e.target.value)}
-            placeholder={`Enter value for ${headers[currentColumnIndex]}`}
+            placeholder={dataRows[currentRowIndex][currentColumnIndex]}
             className="text-lg p-3 h-12"
             autoFocus
           />

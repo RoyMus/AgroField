@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff } from "lucide-react";
+import { Mic, MicOff, Square} from "lucide-react";
 
 interface VoiceControlsProps {
   isRecording: boolean;
@@ -11,39 +11,36 @@ interface VoiceControlsProps {
 const VoiceControls = ({ isRecording, onStartRecording, onStopRecording }: VoiceControlsProps) => {
   return (
     <div className="p-4 bg-gray-50 rounded-lg">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {isRecording && (
-            <span className="text-red-600 flex items-center gap-2 text-sm">
-              <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div>
-              Recording...
-            </span>
-          )}
+      <div className="flex flex-col items-center space-y-4">
+      <Button
+        onClick={isRecording ? onStopRecording : onStartRecording}
+        className={`w-20 h-20 rounded-full transition-all duration-300 transform hover:scale-105 ${
+          isRecording 
+            ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+            : 'bg-blue-500 hover:bg-blue-600'
+        }`}
+        size="lg"
+      >
+        {isRecording ? (
+          <Square className="w-8 h-8 text-white" />
+        ) : (
+          <Mic className="w-8 h-8 text-white" />
+        )}
+      </Button>
+      
+      {isRecording && (
+        <div className="text-center animate-fade-in">
+          <div className="text-red-500 font-medium">Recording...</div>
+          {/* <div className="text-gray-500 text-sm">{formatTime(recordingTime)}</div> */}
         </div>
-        <div className="flex gap-2">
-          <Button
-            onClick={onStartRecording}
-            disabled={isRecording}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <Mic className="h-4 w-4" />
-            Start Recording
-          </Button>
-          <Button
-            onClick={onStopRecording}
-            disabled={!isRecording}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <MicOff className="h-4 w-4" />
-            Stop Recording
-          </Button>
-        </div>
+      )}
+      
+      <div className="text-center text-gray-600 text-sm max-w-xs">
+        {isRecording ? 'Tap the square to stop recording' : 'Tap the microphone to start recording'}
       </div>
     </div>
+    </div>
+   
   );
 };
 
