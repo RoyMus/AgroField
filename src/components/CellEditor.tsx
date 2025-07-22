@@ -24,6 +24,7 @@ interface CellEditorProps {
   onStopRecording: () => Promise<void>;
   onResetCell: () => void;
   onSaveProgress: () => void;
+  onSaveToNewSheet?: () => void;
   onMovePrevious: () => void;
   onSkipCurrent: () => void;
   onRecordValue: () => Promise<void>;
@@ -44,6 +45,7 @@ const CellEditor = ({
   onStopRecording,
   onResetCell,
   onSaveProgress,
+  onSaveToNewSheet,
   onMovePrevious,
   onSkipCurrent,
   onRecordValue,
@@ -85,6 +87,17 @@ const CellEditor = ({
             <Save className="mr-1 h-4 w-4" />
             Save Progress
           </Button>
+          {onSaveToNewSheet && (
+            <Button
+              onClick={onSaveToNewSheet}
+              variant="default"
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Save className="mr-1 h-4 w-4" />
+              Save to New Sheet
+            </Button>
+          )}
         </div>
       </div>
 

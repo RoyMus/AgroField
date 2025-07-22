@@ -28,6 +28,7 @@ interface UseGoogleDriveReturn {
   readSheet: (fileId: string) => Promise<void>;
   logout: () => void;
   clearSheetData: () => void;
+  createNewSheet: (fileName: string, modifiedData: Record<string, any>) => Promise<{ success: boolean; url?: string; error?: string }>;
 }
 
 export const useGoogleDrive = (): UseGoogleDriveReturn => {
@@ -214,6 +215,53 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     localStorage.removeItem('google_drive_sheet_data');
   };
 
+  const createNewSheet = async (fileName: string, modifiedData: Record<string, any>): Promise<{ success: boolean; url?: string; error?: string }> => {
+    if (!accessToken || !sheetData || !selectedFile) {
+      return { success: false, error: 'Missing authentication or sheet data' };
+    }
+
+    try {
+      // Merge the original data with modifications
+      const updatedValues = [...sheetData.values];
+      
+      Object.entries(modifiedData).forEach(([cellKey, modification]: [string, any]) => {
+        const [rowIndex, columnIndex] = cellKey.split('-').map(Number);
+        if (!updatedValues[rowIndex + 1]) {
+          updatedValues[rowIndex + 1] = [];
+        }
+        updatedValues[rowIndex + 1][columnIndex] = modification.modifiedValue;
+      });
+
+      const updatedSheetData = {
+        ...sheetData,
+        values: updatedValues
+      };
+
+      const { data, error } = await supabase.functions.invoke('create-google-sheet', {
+        body: {
+          accessToken,
+          fileName,
+          sheetData: updatedSheetData,
+          originalFileId: selectedFile.id
+        }
+      });
+
+      if (error) {
+        console.error('Error creating new sheet:', error);
+        return { success: false, error: error.message || 'Failed to create new sheet' };
+      }
+
+      if (data?.success) {
+        return { success: true, url: data.spreadsheetUrl };
+      } else {
+        return { success: false, error: data?.error || 'Unknown error occurred' };
+      }
+    } catch (error) {
+      console.error('Error in createNewSheet:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated && accessToken && files.length === 0) {
       loadFiles();
@@ -238,5 +286,6 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     readSheet,
     logout,
     clearSheetData,
+    createNewSheet,
   };
 };

@@ -2,9 +2,11 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
+import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import ProgressStats from "./ProgressStats";
 import CellEditor from "./CellEditor";
 import DataPreviewTable from "./DataPreviewTable";
+import SaveToNewSheetDialog from "./SaveToNewSheetDialog";
 
 interface SheetData {
   sheetName: string;
@@ -31,8 +33,11 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const [currentColumnIndex, setCurrentColumnIndex] = useState(0);
   const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
   const [currentValue, setCurrentValue] = useState<string>("");
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const { isRecording, startRecording, stopRecording, error: recordingError } = useVoiceRecording();
+  const { createNewSheet } = useGoogleDrive();
 
   const headers = sheetData.values[0] || [];
   const dataRows = sheetData.values.slice(1);
@@ -71,6 +76,57 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       title: "Progress Saved",
       description: `Saved modifications for ${Object.keys(modifiedData).length} cells`,
     });
+  };
+
+  const handleSaveToNewSheet = () => {
+    if (Object.keys(modifiedData).length === 0) {
+      toast({
+        title: "No Changes to Save",
+        description: "You haven't made any modifications to save.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setShowSaveDialog(true);
+  };
+
+  const handleCreateNewSheet = async (fileName: string) => {
+    setIsSaving(true);
+    try {
+      const result = await createNewSheet(fileName, modifiedData);
+      
+      if (result.success) {
+        toast({
+          title: "Sheet Created Successfully",
+          description: `Created new Google Sheet: ${fileName}`,
+        });
+        setShowSaveDialog(false);
+        
+        // Clear modifications since they've been saved to a new sheet
+        setModifiedData({});
+        localStorage.removeItem('sheet_cell_modifications');
+        
+        // Optionally open the new sheet
+        if (result.url) {
+          window.open(result.url, '_blank');
+        }
+      } else {
+        toast({
+          title: "Failed to Create Sheet",
+          description: result.error || "An error occurred while creating the sheet.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while creating the sheet.",
+        variant: "destructive",
+      });
+      console.error('Error creating new sheet:', error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const getCellKey = (rowIndex: number, columnIndex: number) => `${rowIndex}-${columnIndex}`;
@@ -211,6 +267,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         onStopRecording={stopVoiceRecording}
         onResetCell={resetCurrentCell}
         onSaveProgress={saveModifications}
+        onSaveToNewSheet={handleSaveToNewSheet}
         onMovePrevious={moveToPreviousCell}
         onSkipCurrent={skipCurrentValue}
         onRecordValue={recordCurrentValue}
@@ -231,6 +288,16 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         currentColumnIndex={currentColumnIndex}
         currentValue={currentValue}
         modifiedData={modifiedData}
+      />
+      
+      {/* Save to New Sheet Dialog */}
+      <SaveToNewSheetDialog
+        open={showSaveDialog}
+        onOpenChange={setShowSaveDialog}
+        onConfirm={handleCreateNewSheet}
+        onCancel={() => setShowSaveDialog(false)}
+        modifiedCount={Object.keys(modifiedData).length}
+        isLoading={isSaving}
       />
     </div>
   );
