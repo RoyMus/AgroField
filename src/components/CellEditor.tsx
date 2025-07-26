@@ -61,7 +61,7 @@ const CellEditor = ({
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold">
-            Row {currentRowIndex + 1}, Column: {headers[currentColumnIndex]}
+            חממה {dataRows[currentRowIndex][0]}, מגוף {dataRows[currentRowIndex][1]}, Column: {headers[currentColumnIndex]}
             {isCurrentCellModified && 
               <span className="ml-2 text-sm text-green-600">(Modified)</span>
             }
