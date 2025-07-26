@@ -29,9 +29,26 @@ interface SheetDataEditorProps {
 }
 
 const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
-  const minColIndex = 11;
-  const maxColIndex = 19;
   const headersRowIndex = 5;
+  const headers = sheetData.values[headersRowIndex] || [];
+  var AlreadySetFirst = false;
+  for (let i = 0; i < headers.length; i++) {
+    if (headers[i] == "")
+    {
+      if (!AlreadySetFirst)
+      {
+        var firstIndex = i + 1;
+        AlreadySetFirst = true;
+      }
+      else
+      {
+        var lastindex = i - 1;
+      }
+    }
+  }
+  
+  const minColIndex = firstIndex;
+  const maxColIndex = lastindex;
   const [currentRowIndex, setCurrentRowIndex] = useState(headersRowIndex);
   const [currentColumnIndex, setCurrentColumnIndex] = useState(minColIndex);
   const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
@@ -41,8 +58,6 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const { toast } = useToast();
   const { isRecording, startRecording, stopRecording, error: recordingError } = useVoiceRecording();
   const { createNewSheet } = useGoogleDrive();
-
-  const headers = sheetData.values[headersRowIndex] || [];
   const dataRows = sheetData.values.slice(1);
   
   useEffect(() => {
