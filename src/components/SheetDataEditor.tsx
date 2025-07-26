@@ -29,8 +29,11 @@ interface SheetDataEditorProps {
 }
 
 const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
-  const [currentRowIndex, setCurrentRowIndex] = useState(0);
-  const [currentColumnIndex, setCurrentColumnIndex] = useState(0);
+  const minColIndex = 11;
+  const maxColIndex = 19;
+  const headersRowIndex = 5;
+  const [currentRowIndex, setCurrentRowIndex] = useState(headersRowIndex);
+  const [currentColumnIndex, setCurrentColumnIndex] = useState(minColIndex);
   const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
   const [currentValue, setCurrentValue] = useState<string>("");
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -39,9 +42,9 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const { isRecording, startRecording, stopRecording, error: recordingError } = useVoiceRecording();
   const { createNewSheet } = useGoogleDrive();
 
-  const headers = sheetData.values[0] || [];
+  const headers = sheetData.values[headersRowIndex] || [];
   const dataRows = sheetData.values.slice(1);
-
+  
   useEffect(() => {
     // Load saved modifications from localStorage
     const savedModifications = localStorage.getItem('sheet_cell_modifications');
@@ -203,20 +206,20 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   };
 
   const moveToNextCell = () => {
-    if (currentColumnIndex < headers.length - 1) {
+    if (currentColumnIndex < maxColIndex) {
       setCurrentColumnIndex(currentColumnIndex + 1);
     } else if (currentRowIndex < dataRows.length - 1) {
       setCurrentRowIndex(currentRowIndex + 1);
-      setCurrentColumnIndex(0);
+      setCurrentColumnIndex(minColIndex);
     }
   };
 
   const moveToPreviousCell = () => {
-    if (currentColumnIndex > 0) {
+    if (currentColumnIndex > minColIndex) {
       setCurrentColumnIndex(currentColumnIndex - 1);
-    } else if (currentRowIndex > 0) {
+    } else if (currentRowIndex > headersRowIndex) {
       setCurrentRowIndex(currentRowIndex - 1);
-      setCurrentColumnIndex(headers.length - 1);
+      setCurrentColumnIndex(maxColIndex);
     }
   };
 
