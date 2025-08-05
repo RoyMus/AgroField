@@ -36,8 +36,8 @@ const GoogleDriveFilePicker = () => {
       await authenticate();
     } catch (err) {
       toast({
-        title: "Authentication Failed",
-        description: "Failed to connect to Google Drive. Please try again.",
+        title: "התחברות נכשלה",
+        description: "ההתחברות לגוגל דרייב נכשלה, אנא נסה שוב",
         variant: "destructive",
       });
     }
@@ -63,8 +63,8 @@ const GoogleDriveFilePicker = () => {
     selectFile(file);
     setIsOpen(false);
     toast({
-      title: "File Selected",
-      description: `Selected: ${file.name}`,
+      title: "קובץ נבחר",
+      description: `${file.name}`,
     });
   };
 
@@ -77,8 +77,8 @@ const GoogleDriveFilePicker = () => {
       localStorage.setItem(progressKey, savedModifications);
       
       toast({
-        title: "Progress Saved",
-        description: `Saved progress for ${selectedFile?.name}`,
+        title: "השינויים נשמרו",
+        description: `השינויים שערכת לקובץ נשמרו בהצלחה`,
       });
     }
     
@@ -94,8 +94,8 @@ const GoogleDriveFilePicker = () => {
       selectFile(pendingFile);
       localStorage.removeItem('sheet_cell_modifications'); // Clear current modifications
       toast({
-        title: "File Selected",
-        description: `Selected: ${pendingFile.name}`,
+        title: "קובץ נבחר",
+        description: `${pendingFile.name}`,
       });
       setPendingFile(null);
     }
@@ -110,15 +110,15 @@ const GoogleDriveFilePicker = () => {
         await readSheet(selectedFile.id);
         console.log('Sheet read completed successfully');
         toast({
-          title: "Sheet Loaded",
-          description: "Successfully loaded sheet data",
+          title: "הקובץ נטען בהצלחה",
+          description: "הקובץ נטען בהצלחה וכעת יהיה ניתן לערוך אותו",
         });
         navigate("/page/workspace"); // Navigate to workspace after loading
       } catch (err) {
         console.error('Error reading sheet:', err);
         toast({
-          title: "Failed to Load Sheet",
-          description: "Could not read the sheet data. Please try again.",
+          title: "שגיאה בטעינת הקובץ",
+          description: "טעינת הקובץ נכשלה, אנא נסה שוב",
           variant: "destructive",
         });
       } finally {
@@ -132,8 +132,8 @@ const GoogleDriveFilePicker = () => {
     setIsOpen(false);
     setSearchQuery(""); // Clear search when logging out
     toast({
-      title: "Disconnected",
-      description: "Disconnected from Google Drive",
+      title: "מנותק",
+      description: "מנותק מגוגל דרייב",
     });
   };
 
@@ -147,7 +147,7 @@ const GoogleDriveFilePicker = () => {
       <div className="text-center space-y-4">
         <p className="text-red-600">{error}</p>
         <Button onClick={handleAuthenticate} variant="outline">
-          Try Again
+          נסה שוב
         </Button>
       </div>
     );
@@ -164,7 +164,7 @@ const GoogleDriveFilePicker = () => {
         {isLoading ? (
           <>
             <Loader2 className="mr-3 h-5 w-5 animate-spin" />
-            Connecting...
+            מתחבר
           </>
         ) : (
           <>
@@ -174,7 +174,7 @@ const GoogleDriveFilePicker = () => {
                 <div className="w-3 h-3 bg-green-500 rounded-sm -ml-2 mt-1"></div>
                 <div className="w-2 h-2 bg-yellow-500 rounded-sm -ml-2 mt-2"></div>
               </div>
-              <span>Connect to Google Drive</span>
+              <span>התחבר לגוגל דרייב</span>
             </div>
           </>
         )}
@@ -195,7 +195,7 @@ const GoogleDriveFilePicker = () => {
                 <div className="flex items-center space-x-3">
                   <Sheet className="h-5 w-5 text-green-600" />
                   <span className="truncate">
-                    {selectedFile ? selectedFile.name : "Select Google Sheet"}
+                    {selectedFile ? selectedFile.name : "בחר קובץ לטעינה"}
                   </span>
                 </div>
                 <ChevronDown className="ml-2 h-5 w-5 flex-shrink-0" />
@@ -210,7 +210,7 @@ const GoogleDriveFilePicker = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search sheets..."
+                  placeholder="חפש קבצים"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 bg-gray-50 border-gray-200 focus:border-blue-300 focus:ring-blue-200"
@@ -222,11 +222,11 @@ const GoogleDriveFilePicker = () => {
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-                    <span className="ml-2 text-gray-600">Loading files...</span>
+                    <span className="ml-2 text-gray-600">טוען קבצים</span>
                   </div>
                 ) : filteredFiles.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    {searchQuery ? `No sheets found matching "${searchQuery}"` : "No Google Sheets found"}
+                    {searchQuery ? `לא נמצאו קבצים שתואמים ל ${searchQuery}` : "לא נמצאו קבצים"}
                   </div>
                 ) : (
                   <>
@@ -241,7 +241,7 @@ const GoogleDriveFilePicker = () => {
                           <div className="flex-1 min-w-0">
                             <div className="truncate font-medium">{file.name}</div>
                             <div className="text-xs text-gray-500 truncate">
-                              Modified: {new Date(file.modifiedTime).toLocaleDateString()}
+                              ערוך {new Date(file.modifiedTime).toLocaleDateString()}
                             </div>
                           </div>
                         </div>
@@ -253,7 +253,7 @@ const GoogleDriveFilePicker = () => {
                         className="text-red-600 hover:bg-red-50 cursor-pointer py-3 px-4 text-base rounded-lg mx-1 my-1 transition-all duration-200"
                       >
                         <LogOut className="mr-3 h-4 w-4" />
-                        Disconnect Google Drive
+                        התנתק
                       </DropdownMenuItem>
                     </div>
                   </>
@@ -273,12 +273,12 @@ const GoogleDriveFilePicker = () => {
             {isLoading || isReadingSheet ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Reading Sheet...
+                טוען מידע מהקובץ
               </>
             ) : (
               <>
                 <FileText className="mr-2 h-4 w-4" />
-                Read Sheet Data
+                טען קובץ
               </>
             )}
           </Button>
@@ -295,12 +295,12 @@ const GoogleDriveFilePicker = () => {
             {isLoading || isReadingSheet ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Reading Sheet...
+                טוען מידע מהקובץ
               </>
             ) : (
               <>
                 <FileText className="mr-2 h-4 w-4" />
-                Reload Sheet Data
+                טען מחדש את הקובץ
               </>
             )}
           </Button>

@@ -3,18 +3,30 @@ import { Button } from "@/components/ui/button";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
+import { getData } from "@/hooks/getData";
 import { useEffect } from "react";
+import { Cell } from "recharts";
 
 const InteractivePage = () => {
+  const{
+    isTemplate,
+    plant,
+    grower,
+    place,
+  } = getData(false, null, null, null, null);
   const navigate = useNavigate();
   const { sheetData, selectedFile, clearSheetData } = useGoogleDrive();
-
-  // Debug logging
-  useEffect(() => {
-    console.log('Index component - sheetData changed:', sheetData);
-    console.log('Index component - selectedFile:', selectedFile);
-    console.log('Index component - should show editor:', !!sheetData);
-  }, [sheetData, selectedFile]);
+  const placeGrowerPlantRowIndex = 0;
+  /*if (!isTemplate)
+  {
+    for (let i = 0; i < sheetData.values[placeGrowerPlantRowIndex].length; i++) {
+      if (sheetData.values[placeGrowerPlantRowIndex][i] != "")
+      {
+        let arr = sheetData.values[placeGrowerPlantRowIndex][i].split('-');
+        //plant = arr[0].trim();
+      }
+    }
+  }*/
 
   const handleBackToHome = () => {
     console.log('Going back to home screen');
@@ -31,10 +43,10 @@ const InteractivePage = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-2xl font-bold text-gray-800">
-                    Editing: {selectedFile?.name}
+                    {selectedFile?.name}
                   </h1>
                   <p className="text-gray-600">
-                    Sheet: {sheetData?.sheetName} • {sheetData ? sheetData.values.length - 1 : 0} data rows
+                    {place} - {plant} - {grower}
                   </p>
                 </div>
                 <div className="flex items-center space-x-4">
@@ -43,7 +55,7 @@ const InteractivePage = () => {
                     variant="outline"
                     className="border-gray-300 text-gray-600 hover:bg-gray-50"
                   >
-                    Back to Home
+                    חזור לדף הבית
                   </Button>
                 </div>
               </div>
