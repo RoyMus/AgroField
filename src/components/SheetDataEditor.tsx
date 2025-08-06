@@ -243,13 +243,6 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   };
 
   const skipCurrentValue = () => {
-    const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
-    // Remove from modified data if it exists
-    const newModifiedData = { ...modifiedData };
-    delete newModifiedData[cellKey];
-    setModifiedData(newModifiedData);
-    localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
-    
     moveToNextCell();
   };
 
