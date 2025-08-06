@@ -6,7 +6,9 @@ import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { getData } from "@/hooks/getData";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@radix-ui/react-checkbox";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 
 
 const Index = () => {
@@ -52,72 +54,69 @@ const Index = () => {
                   התחבר לגוגל דרייב, בחר בטמפלייט או בקובץ קיים, והתחל להזין נתונים
                 </p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                      :האם ליצור קובץ חדש
-                </label>
-                <input
-                  type="checkbox"
-                  checked={isTemplate} 
-                  onChange={(e) => SetTemplate(e.target.checked)}
-                />
-              </div>
-              <div className="flex items-center justify-center space-x-4 mb-6">
-                <div className="space-y-4 mb-6">        
-                  <div>
-                    {isTemplate &&
-                      <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        :מיקום
-                      </label>
-                      <Input
-                        value={currentPlace}
-                        onChange={(e) => SetCurrentPlace(e.target.value)}
-                        placeholder={"עין הבשור"}
-                        className="text-lg p-3 h-12"
-                        autoFocus
-                        />
-                      </div>
-                    }
+              <Card className="w-full max-w-md mx-auto bg-white/80 backdrop-blur-sm shadow-xl border-0">
+                <CardContent className="p-6 space-y-6">
+                  <div className="flex items-center space-x-3 justify-center">
+                    <Checkbox
+                      id="create-new"
+                      checked={isTemplate}
+                      onCheckedChange={(checked) => SetTemplate(checked as boolean)}
+                      className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                    />
+                    <Label 
+                      htmlFor="create-new" 
+                      className="text-base font-medium text-foreground cursor-pointer"
+                    >
+                      צור קובץ חדש
+                    </Label>
                   </div>
-                </div>
-                <div className="space-y-4 mb-6">        
-                  <div>
-                    {isTemplate &&
-                      <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        :גידול
-                      </label>
-                      <Input
-                        value={currentPlant}
-                        onChange={(e) => SetCurrentPlant(e.target.value)}
-                        placeholder={"תותים"}
-                        className="text-lg p-3 h-12"
-                        autoFocus
-                        />
+
+                  {isTemplate && (
+                    <div className="space-y-4 animate-fade-in">
+                      <div className="grid grid-cols-1 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="place" className="text-sm font-medium text-muted-foreground">
+                            מיקום
+                          </Label>
+                          <Input
+                            id="place"
+                            value={currentPlace}
+                            onChange={(e) => SetCurrentPlace(e.target.value)}
+                            placeholder="עין הבשור"
+                            className="h-11 bg-background border-border focus:border-primary transition-colors"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="plant" className="text-sm font-medium text-muted-foreground">
+                            גידול
+                          </Label>
+                          <Input
+                            id="plant"
+                            value={currentPlant}
+                            onChange={(e) => SetCurrentPlant(e.target.value)}
+                            placeholder="תותים"
+                            className="h-11 bg-background border-border focus:border-primary transition-colors"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="grower" className="text-sm font-medium text-muted-foreground">
+                            מגדל
+                          </Label>
+                          <Input
+                            id="grower"
+                            value={currentGrowerName}
+                            onChange={(e) => SetCurrentGrowerName(e.target.value)}
+                            placeholder="ארגואן"
+                            className="h-11 bg-background border-border focus:border-primary transition-colors"
+                          />
+                        </div>
                       </div>
-                    }
-                  </div>
-                </div>
-                <div className="space-y-4 mb-6">        
-                  <div>
-                    {isTemplate &&
-                      <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        :מגדל
-                      </label>
-                      <Input
-                        value={currentGrowerName}
-                        onChange={(e) => SetCurrentGrowerName(e.target.value)}
-                        placeholder={"ארגואן"}
-                        className="text-lg p-3 h-12"
-                        autoFocus
-                        />
-                      </div>
-                    }
-                  </div>
-                </div>
-              </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
               <div className="pt-8">
                 <GoogleDriveFilePicker/>
               </div>
