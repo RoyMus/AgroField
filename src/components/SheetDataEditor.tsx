@@ -297,6 +297,17 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
 
   return (
     <div className="space-y-6">
+      {/* Progress Stats - Top Right */}
+      <div className="flex justify-end">
+        <div className="w-80">
+          <ProgressStats
+            modifiedCount={Object.keys(modifiedData).length}
+            currentPosition={currentRowIndex * headers.length + currentColumnIndex + 1}
+            totalCells={dataRows.length * headers.length}
+          />
+        </div>
+      </div>
+      
       {/* Current Cell Editor */}
       <CellEditor
         currentRowIndex={currentRowIndex}
@@ -318,12 +329,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         isFirstCell={isFirstCell}
         isLastCell={isLastCell}
       />
-      {/* Progress Stats */}
-      <ProgressStats
-        modifiedCount={Object.keys(modifiedData).length}
-        currentPosition={currentRowIndex * headers.length + currentColumnIndex + 1}
-        totalCells={dataRows.length * headers.length}
-      />
+      
       {/* Data Preview Table */}
       <DataPreviewTable
         headers={headers}

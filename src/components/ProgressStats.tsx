@@ -1,3 +1,5 @@
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 interface ProgressStatsProps {
   modifiedCount: number;
@@ -6,21 +8,32 @@ interface ProgressStatsProps {
 }
 
 const ProgressStats = ({ modifiedCount, currentPosition, totalCells }: ProgressStatsProps) => {
+  const percentage = totalCells > 0 ? Math.round((modifiedCount / totalCells) * 100) : 0;
+  
+  // Dynamic color based on percentage
+  const getProgressColor = (percent: number) => {
+    if (percent <= 33) return "bg-red-500";
+    if (percent <= 66) return "bg-orange-500";
+    return "bg-green-500";
+  };
+
   return (
-    <div className="bg-blue-50 rounded-lg p-4">
-      <h3 className="font-semibold text-blue-900 mb-2">Progress Overview</h3>
-      <div className="grid grid-cols-3 gap-4 text-sm">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-blue-600">{modifiedCount}</div>
-          <div className="text-blue-700">Modified</div>
+    <div className="bg-card rounded-lg p-4 border shadow-sm">
+      <h3 className="font-semibold text-foreground mb-3">Progress Overview</h3>
+      <div className="space-y-2">
+        <div className="flex justify-between text-sm text-muted-foreground">
+          <span>{modifiedCount} of {totalCells} cells completed</span>
+          <span>{percentage}%</span>
         </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-gray-600">{currentPosition}</div>
-          <div className="text-gray-700">Current Position</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-gray-800">{totalCells}</div>
-          <div className="text-gray-700">Total Cells</div>
+        <div className="relative">
+          <Progress value={percentage} className="h-3" />
+          <div 
+            className={cn(
+              "absolute top-0 left-0 h-full rounded-full transition-all duration-300",
+              getProgressColor(percentage)
+            )}
+            style={{ width: `${percentage}%` }}
+          />
         </div>
       </div>
     </div>
