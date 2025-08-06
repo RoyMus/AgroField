@@ -298,8 +298,8 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   return (
     <div className="space-y-6">
       {/* Progress Stats - Top Right */}
-      <div className="flex justify-end">
-        <div className="w-80">
+      <div className="flex">
+        <div className="w-full">
           <ProgressStats
             modifiedCount={Object.keys(modifiedData).length}
             currentPosition={currentRowIndex * headers.length + currentColumnIndex + 1}
