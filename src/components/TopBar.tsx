@@ -2,13 +2,37 @@ import { Button } from "@/components/ui/button";
 import { getData } from "@/hooks/getData";
 import { useState, useEffect } from 'react';
 
-const TopBar = ({handleGoHome, selectedFile}) => {    
+const TopBar = ({sheetData, handleGoHome, selectedFile}) => {    
     const{
     isTemplate,
     plant,
     grower,
     place,
     } = getData(false, null, null, null, null);
+    
+    const [topBar, setTopBar] = useState("");
+    useEffect(()=>{
+        const topBarRowIndex = 0;
+        const topBarRow = sheetData.values[topBarRowIndex];
+        let topBarIndex = 0;
+        for (let i = 0; i < topBarRow.length; i++) {
+            if (topBarRow[i] != "")
+            {
+                topBarIndex = i;
+                break;
+            }
+        }
+        if (isTemplate)
+        {
+            setTopBar(`${place} - ${plant} - ${grower}`);
+            sheetData.values[topBarRowIndex][topBarIndex] = topBar;
+        }
+        else
+        {
+            setTopBar(sheetData.values[topBarRowIndex][topBarIndex]);
+        }
+    }, []);
+    
 
     return (
         
@@ -19,7 +43,7 @@ const TopBar = ({handleGoHome, selectedFile}) => {
                 {selectedFile?.name}
                 </h1>
                 <p className="text-gray-600">
-                {place} - {plant} - {grower}
+                    {topBar}
                 </p>
             </div>
             <div className="flex items-center space-x-4">

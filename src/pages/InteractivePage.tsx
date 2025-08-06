@@ -11,22 +11,6 @@ const InteractivePage = () => {
   const navigate = useNavigate();
   const { sheetData, selectedFile, clearSheetData } = useGoogleDrive();
   const placeGrowerPlantRowIndex = 0;
-  const{
-      isTemplate,
-      plant,
-      grower,
-      place,
-      } = getData(false, null, null, null, null);
-  /*if (!isTemplate)
-  {
-    for (let i = 0; i < sheetData.values[placeGrowerPlantRowIndex].length; i++) {
-      if (sheetData.values[placeGrowerPlantRowIndex][i] != "")
-      {
-        let arr = sheetData.values[placeGrowerPlantRowIndex][i].split('-');
-        //plant = arr[0].trim();
-      }
-    }
-  }*/
 
   const handleBackToHome = () => {
     console.log('Going back to home screen');
@@ -39,7 +23,7 @@ const InteractivePage = () => {
       <div className="container mx-auto px-6 py-8">
           <div className="space-y-6">
             {/* Header With File info */}
-            {sheetData && <TopBar handleGoHome={handleBackToHome} selectedFile={selectedFile}/>}
+            {sheetData && <TopBar sheetData={sheetData} handleGoHome={handleBackToHome} selectedFile={selectedFile}/>}
             {/* Sheet Data Editor */}
             {sheetData && <SheetDataEditor sheetData={sheetData} />}
           </div>
