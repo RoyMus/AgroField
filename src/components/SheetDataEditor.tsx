@@ -52,6 +52,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const maxColIndex = lastindex;
   const [currentRowIndex, setCurrentRowIndex] = useState(headersRowIndex);
   const [currentColumnIndex, setCurrentColumnIndex] = useState(minColIndex);
+  const [currentCount, setCurrentCount] = useState(1);
   const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
   const [currentValue, setCurrentValue] = useState<string>("");
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -253,6 +254,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       setCurrentRowIndex(currentRowIndex + 1);
       setCurrentColumnIndex(minColIndex);
     }
+    setCurrentCount(currentCount + 1);
   };
 
   const moveToPreviousCell = () => {
@@ -301,7 +303,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       <div className="flex">
         <div className="w-full">
           <ProgressStats
-            modifiedCount={Object.keys(modifiedData).length}
+            modifiedCount={currentCount}
             currentPosition={currentRowIndex * headers.length + currentColumnIndex + 1}
             totalCells={dataRows.length * headers.length}
           />
