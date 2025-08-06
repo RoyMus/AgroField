@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
 import TopBar from "@/components/topBar";
-import { getData } from "@/hooks/getData";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { useEffect } from "react";
 import { Cell } from "recharts";

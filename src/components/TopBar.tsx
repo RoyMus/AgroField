@@ -25,7 +25,6 @@ const TopBar = ({sheetData, handleGoHome, selectedFile}) => {
         if (isTemplate)
         {
             setTopBar(`${place} - ${plant} - ${grower}`);
-            sheetData.values[topBarRowIndex][topBarIndex] = topBar;
         }
         else
         {

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
+import { getData } from "@/hooks/getData";
 import ProgressStats from "./ProgressStats";
 import CellEditor from "./CellEditor";
 import DataPreviewTable from "./DataPreviewTable";
@@ -59,7 +60,39 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const { isRecording, startRecording, stopRecording, error: recordingError } = useVoiceRecording();
   const { createNewSheet } = useGoogleDrive();
   const dataRows = sheetData.values.slice(1);
-  
+  const{
+    isTemplate,
+    plant,
+    grower,
+    place,
+  } = getData(false, null, null, null, null);
+  useEffect(()=>{
+    const topBarRowIndex = 0;
+    const topBarRow = sheetData.values[topBarRowIndex];
+    let topBarIndex = 0;
+    for (let i = 0; i < topBarRow.length; i++) {
+      if (topBarRow[i] != "")
+      {
+        topBarIndex = i;
+        break;
+      }
+    }
+    if (isTemplate)
+    {
+        const newModifiedData = {
+        ...modifiedData,
+        [`${topBarRowIndex}-${topBarIndex}`]: {
+          originalValue: `${place} - ${plant} - ${grower}`,
+          modifiedValue: `${place} - ${plant} - ${grower}`,
+          rowIndex: topBarRowIndex,
+          columnIndex: topBarIndex
+        }
+      };
+      setModifiedData(newModifiedData);
+      localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
+    }
+  }, []);
+
   useEffect(() => {
     // Load saved modifications from localStorage
     const savedModifications = localStorage.getItem('sheet_cell_modifications');
