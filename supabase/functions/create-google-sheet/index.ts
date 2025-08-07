@@ -53,7 +53,14 @@ serve(async (req) => {
     const newSheetId = newSpreadsheet.sheets[0].properties.sheetId
 
     // Get the source sheet formatting first
-    let sourceFormatting = null;
+    interface SheetFormatting {
+      rowData?: Array<any>;
+      columnMetadata?: Array<{ pixelSize?: number }>;
+      rowMetadata?: Array<{ pixelSize?: number }>;
+    }
+    
+
+    let sourceFormatting: SheetFormatting | null = null;
     if (originalFileId) {
       try {
         const sourceResponse = await fetch(
@@ -67,7 +74,7 @@ serve(async (req) => {
 
         if (sourceResponse.ok) {
           const sourceData = await sourceResponse.json();
-          sourceFormatting = sourceData.sheets?.[0]?.data?.[0];
+          sourceFormatting = sourceData.sheets?.[0]?.data?.[0] as SheetFormatting;
           console.log('Retrieved source formatting');
         }
       } catch (error) {
@@ -102,7 +109,7 @@ serve(async (req) => {
     // Copy formatting if we have source formatting
     if (sourceFormatting && sourceFormatting.rowData) {
       try {
-        const requests = [];
+        const requests: Array<Record<string, any>> = [];
         
         // Copy row formatting
         sourceFormatting.rowData.forEach((row, rowIndex) => {
