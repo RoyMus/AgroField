@@ -50,6 +50,7 @@ serve(async (req) => {
 
     const newSpreadsheet = await createResponse.json()
     const newSpreadsheetId = newSpreadsheet.spreadsheetId
+    const newSheetId = newSpreadsheet.sheets[0].properties.sheetId
 
     // Get the source sheet formatting first
     let sourceFormatting = null;
@@ -113,7 +114,7 @@ serve(async (req) => {
                 requests.push({
                   repeatCell: {
                     range: {
-                      sheetId: 0,
+                      sheetId: newSheetId,
                       startRowIndex: rowIndex,
                       endRowIndex: rowIndex + 1,
                       startColumnIndex: colIndex,
@@ -134,20 +135,20 @@ serve(async (req) => {
         if (sourceFormatting.columnMetadata) {
           sourceFormatting.columnMetadata.forEach((column, index) => {
             if (column.pixelSize) {
-              requests.push({
-                updateDimensionProperties: {
-                  range: {
-                    sheetId: 0,
-                    dimension: 'COLUMNS',
-                    startIndex: index,
-                    endIndex: index + 1
-                  },
-                  properties: {
-                    pixelSize: column.pixelSize
-                  },
-                  fields: 'pixelSize'
-                }
-              });
+                requests.push({
+                  updateDimensionProperties: {
+                    range: {
+                      sheetId: newSheetId,
+                      dimension: 'COLUMNS',
+                      startIndex: index,
+                      endIndex: index + 1
+                    },
+                    properties: {
+                      pixelSize: column.pixelSize
+                    },
+                    fields: 'pixelSize'
+                  }
+                });
             }
           });
         }
@@ -156,20 +157,20 @@ serve(async (req) => {
         if (sourceFormatting.rowMetadata) {
           sourceFormatting.rowMetadata.forEach((row, index) => {
             if (row.pixelSize) {
-              requests.push({
-                updateDimensionProperties: {
-                  range: {
-                    sheetId: 0,
-                    dimension: 'ROWS',
-                    startIndex: index,
-                    endIndex: index + 1
-                  },
-                  properties: {
-                    pixelSize: row.pixelSize
-                  },
-                  fields: 'pixelSize'
-                }
-              });
+                requests.push({
+                  updateDimensionProperties: {
+                    range: {
+                      sheetId: newSheetId,
+                      dimension: 'ROWS',
+                      startIndex: index,
+                      endIndex: index + 1
+                    },
+                    properties: {
+                      pixelSize: row.pixelSize
+                    },
+                    fields: 'pixelSize'
+                  }
+                });
             }
           });
         }
