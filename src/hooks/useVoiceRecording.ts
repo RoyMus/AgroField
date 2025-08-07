@@ -1,20 +1,23 @@
 
-import { useState, useRef } from 'react';
+import { useState, useRef,useCallback } from 'react';
 
 interface UseVoiceRecordingReturn {
   isRecording: boolean;
   startRecording: () => Promise<void>;
-  stopRecording: () => Promise<string | null>;
+  stopRecording: () => Promise<void>;
   error: string | null;
+  onWordRecognized: (callback: (word: string) => void) => void;
 }
 
 export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const accumulatedTranscriptRef = useRef<string>('');
-  const resolvePromiseRef = useRef<((value: string | null) => void) | null>(null);
+  const wordCallbackRef = useRef<((word: string) => void) | null>(null);
 
+  const onWordRecognized = useCallback((callback: (word: string) => void) => {
+    wordCallbackRef.current = callback;
+  }, []);
   const startRecording = async () => {
     try {
       setError(null);
@@ -33,9 +36,6 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       recognition.interimResults = true;
       recognition.lang = 'he-IL'; // Set language to Hebrew
       
-      // Reset accumulated transcript
-      accumulatedTranscriptRef.current = '';
-      
       recognition.onstart = () => {
         setIsRecording(true);
         console.log('Speech recognition started');
@@ -49,6 +49,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
             finalTranscript += transcript;
+            
           } else {
             interimTranscript += transcript;
           }
@@ -56,14 +57,17 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         
         // Accumulate final transcripts
         if (finalTranscript) {
-          accumulatedTranscriptRef.current += finalTranscript;
-          console.log('Final transcript added:', finalTranscript);
-          console.log('Total accumulated:', accumulatedTranscriptRef.current);
+          console.log(finalTranscript);
+          const words = finalTranscript.trim().split(/\s+/);
+          words.forEach(word => {
+              if (word) {
+                wordCallbackRef.current(word);
+              }
+          });
         }
         
         // Log interim results for debugging
         if (interimTranscript) {
-          console.log('Interim transcript:', interimTranscript);
         }
       };
       
@@ -71,25 +75,12 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         console.error('Speech recognition error:', event.error);
         setError(`Speech recognition error: ${event.error}`);
         setIsRecording(false);
-        
-        // Resolve promise with error
-        if (resolvePromiseRef.current) {
-          resolvePromiseRef.current(null);
-          resolvePromiseRef.current = null;
-        }
       };
       
       recognition.onend = () => {
         setIsRecording(false);
         console.log('Speech recognition ended');
-        console.log('Final accumulated transcript:', accumulatedTranscriptRef.current);
-        
         // Resolve the promise when recognition ends
-        if (resolvePromiseRef.current) {
-          const finalResult = accumulatedTranscriptRef.current.trim();
-          resolvePromiseRef.current(finalResult || null);
-          resolvePromiseRef.current = null;
-        }
       };
       
       recognitionRef.current = recognition;
@@ -101,25 +92,16 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     }
   };
 
-  const stopRecording = async (): Promise<string | null> => {
-    return new Promise((resolve) => {
-      if (!recognitionRef.current || !isRecording) {
-        resolve(null);
-        return;
-      }
-
-      // Store the resolve function to be called when recognition ends
-      resolvePromiseRef.current = resolve;
-      
+  const stopRecording = async (): Promise<void> => {
       // Stop the recognition - this will trigger onend
       recognitionRef.current.stop();
-    });
-  };
+    };
 
   return {
     isRecording,
     startRecording,
     stopRecording,
     error,
+    onWordRecognized,
   };
 };

@@ -58,7 +58,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
-  const { isRecording, startRecording, stopRecording, error: recordingError } = useVoiceRecording();
+  const { isRecording, startRecording, stopRecording, error: recordingError, onWordRecognized } = useVoiceRecording();
   const { createNewSheet } = useGoogleDrive();
   const dataRows = sheetData.values;
   const{
@@ -114,12 +114,32 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     }
   }, [currentRowIndex, currentColumnIndex]);
 
+  let recordValue = false;
+  onWordRecognized((word: string) => {
+    switch(word)
+    {
+      case "דלג":
+      case "הבא":
+        skipCurrentValue();
+        break;
+      case "חזור":
+      case "אחורה":
+        moveToPreviousCell();
+        break;
+      case "הזן":
+        recordValue = true;
+        break;
+      default:
+        if (recordValue) {
+          handleInputChange(word);
+          recordValue = false;
+        }
+        break;
+    }
+      
+  });
   const handleInputChange = (value: string) => {
     setCurrentValue(value);
-  };
-
-  const handleVoiceTranscription = (transcription: string) => {
-    setCurrentValue(transcription);
   };
 
   const saveModifications = () => {
@@ -224,22 +244,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const stopVoiceRecording = async () => {
     if (isRecording) {
       console.log('Stopping voice recording...');
-      const transcription = await stopRecording();
-      console.log('Received transcription:', transcription);
-      
-      if (transcription) {
-        handleVoiceTranscription(transcription);
-        toast({
-          title: "Voice Added",
-          description: `Added: "${transcription}"`,
-        });
-      } else {
-        toast({
-          title: "Recording Failed",
-          description: "Could not transcribe audio. Please try again.",
-          variant: "destructive",
-        });
-      }
+      await stopRecording();
     }
   };
 
