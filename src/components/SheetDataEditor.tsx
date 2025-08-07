@@ -60,7 +60,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const { toast } = useToast();
   const { isRecording, startRecording, stopRecording, error: recordingError } = useVoiceRecording();
   const { createNewSheet } = useGoogleDrive();
-  const dataRows = sheetData.values.slice(1);
+  const dataRows = sheetData.values;
   const{
     isTemplate,
     plant,

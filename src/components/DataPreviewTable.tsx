@@ -1,5 +1,6 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useState } from "react";
 
 interface ModifiedCellData {
   originalValue: string;
@@ -26,7 +27,6 @@ const DataPreviewTable = ({
   modifiedData,
 }: DataPreviewTableProps) => {
   const getCellKey = (rowIndex: number, columnIndex: number) => `${rowIndex}-${columnIndex}`;
-
   return (
     <div className="bg-white border-2 border-gray-200 rounded-xl p-6 shadow-lg">
       <h3 className="text-lg font-semibold mb-4">Sheet Preview</h3>
@@ -43,7 +43,7 @@ const DataPreviewTable = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {dataRows.slice(0, 10).map((row, rowIndex) => {
+            {dataRows.map((row, rowIndex) => {
               const isCurrentRow = rowIndex === currentRowIndex;
               
               return (
@@ -88,11 +88,6 @@ const DataPreviewTable = ({
             })}
           </TableBody>
         </Table>
-        {dataRows.length > 10 && (
-          <div className="text-center py-2 text-gray-500 text-sm">
-            Showing first 10 rows of {dataRows.length} total rows
-          </div>
-        )}
       </div>
     </div>
   );

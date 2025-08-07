@@ -80,6 +80,7 @@ const Index = () => {
                           </Label>
                           <Input
                             id="place"
+                            dir = "rtl"
                             value={currentPlace}
                             onChange={(e) => SetCurrentPlace(e.target.value)}
                             placeholder="עין הבשור"
@@ -93,6 +94,7 @@ const Index = () => {
                           </Label>
                           <Input
                             id="plant"
+                            dir = "rtl"
                             value={currentPlant}
                             onChange={(e) => SetCurrentPlant(e.target.value)}
                             placeholder="תותים"
@@ -106,6 +108,7 @@ const Index = () => {
                           </Label>
                           <Input
                             id="grower"
+                            dir = "rtl"
                             value={currentGrowerName}
                             onChange={(e) => SetCurrentGrowerName(e.target.value)}
                             placeholder="ארגואן"

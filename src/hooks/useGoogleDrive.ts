@@ -226,10 +226,10 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       
       Object.entries(modifiedData).forEach(([cellKey, modification]: [string, any]) => {
         const [rowIndex, columnIndex] = cellKey.split('-').map(Number);
-        if (!updatedValues[rowIndex + 1]) {
-          updatedValues[rowIndex + 1] = [];
+        if (!updatedValues[rowIndex]) {
+          updatedValues[rowIndex] = [];
         }
-        updatedValues[rowIndex + 1][columnIndex] = modification.modifiedValue;
+        updatedValues[rowIndex][columnIndex] = modification.modifiedValue;
       });
 
       const updatedSheetData = {
