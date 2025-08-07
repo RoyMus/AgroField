@@ -51,6 +51,29 @@ serve(async (req) => {
     const newSpreadsheet = await createResponse.json()
     const newSpreadsheetId = newSpreadsheet.spreadsheetId
 
+    // Get the source sheet formatting first
+    let sourceFormatting = null;
+    if (originalFileId) {
+      try {
+        const sourceResponse = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${originalFileId}?includeGridData=true`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            }
+          }
+        );
+
+        if (sourceResponse.ok) {
+          const sourceData = await sourceResponse.json();
+          sourceFormatting = sourceData.sheets?.[0]?.data?.[0];
+          console.log('Retrieved source formatting');
+        }
+      } catch (error) {
+        console.error('Failed to get source formatting:', error);
+      }
+    }
+
     // Update the sheet with the data
     const updateResponse = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${newSpreadsheetId}/values/${encodeURIComponent(sheetData.sheetName || 'Sheet1')}?valueInputOption=RAW`,
@@ -73,6 +96,111 @@ serve(async (req) => {
         JSON.stringify({ error: 'Failed to update sheet data', details: errorData }),
         { status: updateResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    // Copy formatting if we have source formatting
+    if (sourceFormatting && sourceFormatting.rowData) {
+      try {
+        const requests = [];
+        
+        // Copy row formatting
+        sourceFormatting.rowData.forEach((row, rowIndex) => {
+          if (row.values) {
+            row.values.forEach((cell, colIndex) => {
+              if (cell.userEnteredFormat || cell.effectiveFormat) {
+                const format = cell.userEnteredFormat || cell.effectiveFormat;
+                
+                requests.push({
+                  repeatCell: {
+                    range: {
+                      sheetId: 0,
+                      startRowIndex: rowIndex,
+                      endRowIndex: rowIndex + 1,
+                      startColumnIndex: colIndex,
+                      endColumnIndex: colIndex + 1
+                    },
+                    cell: {
+                      userEnteredFormat: format
+                    },
+                    fields: 'userEnteredFormat'
+                  }
+                });
+              }
+            });
+          }
+        });
+
+        // Copy column widths
+        if (sourceFormatting.columnMetadata) {
+          sourceFormatting.columnMetadata.forEach((column, index) => {
+            if (column.pixelSize) {
+              requests.push({
+                updateDimensionProperties: {
+                  range: {
+                    sheetId: 0,
+                    dimension: 'COLUMNS',
+                    startIndex: index,
+                    endIndex: index + 1
+                  },
+                  properties: {
+                    pixelSize: column.pixelSize
+                  },
+                  fields: 'pixelSize'
+                }
+              });
+            }
+          });
+        }
+
+        // Copy row heights
+        if (sourceFormatting.rowMetadata) {
+          sourceFormatting.rowMetadata.forEach((row, index) => {
+            if (row.pixelSize) {
+              requests.push({
+                updateDimensionProperties: {
+                  range: {
+                    sheetId: 0,
+                    dimension: 'ROWS',
+                    startIndex: index,
+                    endIndex: index + 1
+                  },
+                  properties: {
+                    pixelSize: row.pixelSize
+                  },
+                  fields: 'pixelSize'
+                }
+              });
+            }
+          });
+        }
+
+        // Apply formatting if we have requests
+        if (requests.length > 0) {
+          const formatResponse = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${newSpreadsheetId}:batchUpdate`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                requests: requests
+              })
+            }
+          );
+
+          if (formatResponse.ok) {
+            console.log('Successfully copied formatting');
+          } else {
+            const formatError = await formatResponse.text();
+            console.error('Failed to copy formatting:', formatError);
+          }
+        }
+      } catch (formatError) {
+        console.error('Error copying formatting:', formatError);
+        // Continue even if formatting fails
+      }
     }
 
     // If originalFileId is provided, copy permissions from the original file
