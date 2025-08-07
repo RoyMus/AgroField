@@ -83,7 +83,7 @@ const CellEditor = ({
             size="sm"
             disabled={!isCurrentCellModified}
           >
-            Reset
+            בטל
           </Button>
           <Button
             onClick={onSaveProgress}
@@ -140,7 +140,7 @@ const CellEditor = ({
           variant="outline"
         >
           <ChevronLeft className="mr-1 h-4 w-4" />
-          Previous
+          חזור
         </Button>
 
         <div className="flex gap-3">
@@ -151,7 +151,7 @@ const CellEditor = ({
             className="text-orange-600 border-orange-300 hover:bg-orange-50"
           >
             <SkipForward className="mr-1 h-4 w-4" />
-            Skip
+            דלג
           </Button>
           <Button
             onClick={onRecordValue}
@@ -159,7 +159,7 @@ const CellEditor = ({
             className="bg-green-600 hover:bg-green-700 text-white"
           >
             <Type className="mr-1 h-4 w-4" />
-            Record Value
+            שמור
           </Button>
         </div>
       </div>

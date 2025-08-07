@@ -129,6 +129,15 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       case "הזן":
         recordValue = true;
         break;
+      case "שמור":
+        if(currentValue)
+        {
+          recordCurrentValue();
+        }
+        break;
+      case "בטל":
+        resetCurrentCell();
+        break;
       default:
         if (recordValue) {
           handleInputChange(word);
@@ -204,30 +213,28 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const getCellKey = (rowIndex: number, columnIndex: number) => `${rowIndex}-${columnIndex}`;
 
   const recordCurrentValue = async () => {
-    if (!isRecording) {
-      // Save the current value
-      const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
-      const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
-      
-      const newModifiedData = {
-        ...modifiedData,
-        [cellKey]: {
-          originalValue,
-          modifiedValue: currentValue,
-          rowIndex: currentRowIndex,
-          columnIndex: currentColumnIndex
-        }
-      };
-      setModifiedData(newModifiedData);
-      localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
-      
-      toast({
-        title: "Value Recorded",
-        description: `Recorded value for ${headers[currentColumnIndex]}`,
-      });
-      
-      moveToNextCell();
-    }
+    // Save the current value
+    const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
+    const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
+    
+    const newModifiedData = {
+      ...modifiedData,
+      [cellKey]: {
+        originalValue,
+        modifiedValue: currentValue,
+        rowIndex: currentRowIndex,
+        columnIndex: currentColumnIndex
+      }
+    };
+    setModifiedData(newModifiedData);
+    localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
+    
+    toast({
+      title: "Value Recorded",
+      description: `Recorded value for ${headers[currentColumnIndex]}`,
+    });
+    
+    moveToNextCell();
   };
 
   const startVoiceRecording = async () => {
