@@ -30,8 +30,8 @@ interface SheetDataEditorProps {
 }
 
 const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
-  const headersRowIndex = 5;
-  const headers = sheetData.values[headersRowIndex] || [];
+  const headersRowIndex = 6;
+  const headers = sheetData.values[headersRowIndex -1] || [];
   var AlreadySetFirst = false;
   for (let i = 0; i < headers.length; i++) {
     if (headers[i] == "")
@@ -60,7 +60,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const { toast } = useToast();
   const { isRecording, startRecording, stopRecording, error: recordingError } = useVoiceRecording();
   const { createNewSheet } = useGoogleDrive();
-  const dataRows = sheetData.values.slice(1);
+  const dataRows = sheetData.values;
   const{
     isTemplate,
     plant,
