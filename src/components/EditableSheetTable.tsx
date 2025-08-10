@@ -1,12 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Save, Download, Plus, Minus } from "lucide-react";
+import { Save, Plus, Minus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface SheetData {
   values: string[][];
   sheetName: string;
+}
+
+interface ModifiedCellData {
+  originalValue: string;
+  modifiedValue: string;
+  rowIndex: number;
+  columnIndex: number;
 }
 
 interface EditableSheetTableProps {
@@ -15,19 +22,51 @@ interface EditableSheetTableProps {
 
 const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
   const [localData, setLocalData] = useState<string[][]>([]);
+  const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
   const [hasChanges, setHasChanges] = useState(false);
   const { toast } = useToast();
 
-  // Initialize local data from sheet data
+  // Load saved modifications from localStorage and apply to sheet data
+  useEffect(() => {
+    const savedModifications = localStorage.getItem('sheet_cell_modifications');
+    if (savedModifications) {
+      setModifiedData(JSON.parse(savedModifications));
+    }
+  }, []);
+
+  // Initialize local data from sheet data and apply modifications
   useEffect(() => {
     if (sheetData?.values) {
-      setLocalData(sheetData.values.map(row => [...row])); // Deep copy
-      setHasChanges(false);
+      const baseData = sheetData.values.map(row => [...row]); // Deep copy
+      
+      // Apply modifications from localStorage
+      Object.values(modifiedData).forEach(modification => {
+        const { rowIndex, columnIndex, modifiedValue } = modification;
+        
+        // Extend rows if needed
+        while (baseData.length <= rowIndex) {
+          baseData.push([]);
+        }
+        
+        // Extend columns if needed
+        while (baseData[rowIndex].length <= columnIndex) {
+          baseData[rowIndex].push("");
+        }
+        
+        baseData[rowIndex][columnIndex] = modifiedValue;
+      });
+      
+      setLocalData(baseData);
+      setHasChanges(Object.keys(modifiedData).length > 0);
     }
-  }, [sheetData]);
+  }, [sheetData, modifiedData]);
 
-  // Handle cell value changes
+  // Handle cell value changes and sync with localStorage
   const handleCellChange = useCallback((rowIndex: number, colIndex: number, value: string) => {
+    const cellKey = `${rowIndex}-${colIndex}`;
+    const originalValue = sheetData?.values?.[rowIndex]?.[colIndex] || "";
+    
+    // Update local data
     setLocalData(prev => {
       const newData = prev.map(row => [...row]);
       
@@ -44,8 +83,27 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
       newData[rowIndex][colIndex] = value;
       return newData;
     });
-    setHasChanges(true);
-  }, []);
+    
+    // Update modifiedData and sync to localStorage
+    const newModifiedData = { ...modifiedData };
+    
+    if (value === originalValue || value === "") {
+      // Remove from modifications if reverting to original or empty
+      delete newModifiedData[cellKey];
+    } else {
+      // Add/update modification
+      newModifiedData[cellKey] = {
+        originalValue,
+        modifiedValue: value,
+        rowIndex,
+        columnIndex: colIndex
+      };
+    }
+    
+    setModifiedData(newModifiedData);
+    localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
+    setHasChanges(Object.keys(newModifiedData).length > 0);
+  }, [sheetData, modifiedData]);
 
   // Add new row
   const addRow = () => {
@@ -78,25 +136,12 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
     }
   };
 
-  // Export current data as CSV
-  const exportToCSV = () => {
-    const csv = localData.map(row => 
-      row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')
-    ).join('\n');
-    
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${sheetData.sheetName || 'sheet'}_edited.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
+  // Save current modifications
+  const saveModifications = () => {
+    localStorage.setItem('sheet_cell_modifications', JSON.stringify(modifiedData));
     toast({
-      title: "Exported successfully",
-      description: "Your edited sheet has been downloaded as CSV.",
+      title: "Progress Saved",
+      description: `Saved modifications for ${Object.keys(modifiedData).length} cells`,
     });
   };
 
@@ -149,18 +194,17 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
         </div>
         
         <div className="flex items-center space-x-2">
-          {hasChanges && (
-            <span className="text-sm text-amber-600 font-medium">
-              Unsaved changes
-            </span>
-          )}
+          <span className="text-sm text-gray-600">
+            {Object.keys(modifiedData).length} cells modified
+          </span>
           <Button
-            onClick={exportToCSV}
+            onClick={saveModifications}
             variant="outline"
             className="flex items-center space-x-2"
+            disabled={Object.keys(modifiedData).length === 0}
           >
-            <Download className="w-4 h-4" />
-            <span>Export CSV</span>
+            <Save className="w-4 h-4" />
+            <span>Save Progress</span>
           </Button>
         </div>
       </div>
@@ -210,10 +254,10 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
       {/* Info */}
       <div className="mt-4 text-sm text-gray-600">
         <p>
-          <strong>Rows:</strong> {localData.length} | <strong>Columns:</strong> {maxCols}
+          <strong>Rows:</strong> {localData.length} | <strong>Columns:</strong> {maxCols} | <strong>Modified Cells:</strong> {Object.keys(modifiedData).length}
         </p>
         <p className="mt-1">
-          Changes are made locally and won't affect the original Google Sheet until explicitly saved.
+          Changes are synced with the sheet preview and stored locally. Use "Save to New Sheet" in the preview to create a Google Sheet with your modifications.
         </p>
       </div>
     </div>

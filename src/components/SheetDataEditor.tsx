@@ -100,6 +100,32 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     if (savedModifications) {
       setModifiedData(JSON.parse(savedModifications));
     }
+
+    // Listen for storage changes from other components (like EditableSheetTable)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'sheet_cell_modifications' && e.newValue) {
+        setModifiedData(JSON.parse(e.newValue));
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also listen for localStorage changes within the same tab
+    const handleLocalStorageUpdate = () => {
+      const savedModifications = localStorage.getItem('sheet_cell_modifications');
+      if (savedModifications) {
+        const parsedData = JSON.parse(savedModifications);
+        setModifiedData(parsedData);
+      }
+    };
+
+    // Set up an interval to check for localStorage changes (for same-tab updates)
+    const interval = setInterval(handleLocalStorageUpdate, 500);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {

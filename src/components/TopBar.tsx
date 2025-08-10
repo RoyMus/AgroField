@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { getData } from "@/hooks/getData";
 import { useState, useEffect } from 'react';
+import { Edit } from "lucide-react";
 
-const TopBar = ({sheetData, handleGoHome, selectedFile}) => {    
+const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor}) => {
     const{
     isTemplate,
     plant,
@@ -46,6 +47,14 @@ const TopBar = ({sheetData, handleGoHome, selectedFile}) => {
                 </p>
             </div>
             <div className="flex items-center space-x-4">
+                <Button
+                  onClick={onOpenEditor}
+                  variant="default"
+                  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Edit className="w-4 h-4" />
+                  <span>Open Full Sheet Editor</span>
+                </Button>
                 <Button
                 onClick={handleGoHome}
                 variant="outline"
