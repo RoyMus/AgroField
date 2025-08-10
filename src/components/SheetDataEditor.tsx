@@ -311,17 +311,6 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Progress Stats - Top Right */}
-      <div className="flex">
-        <div className="w-full">
-          <ProgressStats
-            modifiedCount={currentCount}
-            currentPosition={currentRowIndex * headers.length + currentColumnIndex + 1}
-            totalCells={dataRows.length * headers.length}
-          />
-        </div>
-      </div>
-      
       {/* Current Cell Editor */}
       <CellEditor
         currentRowIndex={currentRowIndex}
@@ -344,16 +333,6 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         isLastCell={isLastCell}
       />
       
-      {/* Data Preview Table */}
-      <DataPreviewTable
-        headers={headers}
-        dataRows={dataRows}
-        currentRowIndex={currentRowIndex}
-        currentColumnIndex={currentColumnIndex}
-        currentValue={currentValue}
-        modifiedData={modifiedData}
-      />
-      
       {/* Save to New Sheet Dialog */}
       <SaveToNewSheetDialog
         open={showSaveDialog}
@@ -363,6 +342,17 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         modifiedCount={Object.keys(modifiedData).length}
         isLoading={isSaving}
       />
+      
+      {/* Progress Stats - Top Right 
+      <div className="flex">
+        <div className="w-full">
+          <ProgressStats
+            modifiedCount={currentCount}
+            currentPosition={currentRowIndex * headers.length + currentColumnIndex + 1}
+            totalCells={dataRows.length * headers.length}
+          />
+        </div>
+      </div>*/}
     </div>
   );
 };

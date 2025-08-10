@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
-import TopBar from "@/components/TopBar";
+import TopBar from "@/components/topBar";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
@@ -30,7 +30,9 @@ const InteractivePage = () => {
             {/* Header With File info */}
             {sheetData && <TopBar sheetData={sheetData} handleGoHome={handleBackToHome} selectedFile={selectedFile}/>}
             
-            {/* Edit Sheet Button */}
+            {/* Sheet Data Editor */}
+            {sheetData && <SheetDataEditor sheetData={sheetData} />}
+          {/* Edit Sheet Button */}
             {sheetData && (
               <div className="flex justify-center">
                 <Button 
@@ -42,9 +44,6 @@ const InteractivePage = () => {
                 </Button>
               </div>
             )}
-            
-            {/* Sheet Data Editor */}
-            {sheetData && <SheetDataEditor sheetData={sheetData} />}
           </div>
       </div>
     </div>
