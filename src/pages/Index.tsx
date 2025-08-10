@@ -126,7 +126,7 @@ const Index = () => {
                 value={faucetConductivity}
                 onChange={(e) => SetfaucetConductivity(e.target.value)}
                 placeholder="מוליכות ברז"
-                className="h-11 bg-background text-center border-border focus:border-primary transition-colors"
+                className="h-11 w-[45%] mx-auto bg-background text-center border-border focus:border-primary transition-colors"
               />
               <div className="pt-8">
                 <GoogleDriveFilePicker/>
