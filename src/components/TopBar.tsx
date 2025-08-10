@@ -8,7 +8,8 @@ const TopBar = ({sheetData, handleGoHome, selectedFile}) => {
     plant,
     grower,
     place,
-    } = getData(false, null, null, null, null);
+    faucetConductivity
+    } = getData(false, null, null, null, null, null);
     
     const [topBar, setTopBar] = useState("");
     useEffect(()=>{

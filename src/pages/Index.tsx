@@ -18,10 +18,11 @@ const Index = () => {
   const [currentPlace, SetCurrentPlace] = useState("");
   const [currentPlant, SetCurrentPlant] = useState("");
   const [currentGrowerName, SetCurrentGrowerName] = useState("");
+  const [faucetConductivity, SetfaucetConductivity] = useState("");
   
   useEffect(() => {
-    getData(true, isTemplate, currentPlant, currentGrowerName, currentPlace);
-  }, [isTemplate, currentPlace, currentPlant, currentGrowerName]);
+    getData(true, isTemplate, currentPlant, currentGrowerName, currentPlace, faucetConductivity);
+  }, [isTemplate, currentPlace, currentPlant, currentGrowerName, faucetConductivity]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
@@ -120,6 +121,13 @@ const Index = () => {
                   )}
                 </CardContent>
               </Card>
+              <Input
+                id="faucetConductivity"
+                value={faucetConductivity}
+                onChange={(e) => SetfaucetConductivity(e.target.value)}
+                placeholder="מוליכות ברז"
+                className="h-11 bg-background text-center border-border focus:border-primary transition-colors"
+              />
               <div className="pt-8">
                 <GoogleDriveFilePicker/>
               </div>

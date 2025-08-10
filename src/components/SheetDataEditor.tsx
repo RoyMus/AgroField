@@ -66,11 +66,15 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     plant,
     grower,
     place,
-  } = getData(false, null, null, null, null);
+    faucetConductivity,
+  } = getData(false, null, null, null, null, null);
   useEffect(()=>{
     const topBarRowIndex = 0;
+    const faucetRowIndex = 1;
     const topBarRow = sheetData.values[topBarRowIndex];
+    const faucetRow = sheetData.values[faucetRowIndex];
     let topBarIndex = 0;
+    let faucetIndex = 0;
     for (let i = 0; i < topBarRow.length; i++) {
       if (topBarRow[i] != "")
       {
@@ -78,20 +82,34 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         break;
       }
     }
+    for (let i = 0; i < faucetRow.length; i++) {
+      if (faucetRow[i] != "")
+      {
+        faucetIndex = i;
+        break;
+      }
+    }
+    const newModifiedData = {
+      ...modifiedData,
+      [`${faucetRowIndex}-${faucetIndex}`]: {
+        originalValue: `${faucetConductivity} - מוליכות ברז`,
+        modifiedValue: `${faucetConductivity} - מוליכות ברז`,
+        rowIndex: faucetRowIndex,
+        columnIndex: faucetIndex
+      }
+    };
+        
     if (isTemplate)
     {
-        const newModifiedData = {
-        ...modifiedData,
-        [`${topBarRowIndex}-${topBarIndex}`]: {
-          originalValue: `${place} - ${plant} - ${grower}`,
-          modifiedValue: `${place} - ${plant} - ${grower}`,
-          rowIndex: topBarRowIndex,
-          columnIndex: topBarIndex
-        }
-      };
-      setModifiedData(newModifiedData);
-      localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
+        newModifiedData[`${topBarRowIndex}-${topBarIndex}`] = {
+            originalValue: `${place} - ${plant} - ${grower}`,
+            modifiedValue: `${place} - ${plant} - ${grower}`,
+            rowIndex: topBarRowIndex,
+            columnIndex: topBarIndex
+          };
     }
+    setModifiedData(newModifiedData);
+        localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
   }, []);
 
   useEffect(() => {
@@ -262,7 +280,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const moveToNextCell = () => {
     if (currentColumnIndex < maxColIndex) {
       setCurrentColumnIndex(currentColumnIndex + 1);
-    } else if (currentRowIndex < dataRows.length - 1) {
+    } else if (currentRowIndex < dataRows.length - 3) {
       setCurrentRowIndex(currentRowIndex + 1);
       setCurrentColumnIndex(minColIndex);
     }
@@ -342,7 +360,15 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         modifiedCount={Object.keys(modifiedData).length}
         isLoading={isSaving}
       />
-      
+      {/* Data Preview Table */}
+      <DataPreviewTable
+        headers={headers}
+        dataRows={dataRows}
+        currentRowIndex={currentRowIndex}
+        currentColumnIndex={currentColumnIndex}
+        currentValue={currentValue}
+        modifiedData={modifiedData}
+      />
       {/* Progress Stats - Top Right 
       <div className="flex">
         <div className="w-full">
