@@ -1,6 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Mic, MicOff, Square} from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface VoiceControlsProps {
   isRecording: boolean;
@@ -8,7 +9,29 @@ interface VoiceControlsProps {
   onStopRecording: () => Promise<void>;
 }
 
+const EXAMPLE_PHRASES = [
+  "(ערך) הזן",
+  "דלג \\ הבא ",
+  "אחורה \\ חזור",
+  "שמור",
+  "בטל",
+];
+
+
 const VoiceControls = ({ isRecording, onStartRecording, onStopRecording }: VoiceControlsProps) => {
+  const [currentExample, setCurrentExample] = useState(EXAMPLE_PHRASES[0]);
+
+  // Effect to change the example phrase every 5 seconds during recording
+  useEffect(() => {
+    if (!isRecording) return;
+
+    const intervalId = setInterval(() => {
+      const randomIndex = Math.floor(Math.random() * EXAMPLE_PHRASES.length);
+      setCurrentExample(EXAMPLE_PHRASES[randomIndex]);
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [isRecording]);
   return (
     <div className="p-4 bg-gray-50 rounded-lg">
       <div className="flex flex-col items-center space-y-4">
@@ -30,13 +53,13 @@ const VoiceControls = ({ isRecording, onStartRecording, onStopRecording }: Voice
       
       {isRecording && (
         <div className="text-center animate-fade-in">
-          <div className="text-red-500 font-medium">Recording...</div>
+          <div className="text-gray-500 font-medium">{currentExample}</div>
           {/* <div className="text-gray-500 text-sm">{formatTime(recordingTime)}</div> */}
         </div>
       )}
       
       <div className="text-center text-gray-600 text-sm max-w-xs">
-        {isRecording ? 'Tap the square to stop recording' : 'Tap the microphone to start recording'}
+        {isRecording ? 'לחץ על הריבוע כדי להפסיק מצב קולי' : 'לחץ על המיקרופון כדי להתחיל מצב קולי'}
       </div>
     </div>
     </div>

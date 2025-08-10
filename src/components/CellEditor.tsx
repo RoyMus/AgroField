@@ -91,7 +91,7 @@ const CellEditor = ({
             size="sm"
           >
             <Save className="mr-1 h-4 w-4" />
-            Save Progress
+            שמור התקדמות
           </Button>
           {onSaveToNewSheet && (
             <Button
@@ -101,7 +101,7 @@ const CellEditor = ({
               className="bg-blue-600 hover:bg-blue-700"
             >
               <Save className="mr-1 h-4 w-4" />
-              Save to New Sheet
+              שמור לגיליון חדש
             </Button>
           )}
         </div>

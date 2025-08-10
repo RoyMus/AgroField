@@ -160,7 +160,7 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
             className="flex items-center space-x-2"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Row</span>
+            <span>הוסף שורה</span>
           </Button>
           <Button
             onClick={removeRow}
@@ -170,7 +170,7 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
             className="flex items-center space-x-2"
           >
             <Minus className="w-4 h-4" />
-            <span>Remove Row</span>
+            <span>מחק שורה</span>
           </Button>
           <Button
             onClick={addColumn}
@@ -179,7 +179,7 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
             className="flex items-center space-x-2"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Column</span>
+            <span>הוסף עמודה</span>
           </Button>
           <Button
             onClick={removeColumn}
@@ -189,7 +189,7 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
             className="flex items-center space-x-2"
           >
             <Minus className="w-4 h-4" />
-            <span>Remove Column</span>
+            <span>מחק עמודה</span>
           </Button>
         </div>
         
@@ -257,7 +257,7 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
           <strong>Rows:</strong> {localData.length} | <strong>Columns:</strong> {maxCols} | <strong>Modified Cells:</strong> {Object.keys(modifiedData).length}
         </p>
         <p className="mt-1">
-          Changes are synced with the sheet preview and stored locally. Use "Save to New Sheet" in the preview to create a Google Sheet with your modifications.
+          שינויים מסונכרנים עם תצוגת הגיליון ומאוחסנים מקומית. השתמש ב-"שמור לגיליון חדש" בתצוגה כדי ליצור גיליון Google עם השינויים שלך.
         </p>
       </div>
     </div>

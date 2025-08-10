@@ -54,7 +54,7 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor}) => {
                   className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   <Edit className="w-4 h-4" />
-                  <span>Open Full Sheet Editor</span>
+                  <span>פתח עורך גיליון מלא</span>
                 </Button>
                 <Button
                 onClick={handleGoHome}
