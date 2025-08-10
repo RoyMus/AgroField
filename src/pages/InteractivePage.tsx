@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
-import TopBar from "@/components/topBar";
+import TopBar from "@/components/TopBar";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
