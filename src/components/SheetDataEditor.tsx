@@ -225,8 +225,13 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     }
       
   });
+
   const handleInputChange = (value: string) => {
     setCurrentValue(value);
+  };
+
+  const handleChangeToNewRow = (value: number) => {
+    console.log(value);
   };
 
   const saveModifications = () => {
@@ -400,6 +405,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         modifiedData={modifiedData}
         isRecording={isRecording}
         onInputChange={handleInputChange}
+        onChangeToRow={handleChangeToNewRow}
         onStartRecording={startVoiceRecording}
         onStopRecording={stopVoiceRecording}
         onResetCell={resetCurrentCell}
