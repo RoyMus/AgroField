@@ -58,7 +58,9 @@ const CellEditor = ({
   const currentCellKey = getCellKey(currentRowIndex, currentColumnIndex);
   const isCurrentCellModified = modifiedData[currentCellKey] !== undefined;
   const [optionsHamama, setOptionsHamama] = useState([]);
+  const [currentHamama, setCurrentHamama] = useState(null);
   const [optionsMagof, setOptionsMagof] = useState([]);
+  const [optionsGidul, setOptionsGidul] = useState([]);
   
   const handleSelectHamama = (selectedValue) => {
     while (optionsMagof.length != 0)
@@ -66,12 +68,38 @@ const CellEditor = ({
     
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] == selectedValue)
+      if (dataRows[i][0] == selectedValue && !optionsMagof.includes(dataRows[i][1]))
         optionsMagof.push(dataRows[i][1]);
     }
     setOptionsMagof([...optionsMagof]);
+    setCurrentHamama(selectedValue);
   };
-  
+
+  const handleSelectMagof = (selectedValue) => {
+    if (currentHamama == null)
+      return;
+
+    while (optionsGidul.length != 0)
+      optionsGidul.pop();
+
+    for (let i = 0; i < dataRows.length; i++)
+    {
+      if (dataRows[i][0] == currentHamama && dataRows[i][1] == selectedValue)
+      {
+        optionsGidul.push(dataRows[i][3]);
+        console.log(i + " index , " + dataRows[i][3] + ", currenthamama" + currentHamama);
+      }
+    }
+    setOptionsGidul([...optionsGidul]);
+  };
+
+  useEffect (() => {
+    if (optionsMagof.length != 0)
+    {
+      handleSelectMagof(optionsMagof[0]);
+    }
+  }, [currentHamama]);
+
   useEffect (() => {
     for (let i = 0; i < dataRows.length; i++)
     {
@@ -96,7 +124,10 @@ const CellEditor = ({
             <SimpleDropdown options={optionsHamama} onSelect={handleSelectHamama} /> חממה
           </h3>
           <h3 className="text-lg font-semibold">
-            <SimpleDropdown options={optionsMagof} onSelect={null} /> מגוף
+            <SimpleDropdown options={optionsMagof} onSelect={handleSelectMagof} /> מגוף
+          </h3>
+          <h3 className="text-lg font-semibold">
+            <SimpleDropdown options={optionsGidul} onSelect={null} /> גידול
           </h3>
           <p className="text-sm text-gray-600">
             Cell {currentRowIndex * headers.length + currentColumnIndex + 1} of {dataRows.length * headers.length}
