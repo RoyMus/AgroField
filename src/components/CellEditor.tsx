@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, SkipForward, Save, Type } from "lucide-react";
 import VoiceControls from "./VoiceControls";
+import SimpleDropdown from "./ui/simpleDropdown";
+import { useEffect, useState} from "react";
 
 interface ModifiedCellData {
   originalValue: string;
@@ -55,7 +57,31 @@ const CellEditor = ({
   const getCellKey = (rowIndex: number, columnIndex: number) => `${rowIndex}-${columnIndex}`;
   const currentCellKey = getCellKey(currentRowIndex, currentColumnIndex);
   const isCurrentCellModified = modifiedData[currentCellKey] !== undefined;
-
+  const [optionsHamama, setOptionsHamama] = useState([]);
+  const [optionsMagof, setOptionsMagof] = useState([]);
+  
+  const handleSelectHamama = (selectedValue) => {
+    while (optionsMagof.length != 0)
+      optionsMagof.pop();
+    
+    for (let i = 0; i < dataRows.length; i++)
+    {
+      if (dataRows[i][0] == selectedValue)
+        optionsMagof.push(dataRows[i][1]);
+    }
+    setOptionsMagof([...optionsMagof]);
+  };
+  
+  useEffect (() => {
+    for (let i = 0; i < dataRows.length; i++)
+    {
+      if (dataRows[i][0] != "" && dataRows[i][0] != "חממה" && !optionsHamama.includes(dataRows[i][0]))
+        optionsHamama.push(dataRows[i][0]);
+      setOptionsHamama([...optionsHamama]);
+    }
+    handleSelectHamama(optionsHamama[0]);
+  }, []);
+  
   return (
     <div className="bg-white border-2 border-gray-200 rounded-xl p-6 shadow-lg">
       <div className="flex items-center justify-between mb-4">
@@ -67,10 +93,10 @@ const CellEditor = ({
             }
           </h3>
           <h3 className="text-lg font-semibold">
-            חממה {dataRows[currentRowIndex][0]}
+            <SimpleDropdown options={optionsHamama} onSelect={handleSelectHamama} /> חממה
           </h3>
           <h3 className="text-lg font-semibold">
-            מגוף {dataRows[currentRowIndex][1]}
+            <SimpleDropdown options={optionsMagof} onSelect={null} /> מגוף
           </h3>
           <p className="text-sm text-gray-600">
             Cell {currentRowIndex * headers.length + currentColumnIndex + 1} of {dataRows.length * headers.length}
