@@ -94,6 +94,13 @@ const CellEditor = ({
     }
     setOptionsGidul([...optionsGidul]);
     setCurrentMagof(selectedValue);
+    if (selectedValue == currentMagof)
+    {
+      if (optionsGidul.length != 0)
+      {
+        handleSelectGidul(optionsGidul[0]);
+      }
+    }
   };
 
   const handleSelectGidul = (selectedValue) => {
