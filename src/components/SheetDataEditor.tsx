@@ -232,6 +232,8 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
 
   const handleChangeToNewRow = (value: number) => {
     console.log(value);
+    setCurrentRowIndex(value);
+    setCurrentColumnIndex(minColIndex);
   };
 
   const saveModifications = () => {
