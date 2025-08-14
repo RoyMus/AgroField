@@ -165,27 +165,31 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       case "דלג":
       case "הבא":
         skipCurrentValue();
+        recordValue = false;
         break;
       case "חזור":
       case "אחורה":
         moveToPreviousCell();
+        recordValue = false;
         break;
       case "הזן":
-        recordValue = true;
+        recordValue = false;
         break;
       case "שמור":
         if(currentValue)
         {
           recordCurrentValue();
+          recordValue = false;
         }
         break;
       case "בטל":
         resetCurrentCell();
+        recordValue = false;
         break;
       default:
         if (recordValue) {
           handleInputChange(word);
-          recordValue = false;
+         
         }
         break;
     }
