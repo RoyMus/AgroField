@@ -7,7 +7,6 @@ import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 const InteractivePage = () => {
   const navigate = useNavigate();
   const { sheetData, selectedFile, clearSheetData } = useGoogleDrive();
-  const placeGrowerPlantRowIndex = 0;
 
   const handleBackToHome = () => {
     console.log('Going back to home screen');

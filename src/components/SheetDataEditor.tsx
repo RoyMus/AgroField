@@ -108,9 +108,43 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
             columnIndex: topBarIndex
           };
     }
+
+    
+
     setModifiedData(newModifiedData);
-        localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
+    localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
   }, []);
+
+  const calcAverages = () =>
+  {
+    const newModifiedData = {
+      ...modifiedData
+    };
+    for (let i = minColIndex; i <= maxColIndex; i++)
+    {
+      let sum = 0;
+      let temp = 0;
+      let counter = 0;
+      for (let j = headersRowIndex; j <= dataRows.length - 3 ; j++)
+      {
+        counter++;
+        temp = parseFloat(sheetData.values[j][i]);
+        if (!Number.isNaN(temp))
+        {
+          sum += temp;
+        }
+      }
+      sum /= counter;
+      newModifiedData[`${dataRows.length - 1}-${i}`] = {
+        originalValue: `${sum}`,
+        modifiedValue: `${sum}`,
+        rowIndex: dataRows.length - 1,
+        columnIndex: i
+      };
+    }
+    setModifiedData(newModifiedData);
+    localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
+  };
 
   useEffect(() => {
     // Load saved modifications from localStorage
@@ -195,8 +229,14 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     }
       
   });
+
   const handleInputChange = (value: string) => {
     setCurrentValue(value);
+  };
+
+  const handleChangeToNewRow = (value: number) => {
+    setCurrentRowIndex(value);
+    setCurrentColumnIndex(minColIndex);
   };
 
   const saveModifications = () => {
@@ -216,6 +256,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       });
       return;
     }
+    calcAverages();
     setShowSaveDialog(true);
   };
 
@@ -310,7 +351,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const moveToNextCell = () => {
     if (currentColumnIndex < maxColIndex) {
       setCurrentColumnIndex(currentColumnIndex + 1);
-    } else if (currentRowIndex < dataRows.length - 3) {
+    } else if (currentRowIndex < dataRows.length - 2) {
       setCurrentRowIndex(currentRowIndex + 1);
       setCurrentColumnIndex(minColIndex);
     }
@@ -369,6 +410,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         modifiedData={modifiedData}
         isRecording={isRecording}
         onInputChange={handleInputChange}
+        onChangeToRow={handleChangeToNewRow}
         onStartRecording={startVoiceRecording}
         onStopRecording={stopVoiceRecording}
         onResetCell={resetCurrentCell}
@@ -390,7 +432,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         modifiedCount={Object.keys(modifiedData).length}
         isLoading={isSaving}
       />
-      {/* Data Preview Table */}
+      {/* Data Preview Table *}
       <DataPreviewTable
         headers={headers}
         dataRows={dataRows}
