@@ -59,7 +59,6 @@ serve(async (req) => {
       rowMetadata?: Array<{ pixelSize?: number }>;
     }
     
-
     let sourceFormatting: SheetFormatting | null = null;
     if (originalFileId) {
       try {
@@ -106,108 +105,188 @@ serve(async (req) => {
       )
     }
 
-    // Copy formatting if we have source formatting
-    if (sourceFormatting && sourceFormatting.rowData) {
-      try {
-        const requests: Array<Record<string, any>> = [];
-        
-        // Copy row formatting
-        sourceFormatting.rowData.forEach((row, rowIndex) => {
-          if (row.values) {
-            row.values.forEach((cell, colIndex) => {
-              if (cell.userEnteredFormat || cell.effectiveFormat) {
-                const format = cell.userEnteredFormat || cell.effectiveFormat;
-                
-                requests.push({
-                  repeatCell: {
-                    range: {
-                      sheetId: newSheetId,
-                      startRowIndex: rowIndex,
-                      endRowIndex: rowIndex + 1,
-                      startColumnIndex: colIndex,
-                      endColumnIndex: colIndex + 1
-                    },
-                    cell: {
-                      userEnteredFormat: format
-                    },
-                    fields: 'userEnteredFormat'
-                  }
-                });
+    // Copy formatting - prioritize updated styles from our editor
+    const formatRequests: Array<Record<string, any>> = [];
+    
+    // Helper function to convert hex color to RGB for Google Sheets
+    const hexToRgb = (hex: string) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        red: parseInt(result[1], 16) / 255,
+        green: parseInt(result[2], 16) / 255,
+        blue: parseInt(result[3], 16) / 255
+      } : null;
+    };
+
+    // Apply formatting from our editor if available
+    if (sheetData.formatting && Array.isArray(sheetData.formatting)) {
+      sheetData.formatting.forEach((style: any) => {
+        const { rowIndex, columnIndex, format } = style;
+        const googleFormat: any = {};
+
+        if (format.backgroundColor) {
+          const rgb = hexToRgb(format.backgroundColor);
+          if (rgb) googleFormat.backgroundColor = rgb;
+        }
+
+        if (format.textColor || format.fontWeight || format.fontStyle || format.fontSize) {
+          googleFormat.textFormat = {};
+          
+          if (format.textColor) {
+            const rgb = hexToRgb(format.textColor);
+            if (rgb) googleFormat.textFormat.foregroundColor = rgb;
+          }
+
+          if (format.fontWeight === 'bold') {
+            googleFormat.textFormat.bold = true;
+          }
+
+          if (format.fontStyle === 'italic') {
+            googleFormat.textFormat.italic = true;
+          }
+
+          if (format.fontSize) {
+            googleFormat.textFormat.fontSize = format.fontSize;
+          }
+        }
+
+        if (format.textAlign) {
+          googleFormat.horizontalAlignment = format.textAlign.toUpperCase();
+        }
+
+        if (format.borders) {
+          googleFormat.borders = {};
+          Object.entries(format.borders).forEach(([side, border]: [string, any]) => {
+            if (border) {
+              const rgb = hexToRgb(border.color);
+              if (rgb) {
+                googleFormat.borders[side] = {
+                  style: border.style.toUpperCase(),
+                  color: rgb,
+                  width: border.width
+                };
               }
-            });
-          }
-        });
-
-        // Copy column widths
-        if (sourceFormatting.columnMetadata) {
-          sourceFormatting.columnMetadata.forEach((column, index) => {
-            if (column.pixelSize) {
-                requests.push({
-                  updateDimensionProperties: {
-                    range: {
-                      sheetId: newSheetId,
-                      dimension: 'COLUMNS',
-                      startIndex: index,
-                      endIndex: index + 1
-                    },
-                    properties: {
-                      pixelSize: column.pixelSize
-                    },
-                    fields: 'pixelSize'
-                  }
-                });
             }
           });
         }
 
-        // Copy row heights
-        if (sourceFormatting.rowMetadata) {
-          sourceFormatting.rowMetadata.forEach((row, index) => {
-            if (row.pixelSize) {
-                requests.push({
-                  updateDimensionProperties: {
-                    range: {
-                      sheetId: newSheetId,
-                      dimension: 'ROWS',
-                      startIndex: index,
-                      endIndex: index + 1
-                    },
-                    properties: {
-                      pixelSize: row.pixelSize
-                    },
-                    fields: 'pixelSize'
-                  }
-                });
-            }
-          });
-        }
-
-        // Apply formatting if we have requests
-        if (requests.length > 0) {
-          const formatResponse = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${newSpreadsheetId}:batchUpdate`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
+        if (Object.keys(googleFormat).length > 0) {
+          formatRequests.push({
+            repeatCell: {
+              range: {
+                sheetId: newSheetId,
+                startRowIndex: rowIndex,
+                endRowIndex: rowIndex + 1,
+                startColumnIndex: columnIndex,
+                endColumnIndex: columnIndex + 1
               },
-              body: JSON.stringify({
-                requests: requests
-              })
+              cell: {
+                userEnteredFormat: googleFormat
+              },
+              fields: 'userEnteredFormat'
             }
-          );
+          });
+        }
+      });
+    }
+    // Fallback to source formatting if no editor formatting is available
+    else if (sourceFormatting && sourceFormatting.rowData) {
+      sourceFormatting.rowData.forEach((row, rowIndex) => {
+        if (row.values) {
+          row.values.forEach((cell, colIndex) => {
+            if (cell.userEnteredFormat || cell.effectiveFormat) {
+              const format = cell.userEnteredFormat || cell.effectiveFormat;
+              
+              formatRequests.push({
+                repeatCell: {
+                  range: {
+                    sheetId: newSheetId,
+                    startRowIndex: rowIndex,
+                    endRowIndex: rowIndex + 1,
+                    startColumnIndex: colIndex,
+                    endColumnIndex: colIndex + 1
+                  },
+                  cell: {
+                    userEnteredFormat: format
+                  },
+                  fields: 'userEnteredFormat'
+                }
+              });
+            }
+          });
+        }
+      });
+    }
 
-          if (formatResponse.ok) {
-            console.log('Successfully copied formatting');
-          } else {
-            const formatError = await formatResponse.text();
-            console.error('Failed to copy formatting:', formatError);
+    // Copy column widths
+    if (sourceFormatting?.columnMetadata) {
+      sourceFormatting.columnMetadata.forEach((column, index) => {
+        if (column.pixelSize) {
+          formatRequests.push({
+            updateDimensionProperties: {
+              range: {
+                sheetId: newSheetId,
+                dimension: 'COLUMNS',
+                startIndex: index,
+                endIndex: index + 1
+              },
+              properties: {
+                pixelSize: column.pixelSize
+              },
+              fields: 'pixelSize'
+            }
+          });
+        }
+      });
+    }
+
+    // Copy row heights
+    if (sourceFormatting?.rowMetadata) {
+      sourceFormatting.rowMetadata.forEach((row, index) => {
+        if (row.pixelSize) {
+          formatRequests.push({
+            updateDimensionProperties: {
+              range: {
+                sheetId: newSheetId,
+                dimension: 'ROWS',
+                startIndex: index,
+                endIndex: index + 1
+              },
+              properties: {
+                pixelSize: row.pixelSize
+              },
+              fields: 'pixelSize'
+            }
+          });
+        }
+      });
+    }
+
+    // Apply all formatting requests
+    if (formatRequests.length > 0) {
+      try {
+        const formatResponse = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${newSpreadsheetId}:batchUpdate`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              requests: formatRequests
+            })
           }
+        );
+
+        if (formatResponse.ok) {
+          console.log('Successfully applied formatting with updated styles');
+        } else {
+          const formatError = await formatResponse.text();
+          console.error('Failed to apply formatting:', formatError);
         }
       } catch (formatError) {
-        console.error('Error copying formatting:', formatError);
-        // Continue even if formatting fails
+        console.error('Error applying formatting:', formatError);
       }
     }
 

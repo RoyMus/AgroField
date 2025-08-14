@@ -3,18 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Save, Plus, Minus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-interface SheetData {
-  values: string[][];
-  sheetName: string;
-}
-
-interface ModifiedCellData {
-  originalValue: string;
-  modifiedValue: string;
-  rowIndex: number;
-  columnIndex: number;
-}
+import { useCellStyling } from "@/hooks/useCellStyling";
+import { applyCellFormatToStyle, extractStylesFromSheetData } from "@/utils/formatConverters";
+import { SheetData, ModifiedCellData } from "@/types/cellTypes";
 
 interface EditableSheetTableProps {
   sheetData: SheetData;
@@ -25,6 +16,17 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
   const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
   const [hasChanges, setHasChanges] = useState(false);
   const { toast } = useToast();
+  
+  const {
+    cellStyles,
+    getCellStyle,
+    insertRow,
+    deleteRow,
+    insertColumn,
+    deleteColumn,
+    loadInitialStyles,
+    clearStyles
+  } = useCellStyling();
 
   // Load saved modifications from localStorage and apply to sheet data
   useEffect(() => {
@@ -38,6 +40,14 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
   useEffect(() => {
     if (sheetData?.values) {
       const baseData = sheetData.values.map(row => [...row]); // Deep copy
+      
+      // Load initial styles if available
+      if (sheetData.formatting) {
+        loadInitialStyles(sheetData.formatting);
+      } else {
+        // Clear styles if no formatting data
+        clearStyles();
+      }
       
       // Apply modifications from localStorage
       Object.values(modifiedData).forEach(modification => {
@@ -59,7 +69,7 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
       setLocalData(baseData);
       setHasChanges(Object.keys(modifiedData).length > 0);
     }
-  }, [sheetData, modifiedData]);
+  }, [sheetData, modifiedData, loadInitialStyles, clearStyles]);
 
   // Handle cell value changes and sync with localStorage
   const handleCellChange = useCallback((rowIndex: number, colIndex: number, value: string) => {
@@ -109,21 +119,28 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
   const addRow = () => {
     const maxCols = Math.max(...localData.map(row => row.length), 0);
     const newRow = new Array(maxCols).fill("");
+    const insertIndex = localData.length; // Insert at end
+    
     setLocalData(prev => [...prev, newRow]);
+    insertRow(insertIndex); // Update styles
     setHasChanges(true);
   };
 
   // Remove last row
   const removeRow = () => {
     if (localData.length > 1) {
+      const removeIndex = localData.length - 1;
       setLocalData(prev => prev.slice(0, -1));
+      deleteRow(removeIndex); // Update styles
       setHasChanges(true);
     }
   };
 
   // Add new column
   const addColumn = () => {
+    const insertIndex = Math.max(...localData.map(row => row.length), 0);
     setLocalData(prev => prev.map(row => [...row, ""]));
+    insertColumn(insertIndex); // Update styles
     setHasChanges(true);
   };
 
@@ -131,17 +148,25 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
   const removeColumn = () => {
     const maxCols = Math.max(...localData.map(row => row.length), 0);
     if (maxCols > 1) {
+      const removeIndex = maxCols - 1;
       setLocalData(prev => prev.map(row => row.slice(0, -1)));
+      deleteColumn(removeIndex); // Update styles
       setHasChanges(true);
     }
   };
 
   // Save current modifications
   const saveModifications = () => {
+    const modifiedDataWithStyles = {
+      ...modifiedData,
+      _styles: cellStyles // Include styles in saved data
+    };
     localStorage.setItem('sheet_cell_modifications', JSON.stringify(modifiedData));
+    localStorage.setItem('sheet_cell_styles', JSON.stringify(cellStyles));
+    
     toast({
       title: "Progress Saved",
-      description: `Saved modifications for ${Object.keys(modifiedData).length} cells`,
+      description: `Saved modifications for ${Object.keys(modifiedData).length} cells with formatting`,
     });
   };
 
@@ -240,16 +265,22 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
                   <td className="w-12 px-2 py-1 text-xs text-gray-500 text-center border-r bg-gray-50 font-medium">
                     {rowIndex + 1}
                   </td>
-                  {Array.from({ length: maxCols }, (_, colIndex) => (
-                    <td key={colIndex} className="border-r border-b p-0">
-                      <Input
-                        value={row[colIndex] || ""}
-                        onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
-                        className="border-0 rounded-none focus:ring-2 focus:ring-blue-500 focus:ring-inset h-8 text-sm"
-                        placeholder=""
-                      />
-                    </td>
-                  ))}
+                  {Array.from({ length: maxCols }, (_, colIndex) => {
+                    const cellStyle = getCellStyle(rowIndex, colIndex);
+                    const cellCssStyle = cellStyle ? applyCellFormatToStyle(cellStyle) : {};
+                    
+                    return (
+                      <td key={colIndex} className="border-r border-b p-0">
+                        <Input
+                          value={row[colIndex] || ""}
+                          onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
+                          className="border-0 rounded-none focus:ring-2 focus:ring-blue-500 focus:ring-inset h-8 text-sm"
+                          style={cellCssStyle}
+                          placeholder=""
+                        />
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

@@ -4,26 +4,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { getData } from "@/hooks/getData";
+import { useCellStyling } from "@/hooks/useCellStyling";
 import ProgressStats from "./ProgressStats";
 import CellEditor from "./CellEditor";
 import DataPreviewTable from "./DataPreviewTable";
 import SaveToNewSheetDialog from "./SaveToNewSheetDialog";
-
-interface SheetData {
-  sheetName: string;
-  values: string[][];
-  metadata: {
-    title: string;
-    sheetCount: number;
-  };
-}
-
-interface ModifiedCellData {
-  originalValue: string;
-  modifiedValue: string;
-  rowIndex: number;
-  columnIndex: number;
-}
+import { SheetData, ModifiedCellData } from "@/types/cellTypes";
 
 interface SheetDataEditorProps {
   sheetData: SheetData;
@@ -32,6 +18,21 @@ interface SheetDataEditorProps {
 const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const headersRowIndex = 6;
   const headers = sheetData.values[headersRowIndex -1] || [];
+  
+  const {
+    loadInitialStyles,
+    clearStyles
+  } = useCellStyling();
+  
+  // Load initial styles when component mounts
+  useEffect(() => {
+    if (sheetData.formatting) {
+      loadInitialStyles(sheetData.formatting);
+    } else {
+      clearStyles();
+    }
+  }, [sheetData, loadInitialStyles, clearStyles]);
+  
   var AlreadySetFirst = false;
   for (let i = 0; i < headers.length; i++) {
     if (headers[i] == "")

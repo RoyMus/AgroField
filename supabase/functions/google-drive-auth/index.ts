@@ -142,7 +142,90 @@ serve(async (req) => {
 
       const sheetData = await dataResponse.json()
       
-      console.log('Successfully read sheet data with', sheetData.values?.length || 0, 'rows')
+      // Get formatting data with grid data
+      const formattingResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${fileId}?includeGridData=true`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        }
+      )
+
+      let formattingData = null;
+      if (formattingResponse.ok) {
+        try {
+          const formatData = await formattingResponse.json();
+          const sourceFormatting = formatData.sheets?.[0]?.data?.[0];
+          
+          // Extract cell formatting
+          const cellStyles: Array<any> = [];
+          if (sourceFormatting?.rowData) {
+            sourceFormatting.rowData.forEach((row: any, rowIndex: number) => {
+              if (row.values) {
+                row.values.forEach((cell: any, colIndex: number) => {
+                  if (cell.userEnteredFormat || cell.effectiveFormat) {
+                    const format = cell.userEnteredFormat || cell.effectiveFormat;
+                    
+                    // Convert Google Sheets format to our format
+                    const convertedFormat: any = {};
+                    
+                    if (format.backgroundColor) {
+                      const { red = 1, green = 1, blue = 1 } = format.backgroundColor;
+                      convertedFormat.backgroundColor = `#${Math.round(red * 255).toString(16).padStart(2, '0')}${Math.round(green * 255).toString(16).padStart(2, '0')}${Math.round(blue * 255).toString(16).padStart(2, '0')}`;
+                    }
+
+                    if (format.textFormat) {
+                      if (format.textFormat.foregroundColor) {
+                        const { red = 0, green = 0, blue = 0 } = format.textFormat.foregroundColor;
+                        convertedFormat.textColor = `#${Math.round(red * 255).toString(16).padStart(2, '0')}${Math.round(green * 255).toString(16).padStart(2, '0')}${Math.round(blue * 255).toString(16).padStart(2, '0')}`;
+                      }
+                      if (format.textFormat.bold) convertedFormat.fontWeight = 'bold';
+                      if (format.textFormat.italic) convertedFormat.fontStyle = 'italic';
+                      if (format.textFormat.fontSize) convertedFormat.fontSize = format.textFormat.fontSize;
+                    }
+
+                    if (format.horizontalAlignment) {
+                      const alignment = format.horizontalAlignment.toLowerCase();
+                      if (['left', 'center', 'right'].includes(alignment)) {
+                        convertedFormat.textAlign = alignment;
+                      }
+                    }
+
+                    if (format.borders) {
+                      convertedFormat.borders = {};
+                      ['top', 'bottom', 'left', 'right'].forEach(side => {
+                        const border = format.borders[side];
+                        if (border && border.style !== 'NONE') {
+                          const color = border.color ? `#${Math.round((border.color.red || 0) * 255).toString(16).padStart(2, '0')}${Math.round((border.color.green || 0) * 255).toString(16).padStart(2, '0')}${Math.round((border.color.blue || 0) * 255).toString(16).padStart(2, '0')}` : '#000000';
+                          convertedFormat.borders[side] = {
+                            style: border.style.toLowerCase(),
+                            color,
+                            width: border.width || 1
+                          };
+                        }
+                      });
+                    }
+
+                    if (Object.keys(convertedFormat).length > 0) {
+                      cellStyles.push({
+                        rowIndex,
+                        columnIndex: colIndex,
+                        format: convertedFormat
+                      });
+                    }
+                  }
+                });
+              }
+            });
+          }
+          formattingData = cellStyles;
+        } catch (error) {
+          console.error('Failed to parse formatting data:', error);
+        }
+      }
+      
+      console.log('Successfully read sheet data with', sheetData.values?.length || 0, 'rows and', formattingData?.length || 0, 'formatted cells')
       
       return new Response(JSON.stringify({
         sheetName,
@@ -150,7 +233,8 @@ serve(async (req) => {
         metadata: {
           title: metadata.properties.title,
           sheetCount: metadata.sheets.length
-        }
+        },
+        formatting: formattingData
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })

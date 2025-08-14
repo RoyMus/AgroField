@@ -1,13 +1,9 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useState } from "react";
-
-interface ModifiedCellData {
-  originalValue: string;
-  modifiedValue: string;
-  rowIndex: number;
-  columnIndex: number;
-}
+import { useCellStyling } from "@/hooks/useCellStyling";
+import { applyCellFormatToStyle } from "@/utils/formatConverters";
+import { ModifiedCellData } from "@/types/cellTypes";
 
 interface DataPreviewTableProps {
   headers: string[];
@@ -26,7 +22,10 @@ const DataPreviewTable = ({
   currentValue,
   modifiedData,
 }: DataPreviewTableProps) => {
+  const { getCellStyle } = useCellStyling();
+  
   const getCellKey = (rowIndex: number, columnIndex: number) => `${rowIndex}-${columnIndex}`;
+  
   return (
     <div className="bg-white border-2 border-gray-200 rounded-xl p-6 shadow-lg">
       <h3 className="text-lg font-semibold mb-4">Sheet Preview</h3>
@@ -67,6 +66,8 @@ const DataPreviewTable = ({
                       : isCellModified 
                       ? modifiedData[cellKey].modifiedValue 
                       : cell;
+                    const cellStyle = getCellStyle(rowIndex, cellIndex);
+                    const cellCssStyle = cellStyle ? applyCellFormatToStyle(cellStyle) : {};
                     
                     return (
                       <TableCell 
@@ -75,6 +76,7 @@ const DataPreviewTable = ({
                           isCurrentCell ? 'bg-blue-200 font-semibold' : 
                           isCellModified ? 'bg-green-50 text-green-800' : ''
                         }`}
+                        style={cellCssStyle}
                       >
                         {displayValue}
                         {(isCellModified || (isCurrentCell && currentValue !== (''))) && 

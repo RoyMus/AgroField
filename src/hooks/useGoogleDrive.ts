@@ -14,6 +14,11 @@ interface SheetData {
     title: string;
     sheetCount: number;
   };
+  formatting?: Array<{
+    rowIndex: number;
+    columnIndex: number;
+    format: any;
+  }>;
 }
 
 interface UseGoogleDriveReturn {
@@ -221,6 +226,17 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     }
 
     try {
+      // Get current styles from localStorage
+      const savedStyles = localStorage.getItem('sheet_cell_styles');
+      let currentStyles = [];
+      if (savedStyles) {
+        try {
+          currentStyles = JSON.parse(savedStyles);
+        } catch (error) {
+          console.error('Failed to parse saved styles:', error);
+        }
+      }
+
       // Merge the original data with modifications
       const updatedValues = [...sheetData.values];
       
@@ -234,7 +250,8 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
 
       const updatedSheetData = {
         ...sheetData,
-        values: updatedValues
+        values: updatedValues,
+        formatting: currentStyles // Include current cell styles
       };
 
       const { data, error } = await supabase.functions.invoke('create-google-sheet', {
