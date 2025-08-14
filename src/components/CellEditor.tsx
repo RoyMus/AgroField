@@ -141,9 +141,9 @@ const CellEditor = ({
   }, []);
   
   return (
-    <div className="bg-white border-2 border-gray-200 rounded-xl p-6 shadow-lg">
-      <div className="flex items-center justify-between mb-4">
-        <div>
+    <div className="bg-white border-2 border-gray-200 rounded-xl p-4 md:p-6 shadow-lg">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4 space-y-4 lg:space-y-0">
+        <div className="flex-1">
           <h3 className="text-lg font-semibold">
             {headers[currentColumnIndex]}
             {isCurrentCellModified && 
@@ -163,12 +163,15 @@ const CellEditor = ({
             Cell {currentRowIndex * headers.length + currentColumnIndex + 1} of {dataRows.length * headers.length}
           </p>
         </div>
-        <div className="flex gap-2">
+        
+        {/* Mobile-optimized action buttons */}
+        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
           <Button
             onClick={onResetCell}
             variant="outline"
             size="sm"
             disabled={!isCurrentCellModified}
+            className="h-10 text-sm"
           >
             בטל
           </Button>
@@ -176,19 +179,22 @@ const CellEditor = ({
             onClick={onSaveProgress}
             variant="outline"
             size="sm"
+            className="h-10 text-sm"
           >
             <Save className="mr-1 h-4 w-4" />
-            שמור התקדמות
+            <span className="hidden sm:inline">שמור התקדמות</span>
+            <span className="sm:hidden">Save</span>
           </Button>
           {onSaveToNewSheet && (
             <Button
               onClick={onSaveToNewSheet}
               variant="default"
               size="sm"
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-blue-600 hover:bg-blue-700 h-10 text-sm"
             >
               <Save className="mr-1 h-4 w-4" />
-              שמור לגיליון חדש
+              <span className="hidden sm:inline">שמור לגיליון חדש</span>
+              <span className="sm:hidden">New Sheet</span>
             </Button>
           )}
         </div>
@@ -219,33 +225,34 @@ const CellEditor = ({
         />
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex justify-between items-center pt-4 border-t">
+      {/* Action Buttons - Mobile Optimized */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center pt-4 border-t space-y-3 sm:space-y-0">
         <Button
           onClick={onMovePrevious}
           disabled={isFirstCell}
           variant="outline"
+          className="h-12 w-full sm:w-auto text-base"
         >
-          <ChevronLeft className="mr-1 h-4 w-4" />
+          <ChevronLeft className="mr-2 h-5 w-5" />
           חזור
         </Button>
 
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <Button
             onClick={onSkipCurrent}
             disabled={isLastCell}
             variant="outline"
-            className="text-orange-600 border-orange-300 hover:bg-orange-50"
+            className="text-orange-600 border-orange-300 hover:bg-orange-50 h-12 text-base"
           >
-            <SkipForward className="mr-1 h-4 w-4" />
+            <SkipForward className="mr-2 h-5 w-5" />
             דלג
           </Button>
           <Button
             onClick={onRecordValue}
             disabled={isLastCell}
-            className="bg-green-600 hover:bg-green-700 text-white"
+            className="bg-green-600 hover:bg-green-700 text-white h-12 text-base"
           >
-            <Type className="mr-1 h-4 w-4" />
+            <Type className="mr-2 h-5 w-5" />
             שמור
           </Button>
         </div>

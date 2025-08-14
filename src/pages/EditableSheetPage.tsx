@@ -33,20 +33,20 @@ const EditableSheetPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
       <div className="container mx-auto px-6 py-8">
         <div className="space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between bg-white rounded-lg shadow-sm p-4">
-            <div className="flex items-center space-x-4">
+          {/* Header - Mobile Optimized */}
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
               <Button 
                 onClick={handleBackToInteractive}
                 variant="outline" 
                 size="sm"
-                className="flex items-center space-x-2"
+                className="h-10 w-full sm:w-auto"
               >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Back</span>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                <span>Back to Preview</span>
               </Button>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-800">
+              <div className="flex-1">
+                <h1 className="text-lg sm:text-xl font-semibold text-gray-800 truncate">
                   Edit Sheet: {selectedFile.name}
                 </h1>
                 <p className="text-sm text-gray-600">
