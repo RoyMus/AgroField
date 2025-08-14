@@ -47,7 +47,7 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor}) => {
                     {topBar}
                 </p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
                 <Button
                   onClick={onOpenEditor}
                   variant="default"
@@ -59,7 +59,7 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor}) => {
                 <Button
                 onClick={handleGoHome}
                 variant="outline"
-                className="border-gray-300 text-gray-600 hover:bg-gray-50"
+                className="flex-col sm:flex-row sm:justify-between sm:items-center pt-4 border-t space-y-3 sm:space-y-0"
                 >
                 חזור לדף הבית
                 </Button>
