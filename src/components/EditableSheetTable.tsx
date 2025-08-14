@@ -150,60 +150,66 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-2">
+      {/* Toolbar - Mobile Optimized */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 space-y-4 lg:space-y-0">
+        {/* Row/Column Actions */}
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
           <Button
             onClick={addRow}
             variant="outline"
             size="sm"
-            className="flex items-center space-x-2"
+            className="h-10 text-sm"
           >
-            <Plus className="w-4 h-4" />
-            <span>Add Row</span>
+            <Plus className="w-4 h-4 mr-1" />
+            <span className="hidden sm:inline">Add Row</span>
+            <span className="sm:hidden">Row +</span>
           </Button>
           <Button
             onClick={removeRow}
             variant="outline"
             size="sm"
             disabled={localData.length <= 1}
-            className="flex items-center space-x-2"
+            className="h-10 text-sm"
           >
-            <Minus className="w-4 h-4" />
-            <span>Remove Row</span>
+            <Minus className="w-4 h-4 mr-1" />
+            <span className="hidden sm:inline">Remove Row</span>
+            <span className="sm:hidden">Row -</span>
           </Button>
           <Button
             onClick={addColumn}
             variant="outline"
             size="sm"
-            className="flex items-center space-x-2"
+            className="h-10 text-sm"
           >
-            <Plus className="w-4 h-4" />
-            <span>Add Column</span>
+            <Plus className="w-4 h-4 mr-1" />
+            <span className="hidden sm:inline">Add Column</span>
+            <span className="sm:hidden">Col +</span>
           </Button>
           <Button
             onClick={removeColumn}
             variant="outline"
             size="sm"
             disabled={maxCols <= 1}
-            className="flex items-center space-x-2"
+            className="h-10 text-sm"
           >
-            <Minus className="w-4 h-4" />
-            <span>Remove Column</span>
+            <Minus className="w-4 h-4 mr-1" />
+            <span className="hidden sm:inline">Remove Column</span>
+            <span className="sm:hidden">Col -</span>
           </Button>
         </div>
         
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-600">
+        {/* Save Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:space-x-2">
+          <span className="text-sm text-gray-600 text-center sm:text-left">
             {Object.keys(modifiedData).length} cells modified
           </span>
           <Button
             onClick={saveModifications}
             variant="outline"
-            className="flex items-center space-x-2"
+            className="h-10 text-sm"
             disabled={Object.keys(modifiedData).length === 0}
           >
-            <Save className="w-4 h-4" />
+            <Save className="w-4 h-4 mr-1" />
             <span>Save Progress</span>
           </Button>
         </div>
