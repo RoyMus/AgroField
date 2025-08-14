@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
@@ -200,15 +199,13 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       case "דלג":
       case "הבא":
         skipCurrentValue();
-        recordValue = false;
         break;
       case "חזור":
       case "אחורה":
         moveToPreviousCell();
-        recordValue = false;
         break;
       case "הזן":
-        recordValue = false;
+        recordValue = true;
         break;
       case "שמור":
         if(currentValue)
@@ -219,12 +216,11 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         break;
       case "בטל":
         resetCurrentCell();
-        recordValue = false;
         break;
       default:
         if (recordValue) {
           handleInputChange(word);
-         
+          recordValue = false;
         }
         break;
     }
@@ -264,7 +260,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const handleCreateNewSheet = async (fileName: string) => {
     setIsSaving(true);
     try {
-      const result = await createNewSheet(fileName, modifiedData);
+      const result = await createNewSheet(fileName, modifiedData, sheetData.formatting); // Add formatting parameter
       
       if (result.success) {
         toast({
