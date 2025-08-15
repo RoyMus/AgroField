@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
@@ -193,40 +193,46 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   }, [currentRowIndex, currentColumnIndex]);
 
   const [recordValue, setRecordValue] = useState(false);
+  const recordValueRef = useRef(false);
+
+  const setRecordValueState = (value: boolean) => {
+    recordValueRef.current = value;
+    setRecordValue(value);
+  };
+
   onWordRecognized((word: string) => {
     switch(word)
     {
       case "דלג":
       case "הבא":
         skipCurrentValue();
-        setRecordValue(false);
+        setRecordValueState(false);
         break;
       case "חזור":
       case "אחורה":
         moveToPreviousCell();
-        setRecordValue(false);
+        setRecordValueState(false);
         break;
       case "הזן":
-        setRecordValue(true);
+        setRecordValueState(true);
         break;
       case "עצור":
-        setRecordValue(false);
+        setRecordValueState(false);
         break;
       case "שמור":
         if(currentValue)
         {
           recordCurrentValue();
-          setRecordValue(false);
+          setRecordValueState(false);
         }
         break;
       case "בטל":
         resetCurrentCell();
-        setRecordValue(true);
+        setRecordValueState(true);
         break;
       default:
-        if (recordValue) {
+        if (recordValueRef.current) {
           handleInputChange(word);
-          
         }
         break;
     }
