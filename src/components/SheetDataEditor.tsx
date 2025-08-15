@@ -192,35 +192,41 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     }
   }, [currentRowIndex, currentColumnIndex]);
 
-  let recordValue = false;
+  const [recordValue, setRecordValue] = useState(false);
   onWordRecognized((word: string) => {
     switch(word)
     {
       case "דלג":
       case "הבא":
         skipCurrentValue();
+        setRecordValue(false);
         break;
       case "חזור":
       case "אחורה":
         moveToPreviousCell();
+        setRecordValue(false);
         break;
       case "הזן":
-        recordValue = true;
+        setRecordValue(true);
+        break;
+      case "עצור":
+        setRecordValue(false);
         break;
       case "שמור":
         if(currentValue)
         {
           recordCurrentValue();
-          recordValue = false;
+          setRecordValue(false);
         }
         break;
       case "בטל":
         resetCurrentCell();
+        setRecordValue(true);
         break;
       default:
         if (recordValue) {
           handleInputChange(word);
-          recordValue = false;
+          
         }
         break;
     }
