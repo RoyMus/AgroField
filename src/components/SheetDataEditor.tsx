@@ -17,7 +17,7 @@ interface SheetDataEditorProps {
 const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const headersRowIndex = 6;
   const headers = sheetData.values[headersRowIndex -1] || [];
-  
+  const [rowChangeCounter, setRowChangeCounter] = useState(0);
   const {
     loadInitialStyles,
     clearStyles
@@ -360,9 +360,10 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const moveToNextCell = () => {
     if (currentColumnIndex < maxColIndex) {
       setCurrentColumnIndex(currentColumnIndex + 1);
-    } else if (currentRowIndex < dataRows.length - 2) {
+    } else if (currentRowIndex < dataRows.length - 3) {
       setCurrentRowIndex(currentRowIndex + 1);
       setCurrentColumnIndex(minColIndex);
+      setRowChangeCounter(rowChangeCounter + 1);
     }
     setCurrentCount(currentCount + 1);
   };
@@ -373,6 +374,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     } else if (currentRowIndex > headersRowIndex) {
       setCurrentRowIndex(currentRowIndex - 1);
       setCurrentColumnIndex(maxColIndex);
+      setRowChangeCounter(rowChangeCounter + 1);
     }
   };
 
@@ -413,6 +415,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       <CellEditor
         currentRowIndex={currentRowIndex}
         currentColumnIndex={currentColumnIndex}
+        rowChangeCounter={rowChangeCounter}
         headers={headers}
         dataRows={dataRows}
         currentValue={currentValue}

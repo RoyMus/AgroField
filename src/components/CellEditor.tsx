@@ -16,6 +16,7 @@ interface ModifiedCellData {
 interface CellEditorProps {
   currentRowIndex: number;
   currentColumnIndex: number;
+  rowChangeCounter: number;
   headers: string[];
   dataRows: string[][];
   currentValue: string;
@@ -38,6 +39,7 @@ interface CellEditorProps {
 const CellEditor = ({
   currentRowIndex,
   currentColumnIndex,
+  rowChangeCounter,
   headers,
   dataRows,
   currentValue,
@@ -65,7 +67,42 @@ const CellEditor = ({
   const [currentMagof, setCurrentMagof] = useState(null);
   const [optionsGidul, setOptionsGidul] = useState([]);
   const [currentGidul, setCurrentGidul] = useState(null);
-  
+  const [dropDownValueOfHamama, setDropDownHamama] = useState(null);
+  const [dropDownValueOfMagof, setDropDownMagof] = useState(null);
+  const [dropDownValueOfGidul, setDropDownGidul] = useState(null);
+
+  const handleChangedRow = () => {
+    let curHam = dataRows[currentRowIndex][0];
+    let curMag = dataRows[currentRowIndex][1];
+    let curGid = dataRows[currentRowIndex][3];
+    setDropDownHamama(curHam);
+    setDropDownMagof(curMag);
+    setDropDownGidul(curGid);
+
+    while (optionsMagof.length != 0)
+      optionsMagof.pop();
+    
+    while (optionsGidul.length != 0)
+      optionsGidul.pop();
+
+    
+    for (let i = 0; i < dataRows.length; i++)
+    {
+      if (dataRows[i][0] == curHam && !optionsMagof.includes(dataRows[i][1]))
+        optionsMagof.push(dataRows[i][1]);
+    }
+    setOptionsMagof([...optionsMagof]);
+    
+    for (let i = 0; i < dataRows.length; i++)
+    {
+      if (dataRows[i][0] == curHam && dataRows[i][1] == curMag)
+      {
+        optionsGidul.push(dataRows[i][3]);
+      }
+    }
+    setOptionsGidul([...optionsGidul]);
+  };
+
   const handleSelectHamama = (selectedValue) => {
     while (optionsMagof.length != 0)
       optionsMagof.pop();
@@ -77,6 +114,7 @@ const CellEditor = ({
     }
     setOptionsMagof([...optionsMagof]);
     setCurrentHamama(selectedValue);
+    setDropDownHamama(selectedValue);
   };
 
   const handleSelectMagof = (selectedValue) => {
@@ -95,6 +133,7 @@ const CellEditor = ({
     }
     setOptionsGidul([...optionsGidul]);
     setCurrentMagof(selectedValue);
+    setDropDownMagof(selectedValue);
     if (selectedValue == currentMagof)
     {
       if (optionsGidul.length != 0)
@@ -116,6 +155,7 @@ const CellEditor = ({
       }
     }
     setCurrentGidul(selectedValue);
+    setDropDownGidul(selectedValue);
   };
 
   useEffect (() => {
@@ -142,6 +182,10 @@ const CellEditor = ({
     handleSelectHamama(optionsHamama[0]);
   }, []);
   
+  useEffect (() => {
+    handleChangedRow();
+  }, [rowChangeCounter]);
+  
   return (
     <div className="bg-white border-2 border-gray-200 rounded-xl p-4 md:p-6 shadow-lg">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4 space-y-4 lg:space-y-0">
@@ -153,13 +197,13 @@ const CellEditor = ({
             }
           </h3>
           <h3 className="text-lg font-semibold">
-            <SimpleDropdown options={optionsHamama} value = {currentHamama} onSelect={handleSelectHamama} /> חממה
+            <SimpleDropdown options={optionsHamama} value = {dropDownValueOfHamama} onSelect={handleSelectHamama} /> חממה
           </h3>
           <h3 className="text-lg font-semibold">
-            <SimpleDropdown options={optionsMagof} value = {currentMagof} onSelect={handleSelectMagof} /> מגוף
+            <SimpleDropdown options={optionsMagof} value = {dropDownValueOfMagof} onSelect={handleSelectMagof} /> מגוף
           </h3>
           <h3 className="text-lg font-semibold">
-            <SimpleDropdown options={optionsGidul} value = {currentGidul} onSelect={handleSelectGidul} /> גידול
+            <SimpleDropdown options={optionsGidul} value = {dropDownValueOfGidul} onSelect={handleSelectGidul} /> גידול
           </h3>
           <p className="text-sm text-gray-600">
             Cell {currentRowIndex * headers.length + currentColumnIndex + 1} of {dataRows.length * headers.length}
