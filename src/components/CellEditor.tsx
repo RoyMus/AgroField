@@ -66,7 +66,6 @@ const CellEditor = ({
   const [optionsMagof, setOptionsMagof] = useState([]);
   const [currentMagof, setCurrentMagof] = useState(null);
   const [optionsGidul, setOptionsGidul] = useState([]);
-  const [currentGidul, setCurrentGidul] = useState(null);
   const [dropDownValueOfHamama, setDropDownHamama] = useState(null);
   const [dropDownValueOfMagof, setDropDownMagof] = useState(null);
   const [dropDownValueOfGidul, setDropDownGidul] = useState(null);
@@ -78,6 +77,8 @@ const CellEditor = ({
     setDropDownHamama(curHam);
     setDropDownMagof(curMag);
     setDropDownGidul(curGid);
+    setCurrentHamama(null);
+    setCurrentMagof(null);
 
     while (optionsMagof.length != 0)
       optionsMagof.pop();
@@ -149,11 +150,13 @@ const CellEditor = ({
         break;
       }
     }
-    setCurrentGidul(selectedValue);
     setDropDownGidul(selectedValue);
   };
 
   useEffect (() => {
+    if (currentHamama == null)
+      return;
+
     if (optionsMagof.length != 0)
     {
       handleSelectMagof(optionsMagof[0]);
@@ -161,6 +164,9 @@ const CellEditor = ({
   }, [currentHamama]);
 
   useEffect (() => {
+    if (currentMagof == null)
+      return;
+
     if (optionsGidul.length != 0)
     {
       handleSelectGidul(optionsGidul[0]);
