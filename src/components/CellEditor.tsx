@@ -118,15 +118,12 @@ const CellEditor = ({
   };
 
   const handleSelectMagof = (selectedValue) => {
-    if (currentHamama == null)
-      return;
-
     while (optionsGidul.length != 0)
       optionsGidul.pop();
 
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] == currentHamama && dataRows[i][1] == selectedValue)
+      if (dataRows[i][0] == dropDownValueOfHamama && dataRows[i][1] == selectedValue)
       {
         optionsGidul.push(dataRows[i][3]);
       }
@@ -144,14 +141,12 @@ const CellEditor = ({
   };
 
   const handleSelectGidul = (selectedValue) => {
-    if (currentHamama == null || currentMagof == null || selectedValue == null)
-      return;
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] == currentHamama && dataRows[i][1] == currentMagof && dataRows[i][3] == selectedValue)
+      if (dataRows[i][0] == dropDownValueOfHamama && dataRows[i][1] == dropDownValueOfMagof && dataRows[i][3] == selectedValue)
       {
         onChangeToRow(i);
-        return;
+        break;
       }
     }
     setCurrentGidul(selectedValue);
