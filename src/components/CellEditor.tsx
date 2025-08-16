@@ -64,6 +64,7 @@ const CellEditor = ({
   const [optionsMagof, setOptionsMagof] = useState([]);
   const [currentMagof, setCurrentMagof] = useState(null);
   const [optionsGidul, setOptionsGidul] = useState([]);
+  const [currentGidul, setCurrentGidul] = useState(null);
   
   const handleSelectHamama = (selectedValue) => {
     while (optionsMagof.length != 0)
@@ -114,6 +115,7 @@ const CellEditor = ({
         return;
       }
     }
+    setCurrentGidul(selectedValue);
   };
 
   useEffect (() => {
@@ -151,13 +153,13 @@ const CellEditor = ({
             }
           </h3>
           <h3 className="text-lg font-semibold">
-            <SimpleDropdown options={optionsHamama} onSelect={handleSelectHamama} /> חממה
+            <SimpleDropdown options={optionsHamama} value = {currentHamama} onSelect={handleSelectHamama} /> חממה
           </h3>
           <h3 className="text-lg font-semibold">
-            <SimpleDropdown options={optionsMagof} onSelect={handleSelectMagof} /> מגוף
+            <SimpleDropdown options={optionsMagof} value = {currentMagof} onSelect={handleSelectMagof} /> מגוף
           </h3>
           <h3 className="text-lg font-semibold">
-            <SimpleDropdown options={optionsGidul} onSelect={handleSelectGidul} /> גידול
+            <SimpleDropdown options={optionsGidul} value = {currentGidul} onSelect={handleSelectGidul} /> גידול
           </h3>
           <p className="text-sm text-gray-600">
             Cell {currentRowIndex * headers.length + currentColumnIndex + 1} of {dataRows.length * headers.length}
