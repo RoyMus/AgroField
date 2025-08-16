@@ -69,6 +69,11 @@ const DataPreviewTable = ({
                     const cellStyle = getCellStyle(rowIndex, cellIndex);
                     const cellCssStyle = cellStyle ? applyCellFormatToStyle(cellStyle) : {};
                     
+                    // Debug logging for first few cells
+                    if (rowIndex <= 2 && cellIndex <= 2) {
+                      console.log(`Cell [${rowIndex},${cellIndex}] style:`, cellStyle);
+                    }
+                    
                     return (
                       <TableCell 
                         key={cellIndex} 

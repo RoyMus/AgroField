@@ -158,7 +158,7 @@ serve(async (req) => {
           const formatData = await formattingResponse.json();
           const sourceFormatting = formatData.sheets?.[0]?.data?.[0];
           
-          // Extract cell formatting
+          // Extract cell formatting using utility function
           const cellStyles: Array<any> = [];
           if (sourceFormatting?.rowData) {
             sourceFormatting.rowData.forEach((row: any, rowIndex: number) => {
@@ -167,18 +167,18 @@ serve(async (req) => {
                   if (cell.userEnteredFormat || cell.effectiveFormat) {
                     const format = cell.userEnteredFormat || cell.effectiveFormat;
                     
-                    // Convert Google Sheets format to our format
+                    // Convert Google Sheets format to our format with rgb to hex conversion
                     const convertedFormat: any = {};
                     
                     if (format.backgroundColor) {
                       const { red = 1, green = 1, blue = 1 } = format.backgroundColor;
-                      convertedFormat.backgroundColor = `#${Math.round(red * 255).toString(16).padStart(2, '0')}${Math.round(green * 255).toString(16).padStart(2, '0')}${Math.round(blue * 255).toString(16).padStart(2, '0')}`;
+                      convertedFormat.backgroundColor = "#" + ((1 << 24) + (Math.round(red * 255) << 16) + (Math.round(green * 255) << 8) + Math.round(blue * 255)).toString(16).slice(1);
                     }
 
                     if (format.textFormat) {
                       if (format.textFormat.foregroundColor) {
                         const { red = 0, green = 0, blue = 0 } = format.textFormat.foregroundColor;
-                        convertedFormat.textColor = `#${Math.round(red * 255).toString(16).padStart(2, '0')}${Math.round(green * 255).toString(16).padStart(2, '0')}${Math.round(blue * 255).toString(16).padStart(2, '0')}`;
+                        convertedFormat.textColor = "#" + ((1 << 24) + (Math.round(red * 255) << 16) + (Math.round(green * 255) << 8) + Math.round(blue * 255)).toString(16).slice(1);
                       }
                       if (format.textFormat.bold) convertedFormat.fontWeight = 'bold';
                       if (format.textFormat.italic) convertedFormat.fontStyle = 'italic';
@@ -197,7 +197,11 @@ serve(async (req) => {
                       ['top', 'bottom', 'left', 'right'].forEach(side => {
                         const border = format.borders[side];
                         if (border && border.style !== 'NONE') {
-                          const color = border.color ? `#${Math.round((border.color.red || 0) * 255).toString(16).padStart(2, '0')}${Math.round((border.color.green || 0) * 255).toString(16).padStart(2, '0')}${Math.round((border.color.blue || 0) * 255).toString(16).padStart(2, '0')}` : '#000000';
+                          let color = '#000000';
+                          if (border.color) {
+                            const { red = 0, green = 0, blue = 0 } = border.color;
+                            color = "#" + ((1 << 24) + (Math.round(red * 255) << 16) + (Math.round(green * 255) << 8) + Math.round(blue * 255)).toString(16).slice(1);
+                          }
                           convertedFormat.borders[side] = {
                             style: border.style.toLowerCase(),
                             color,
@@ -220,6 +224,7 @@ serve(async (req) => {
             });
           }
           formattingData = cellStyles;
+          console.log('Extracted', cellStyles.length, 'formatted cells from Google Sheets');
         } catch (error) {
           console.error('Failed to parse formatting data:', error);
         }

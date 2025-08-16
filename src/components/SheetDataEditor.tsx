@@ -25,9 +25,11 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   
   // Load initial styles when component mounts
   useEffect(() => {
-    if (sheetData.formatting) {
+    if (sheetData.formatting && sheetData.formatting.length > 0) {
+      console.log('SheetDataEditor: Loading formatting with', sheetData.formatting.length, 'styles');
       loadInitialStyles(sheetData.formatting);
     } else {
+      console.log('SheetDataEditor: No formatting available, clearing styles');
       clearStyles();
     }
   }, [sheetData, loadInitialStyles, clearStyles]);
@@ -272,7 +274,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const handleCreateNewSheet = async (fileName: string) => {
     setIsSaving(true);
     try {
-      const result = await createNewSheet(fileName, modifiedData, sheetData.formatting); // Add formatting parameter
+      const result = await createNewSheet(fileName, modifiedData);
       
       if (result.success) {
         toast({

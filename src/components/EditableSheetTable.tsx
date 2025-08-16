@@ -43,8 +43,10 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
       
       // Load initial styles if available
       if (sheetData.formatting) {
+        console.log('Loading initial formatting styles:', sheetData.formatting);
         loadInitialStyles(sheetData.formatting);
       } else {
+        console.log('No formatting data available');
         // Clear styles if no formatting data
         clearStyles();
       }

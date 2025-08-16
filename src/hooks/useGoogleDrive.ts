@@ -226,7 +226,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     }
 
     try {
-      // Get current styles from localStorage
+      // Get current styles from localStorage (updated from cell editor)
       const savedStyles = localStorage.getItem('sheet_cell_styles');
       let currentStyles = [];
       if (savedStyles) {
@@ -235,6 +235,11 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
         } catch (error) {
           console.error('Failed to parse saved styles:', error);
         }
+      }
+
+      // If no updated styles exist, use original formatting
+      if (currentStyles.length === 0 && sheetData.formatting) {
+        currentStyles = sheetData.formatting;
       }
 
       // Merge the original data with modifications
