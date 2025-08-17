@@ -27,6 +27,8 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   
   // Load initial styles when component mounts
   useEffect(() => {
+    if(cellStyles)
+      return;
     if (sheetData.formatting && sheetData.formatting.length > 0) {
       console.log('SheetDataEditor: Loading formatting with', sheetData.formatting.length, 'styles');
       loadInitialStyles(sheetData.formatting);
@@ -145,8 +147,12 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         rowIndex: dataRows.length - 1,
         columnIndex: i
       };
+      const wantedResult = sheetData.values[dataRows.length - 2][i].split('-');
+      let isGreater = sum > parseFloat(wantedResult[0]);
+      if(wantedResult.length > 1)
+        isGreater = isGreater && sum < parseFloat(wantedResult[1]);
       setCellStyleFormat(dataRows.length - 1,i,{
-      backgroundColor: '#ff0000ff',
+      backgroundColor:  isGreater ? '#ff0000ff' : '#00ff15ff',
     });
     }
     setModifiedData(newModifiedData);
