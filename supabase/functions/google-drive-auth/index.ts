@@ -156,14 +156,12 @@ serve(async (req)=>{
                       // Handle text color - only if explicitly set and not black
                       if (format.textFormat.foregroundColor) {
                         const { red, green, blue } = format.textFormat.foregroundColor;
-                        if (red !== undefined || green !== undefined || blue !== undefined) {
-                          const r = red ?? 0;
-                          const g = green ?? 0;
-                          const b = blue ?? 0;
-                          // Don't add black text as it's default
-                          if (!(r <= 0.01 && g <= 0.01 && b <= 0.01)) {
-                            convertedFormat.textColor = normalizedRgbToHex(r, g, b);
-                          }
+                        const r = red ?? 0;
+                        const g = green ?? 0;
+                        const b = blue ?? 0;
+                        // Don't add black text as it's default
+                        if (!(r <= 0.01 && g <= 0.01 && b <= 0.01)) {
+                          convertedFormat.textColor = normalizedRgbToHex(r, g, b);
                         }
                       }
                       if (format.textFormat.bold) convertedFormat.fontWeight = 'bold';
