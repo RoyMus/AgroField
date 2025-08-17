@@ -176,28 +176,36 @@ serve(async (req) => {
                       return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
                     };
                     
-                    // Convert Google Sheets format to our format - CAPTURE ALL COLORS
+                    // Convert Google Sheets format to our format with proper color handling
                     const convertedFormat: any = {};
                     
-                    // Always capture background color if it exists - NO FILTERING
-                    if (format.backgroundColor && 
-                        (format.backgroundColor.red !== undefined || 
-                         format.backgroundColor.green !== undefined || 
-                         format.backgroundColor.blue !== undefined)) {
-                      const { red = 1, green = 1, blue = 1 } = format.backgroundColor;
-                      convertedFormat.backgroundColor = normalizedRgbToHex(red, green, blue);
-                      console.log(`Cell [${rowIndex},${colIndex}] background:`, convertedFormat.backgroundColor);
+                    // Handle background color - only if explicitly set and not white
+                    if (format.backgroundColor) {
+                      const { red, green, blue } = format.backgroundColor;
+                      if (red !== undefined || green !== undefined || blue !== undefined) {
+                        const r = red ?? 1;
+                        const g = green ?? 1;
+                        const b = blue ?? 1;
+                        // Don't add white backgrounds as they're default
+                        if (!(r >= 0.99 && g >= 0.99 && b >= 0.99)) {
+                          convertedFormat.backgroundColor = normalizedRgbToHex(r, g, b);
+                        }
+                      }
                     }
 
                     if (format.textFormat) {
-                      // Always capture text color if it exists - NO FILTERING
-                      if (format.textFormat.foregroundColor &&
-                          (format.textFormat.foregroundColor.red !== undefined ||
-                           format.textFormat.foregroundColor.green !== undefined ||
-                           format.textFormat.foregroundColor.blue !== undefined)) {
-                        const { red = 0, green = 0, blue = 0 } = format.textFormat.foregroundColor;
-                        convertedFormat.textColor = normalizedRgbToHex(red, green, blue);
-                        console.log(`Cell [${rowIndex},${colIndex}] text color:`, convertedFormat.textColor);
+                      // Handle text color - only if explicitly set and not black
+                      if (format.textFormat.foregroundColor) {
+                        const { red, green, blue } = format.textFormat.foregroundColor;
+                        if (red !== undefined || green !== undefined || blue !== undefined) {
+                          const r = red ?? 0;
+                          const g = green ?? 0;
+                          const b = blue ?? 0;
+                          // Don't add black text as it's default
+                          if (!(r <= 0.01 && g <= 0.01 && b <= 0.01)) {
+                            convertedFormat.textColor = normalizedRgbToHex(r, g, b);
+                          }
+                        }
                       }
                       if (format.textFormat.bold) convertedFormat.fontWeight = 'bold';
                       if (format.textFormat.italic) convertedFormat.fontStyle = 'italic';

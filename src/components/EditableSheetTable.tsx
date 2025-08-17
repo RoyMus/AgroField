@@ -267,11 +267,6 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
                     const cellStyle = getCellStyle(rowIndex, colIndex);
                     const cellCssStyle = cellStyle ? applyCellFormatToStyle(cellStyle) : {};
                     
-                    // Enhanced debugging for styled cells
-                    if (cellStyle) {
-                      console.log(`EditableTable Cell [${rowIndex},${colIndex}] style:`, cellStyle, 'CSS:', cellCssStyle);
-                    }
-                    
                     return (
                       <td key={colIndex} className="border-r border-b p-0">
                         <Input
