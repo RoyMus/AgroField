@@ -148,11 +148,11 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         columnIndex: i
       };
       const wantedResult = sheetData.values[dataRows.length - 2][i].split('-');
-      let isGreater = sum > parseFloat(wantedResult[0]);
+      let isBetween = sum > parseFloat(wantedResult[0]);
       if(wantedResult.length > 1)
-        isGreater = isGreater && sum < parseFloat(wantedResult[1]);
+        isBetween = isBetween && sum < parseFloat(wantedResult[1]);
       setCellStyleFormat(dataRows.length - 1,i,{
-      backgroundColor:  isGreater ? '#ff0000ff' : '#00ff15ff',
+      backgroundColor:  isBetween ? '#00ff15ff' : '#ff0000ff',
     });
     }
     setModifiedData(newModifiedData);
