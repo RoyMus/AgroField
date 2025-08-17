@@ -14,40 +14,29 @@ export const normalizedRgbToHex = (red: number, green: number, blue: number): st
   return rgbToHex(red * 255, green * 255, blue * 255);
 };
 
-// Convert Google Sheets API format to our CellFormat
+// Convert Google Sheets API format to our CellFormat - CAPTURE EVERYTHING
 export const convertGoogleSheetsFormat = (googleFormat: any): CellFormat => {
   const format: CellFormat = {};
 
-  // Handle background color - only convert if it exists and isn't default white
-  if (googleFormat.backgroundColor) {
-    const { red, green, blue } = googleFormat.backgroundColor;
-    // Only add background color if it's explicitly set and not default white
-    if (red !== undefined || green !== undefined || blue !== undefined) {
-      const r = red ?? 1;
-      const g = green ?? 1; 
-      const b = blue ?? 1;
-      // Don't add white backgrounds as they're default
-      if (!(r >= 0.99 && g >= 0.99 && b >= 0.99)) {
-        format.backgroundColor = normalizedRgbToHex(r, g, b);
-      }
-    }
+  // Always capture background color if it exists - NO FILTERING
+  if (googleFormat.backgroundColor && 
+      (googleFormat.backgroundColor.red !== undefined || 
+       googleFormat.backgroundColor.green !== undefined || 
+       googleFormat.backgroundColor.blue !== undefined)) {
+    const { red = 1, green = 1, blue = 1 } = googleFormat.backgroundColor;
+    format.backgroundColor = normalizedRgbToHex(red, green, blue);
   }
 
   if (googleFormat.textFormat) {
     const textFormat = googleFormat.textFormat;
     
-    // Handle text color - only convert if it exists and isn't default black
-    if (textFormat.foregroundColor) {
-      const { red, green, blue } = textFormat.foregroundColor;
-      if (red !== undefined || green !== undefined || blue !== undefined) {
-        const r = red ?? 0;
-        const g = green ?? 0;
-        const b = blue ?? 0;
-        // Don't add black text as it's default
-        if (!(r <= 0.01 && g <= 0.01 && b <= 0.01)) {
-          format.textColor = normalizedRgbToHex(r, g, b);
-        }
-      }
+    // Always capture text color if it exists - NO FILTERING  
+    if (textFormat.foregroundColor &&
+        (textFormat.foregroundColor.red !== undefined ||
+         textFormat.foregroundColor.green !== undefined ||
+         textFormat.foregroundColor.blue !== undefined)) {
+      const { red = 0, green = 0, blue = 0 } = textFormat.foregroundColor;
+      format.textColor = normalizedRgbToHex(red, green, blue);
     }
 
     if (textFormat.bold) {

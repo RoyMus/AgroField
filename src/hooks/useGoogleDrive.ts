@@ -228,18 +228,30 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     try {
       // Get current styles from localStorage (updated from cell editor)
       const savedStyles = localStorage.getItem('sheet_cell_styles');
-      let currentStyles = [];
+      let currentFormatting = [];
+      
       if (savedStyles) {
         try {
-          currentStyles = JSON.parse(savedStyles);
+          const stylesMap = JSON.parse(savedStyles);
+          // Convert styles map back to array format
+          currentFormatting = Object.entries(stylesMap).map(([cellKey, format]) => {
+            const [rowIndex, columnIndex] = cellKey.split('-').map(Number);
+            return {
+              rowIndex,
+              columnIndex,
+              format
+            };
+          });
+          console.log('Using current styles from localStorage:', currentFormatting.length, 'styled cells');
         } catch (error) {
           console.error('Failed to parse saved styles:', error);
         }
       }
 
       // If no updated styles exist, use original formatting
-      if (currentStyles.length === 0 && sheetData.formatting) {
-        currentStyles = sheetData.formatting;
+      if (currentFormatting.length === 0 && sheetData.formatting) {
+        currentFormatting = sheetData.formatting;
+        console.log('Using original formatting:', currentFormatting.length, 'styled cells');
       }
 
       // Merge the original data with modifications
@@ -256,7 +268,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       const updatedSheetData = {
         ...sheetData,
         values: updatedValues,
-        formatting: currentStyles // Include current cell styles
+        formatting: currentFormatting // Include current cell styles
       };
 
       const { data, error } = await supabase.functions.invoke('create-google-sheet', {
