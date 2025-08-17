@@ -40,17 +40,6 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
   useEffect(() => {
     if (sheetData?.values) {
       const baseData = sheetData.values.map(row => [...row]); // Deep copy
-      
-      // Load initial styles if available
-      if (sheetData.formatting) {
-        console.log('Loading initial formatting styles:', sheetData.formatting);
-        loadInitialStyles(sheetData.formatting);
-      } else {
-        console.log('No formatting data available');
-        // Clear styles if no formatting data
-        clearStyles();
-      }
-      
       // Apply modifications from localStorage
       Object.values(modifiedData).forEach(modification => {
         const { rowIndex, columnIndex, modifiedValue } = modification;

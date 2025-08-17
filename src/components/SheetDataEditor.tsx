@@ -19,8 +19,10 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const headers = sheetData.values[headersRowIndex -1] || [];
   const [rowChangeCounter, setRowChangeCounter] = useState(0);
   const {
+    cellStyles,
     loadInitialStyles,
-    clearStyles
+    clearStyles,
+    setCellStyleFormat,
   } = useCellStyling();
   
   // Load initial styles when component mounts
@@ -143,6 +145,9 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         rowIndex: dataRows.length - 1,
         columnIndex: i
       };
+      setCellStyleFormat(dataRows.length - 1,i,{
+      backgroundColor: '#ff0000ff',
+    });
     }
     setModifiedData(newModifiedData);
     localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));

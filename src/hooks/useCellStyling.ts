@@ -5,13 +5,14 @@ interface UseCellStylingReturn {
   cellStyles: CellStyle[];
   getCellStyle: (rowIndex: number, columnIndex: number) => CellFormat | undefined;
   setCellStyle: (rowIndex: number, columnIndex: number, format: CellFormat) => void;
+  setCellStyleFormat: (rowIndex: number, columnIndex: number, format: CellFormat) => void;
   insertRow: (atIndex: number) => void;
   deleteRow: (atIndex: number) => void;
   insertColumn: (atIndex: number) => void;
   deleteColumn: (atIndex: number) => void;
   loadInitialStyles: (styles: CellStyle[]) => void;
   clearStyles: () => void;
-}
+}``
 
 export const useCellStyling = (): UseCellStylingReturn => {
   const [cellStyles, setCellStyles] = useState<CellStyle[]>([]);
@@ -38,6 +39,23 @@ export const useCellStyling = (): UseCellStylingReturn => {
     return style?.format;
   }, [cellStyles]);
 
+  const setCellStyleFormat = (rowIndex: number, columnIndex: number, format: CellFormat) => {
+  setCellStyles(prev => {
+    // Find if a style already exists for this cell
+    const existing = prev.find(s => s.rowIndex === rowIndex && s.columnIndex === columnIndex);
+    if (existing) {
+      // Update only the provided fields
+      return prev.map(s =>
+        s.rowIndex === rowIndex && s.columnIndex === columnIndex
+          ? { ...s, format: { ...s.format, ...format } }
+          : s
+      );
+    } else {
+      // Add a new style for this cell
+      return [...prev, { rowIndex, columnIndex, format }];
+    }
+  });
+};
   const setCellStyle = useCallback((rowIndex: number, columnIndex: number, format: CellFormat) => {
     setCellStyles(prev => {
       const filtered = prev.filter(s => !(s.rowIndex === rowIndex && s.columnIndex === columnIndex));
@@ -113,5 +131,6 @@ export const useCellStyling = (): UseCellStylingReturn => {
     deleteColumn,
     loadInitialStyles,
     clearStyles,
+    setCellStyleFormat,
   };
 };
