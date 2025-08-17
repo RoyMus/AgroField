@@ -167,18 +167,45 @@ serve(async (req) => {
                   if (cell.userEnteredFormat || cell.effectiveFormat) {
                     const format = cell.userEnteredFormat || cell.effectiveFormat;
                     
-                    // Convert Google Sheets format to our format with rgb to hex conversion
+                    // Helper function to convert normalized RGB to hex
+                    const normalizedRgbToHex = (red: number, green: number, blue: number): string => {
+                      const toHex = (val: number) => {
+                        const hex = Math.round(Math.max(0, Math.min(255, val * 255))).toString(16);
+                        return hex.length === 1 ? '0' + hex : hex;
+                      };
+                      return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
+                    };
+                    
+                    // Convert Google Sheets format to our format with proper color handling
                     const convertedFormat: any = {};
                     
+                    // Handle background color - only if explicitly set and not white
                     if (format.backgroundColor) {
-                      const { red = 1, green = 1, blue = 1 } = format.backgroundColor;
-                      convertedFormat.backgroundColor = "#" + ((1 << 24) + (Math.round(red * 255) << 16) + (Math.round(green * 255) << 8) + Math.round(blue * 255)).toString(16).slice(1);
+                      const { red, green, blue } = format.backgroundColor;
+                      if (red !== undefined || green !== undefined || blue !== undefined) {
+                        const r = red ?? 1;
+                        const g = green ?? 1;
+                        const b = blue ?? 1;
+                        // Don't add white backgrounds as they're default
+                        if (!(r >= 0.99 && g >= 0.99 && b >= 0.99)) {
+                          convertedFormat.backgroundColor = normalizedRgbToHex(r, g, b);
+                        }
+                      }
                     }
 
                     if (format.textFormat) {
+                      // Handle text color - only if explicitly set and not black
                       if (format.textFormat.foregroundColor) {
-                        const { red = 0, green = 0, blue = 0 } = format.textFormat.foregroundColor;
-                        convertedFormat.textColor = "#" + ((1 << 24) + (Math.round(red * 255) << 16) + (Math.round(green * 255) << 8) + Math.round(blue * 255)).toString(16).slice(1);
+                        const { red, green, blue } = format.textFormat.foregroundColor;
+                        if (red !== undefined || green !== undefined || blue !== undefined) {
+                          const r = red ?? 0;
+                          const g = green ?? 0;
+                          const b = blue ?? 0;
+                          // Don't add black text as it's default
+                          if (!(r <= 0.01 && g <= 0.01 && b <= 0.01)) {
+                            convertedFormat.textColor = normalizedRgbToHex(r, g, b);
+                          }
+                        }
                       }
                       if (format.textFormat.bold) convertedFormat.fontWeight = 'bold';
                       if (format.textFormat.italic) convertedFormat.fontStyle = 'italic';
@@ -200,7 +227,7 @@ serve(async (req) => {
                           let color = '#000000';
                           if (border.color) {
                             const { red = 0, green = 0, blue = 0 } = border.color;
-                            color = "#" + ((1 << 24) + (Math.round(red * 255) << 16) + (Math.round(green * 255) << 8) + Math.round(blue * 255)).toString(16).slice(1);
+                            color = normalizedRgbToHex(red, green, blue);
                           }
                           convertedFormat.borders[side] = {
                             style: border.style.toLowerCase(),
@@ -225,6 +252,11 @@ serve(async (req) => {
           }
           formattingData = cellStyles;
           console.log('Extracted', cellStyles.length, 'formatted cells from Google Sheets');
+          
+          // Log sample of formatting for debugging
+          if (cellStyles.length > 0) {
+            console.log('Sample formatting styles:', JSON.stringify(cellStyles.slice(0, 3), null, 2));
+          }
         } catch (error) {
           console.error('Failed to parse formatting data:', error);
         }

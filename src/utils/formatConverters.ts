@@ -1,33 +1,53 @@
 import { CellFormat, CellStyle } from '@/types/cellTypes';
 
-// Convert RGB to hex
+// Convert RGB normalized values (0-1) to hex
 export const rgbToHex = (r: number, g: number, b: number): string => {
-  return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  const toHex = (val: number) => {
+    const hex = Math.round(Math.max(0, Math.min(255, val))).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  };
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+};
+
+// Convert Google Sheets normalized RGB (0-1) to hex
+export const normalizedRgbToHex = (red: number, green: number, blue: number): string => {
+  return rgbToHex(red * 255, green * 255, blue * 255);
 };
 
 // Convert Google Sheets API format to our CellFormat
 export const convertGoogleSheetsFormat = (googleFormat: any): CellFormat => {
   const format: CellFormat = {};
 
+  // Handle background color - only convert if it exists and isn't default white
   if (googleFormat.backgroundColor) {
-    const { red = 1, green = 1, blue = 1 } = googleFormat.backgroundColor;
-    format.backgroundColor = rgbToHex(
-      Math.round(red * 255),
-      Math.round(green * 255),
-      Math.round(blue * 255)
-    );
+    const { red, green, blue } = googleFormat.backgroundColor;
+    // Only add background color if it's explicitly set and not default white
+    if (red !== undefined || green !== undefined || blue !== undefined) {
+      const r = red ?? 1;
+      const g = green ?? 1; 
+      const b = blue ?? 1;
+      // Don't add white backgrounds as they're default
+      if (!(r >= 0.99 && g >= 0.99 && b >= 0.99)) {
+        format.backgroundColor = normalizedRgbToHex(r, g, b);
+      }
+    }
   }
 
   if (googleFormat.textFormat) {
     const textFormat = googleFormat.textFormat;
     
+    // Handle text color - only convert if it exists and isn't default black
     if (textFormat.foregroundColor) {
-      const { red = 0, green = 0, blue = 0 } = textFormat.foregroundColor;
-      format.textColor = rgbToHex(
-        Math.round(red * 255),
-        Math.round(green * 255),
-        Math.round(blue * 255)
-      );
+      const { red, green, blue } = textFormat.foregroundColor;
+      if (red !== undefined || green !== undefined || blue !== undefined) {
+        const r = red ?? 0;
+        const g = green ?? 0;
+        const b = blue ?? 0;
+        // Don't add black text as it's default
+        if (!(r <= 0.01 && g <= 0.01 && b <= 0.01)) {
+          format.textColor = normalizedRgbToHex(r, g, b);
+        }
+      }
     }
 
     if (textFormat.bold) {
@@ -55,10 +75,10 @@ export const convertGoogleSheetsFormat = (googleFormat: any): CellFormat => {
     ['top', 'bottom', 'left', 'right'].forEach(side => {
       const border = googleFormat.borders[side];
       if (border && border.style !== 'NONE') {
-        const color = border.color ? rgbToHex(
-          Math.round((border.color.red || 0) * 255),
-          Math.round((border.color.green || 0) * 255),
-          Math.round((border.color.blue || 0) * 255)
+        const color = border.color ? normalizedRgbToHex(
+          border.color.red || 0,
+          border.color.green || 0,
+          border.color.blue || 0
         ) : '#000000';
         
         format.borders![side as keyof typeof format.borders] = {
@@ -73,27 +93,28 @@ export const convertGoogleSheetsFormat = (googleFormat: any): CellFormat => {
   return format;
 };
 
+// Convert hex to Google Sheets normalized RGB (0-1)
+export const hexToNormalizedRgb = (hex: string): { red: number; green: number; blue: number } => {
+  const cleanHex = hex.replace('#', '');
+  const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
+  const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
+  const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
+  return { red: r, green: g, blue: b };
+};
+
 // Convert our CellFormat to Google Sheets API format
 export const convertToGoogleSheetsFormat = (format: CellFormat): any => {
   const googleFormat: any = {};
 
   if (format.backgroundColor) {
-    const hex = format.backgroundColor.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16) / 255;
-    const g = parseInt(hex.substr(2, 2), 16) / 255;
-    const b = parseInt(hex.substr(4, 2), 16) / 255;
-    googleFormat.backgroundColor = { red: r, green: g, blue: b };
+    googleFormat.backgroundColor = hexToNormalizedRgb(format.backgroundColor);
   }
 
   if (format.textColor || format.fontWeight || format.fontStyle || format.fontSize) {
     googleFormat.textFormat = {};
     
     if (format.textColor) {
-      const hex = format.textColor.replace('#', '');
-      const r = parseInt(hex.substr(0, 2), 16) / 255;
-      const g = parseInt(hex.substr(2, 2), 16) / 255;
-      const b = parseInt(hex.substr(4, 2), 16) / 255;
-      googleFormat.textFormat.foregroundColor = { red: r, green: g, blue: b };
+      googleFormat.textFormat.foregroundColor = hexToNormalizedRgb(format.textColor);
     }
 
     if (format.fontWeight === 'bold') {
@@ -117,14 +138,9 @@ export const convertToGoogleSheetsFormat = (format: CellFormat): any => {
     googleFormat.borders = {};
     Object.entries(format.borders).forEach(([side, border]) => {
       if (border) {
-        const hex = border.color.replace('#', '');
-        const r = parseInt(hex.substr(0, 2), 16) / 255;
-        const g = parseInt(hex.substr(2, 2), 16) / 255;
-        const b = parseInt(hex.substr(4, 2), 16) / 255;
-        
         googleFormat.borders[side] = {
           style: border.style.toUpperCase(),
-          color: { red: r, green: g, blue: b },
+          color: hexToNormalizedRgb(border.color),
           width: border.width
         };
       }
