@@ -114,7 +114,6 @@ serve(async (req)=>{
         alpha: result[4] ? parseInt(result[4], 16) / 255 : 1
       };
     };
-    console.log(sheetData.formatting);
     // Apply formatting from our editor if available
     if (sheetData.formatting && Array.isArray(sheetData.formatting)) {
       sheetData.formatting.forEach((style)=>{
