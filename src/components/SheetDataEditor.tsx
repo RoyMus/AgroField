@@ -27,8 +27,10 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   // Load initial styles when component mounts
   useEffect(() => {
     const cellStyles = localStorage.getItem('sheet_cell_styles');
-    if (cellStyles)
+    if (cellStyles.length === 0) 
+    {
       return;
+    }
     if (sheetData.formatting && sheetData.formatting.length > 0) {
       console.log('SheetDataEditor: Loading formatting with', sheetData.formatting.length, 'styles');
       loadInitialStyles(sheetData.formatting);
@@ -299,7 +301,8 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
         // Clear modifications since they've been saved to a new sheet
         setModifiedData({});
         localStorage.removeItem('sheet_cell_modifications');
-        
+        localStorage.removeItem('sheet_cell_styles');
+
         // Optionally open the new sheet
         if (result.url) {
           window.open(result.url, '_blank');

@@ -107,12 +107,6 @@ export const useCellStyling = (): UseCellStylingReturn => {
 
   // Load initial styles and merge with existing ones
   const loadInitialStyles = useCallback((styles: CellStyle[]) => {
-    console.log('Loading initial styles:', styles.length, 'styles');
-    
-    styles.forEach(style => {
-      console.log(`Loading style for cell ${style.rowIndex}-${style.columnIndex}:`, style.format);
-    });
-    
     setCellStyles(styles);
   }, []);
 
