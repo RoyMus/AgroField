@@ -19,7 +19,6 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   const headers = sheetData.values[headersRowIndex -1] || [];
   const [rowChangeCounter, setRowChangeCounter] = useState(0);
   const {
-    cellStyles,
     loadInitialStyles,
     clearStyles,
     setCellStyleFormat,
@@ -27,7 +26,8 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   
   // Load initial styles when component mounts
   useEffect(() => {
-    if(cellStyles)
+    const cellStyles = localStorage.getItem('sheet_cell_styles');
+    if (cellStyles)
       return;
     if (sheetData.formatting && sheetData.formatting.length > 0) {
       console.log('SheetDataEditor: Loading formatting with', sheetData.formatting.length, 'styles');

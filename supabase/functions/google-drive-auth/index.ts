@@ -4,248 +4,326 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 };
 serve(async (req)=>{
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
+    return new Response('ok', {
       headers: corsHeaders
     });
   }
   try {
-    // Read the request body once and store it
-    const requestBody = await req.json();
-    const { action, code, accessToken, fileId } = requestBody;
-    console.log('Request action:', action);
-    const CLIENT_ID = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID');
-    const CLIENT_SECRET = Deno.env.get('GOOGLE_DRIVE_CLIENT_SECRET');
-    if (!CLIENT_ID || !CLIENT_SECRET) {
-      throw new Error('Google Drive credentials not configured');
-    }
-    if (action === 'getAuthUrl') {
-      const redirectUri = `${req.headers.get('origin')}/`;
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + `client_id=${CLIENT_ID}&` + `redirect_uri=${encodeURIComponent(redirectUri)}&` + `response_type=code&` + `scope=${encodeURIComponent('https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets')}&` + `access_type=offline&` + `prompt=consent`;
-      console.log('Generated auth URL for redirect URI:', redirectUri);
+    const { accessToken, fileName, sheetData, originalFileId } = await req.json();
+    if (!accessToken || !fileName || !sheetData) {
       return new Response(JSON.stringify({
-        authUrl
+        error: 'Missing required parameters'
       }), {
+        status: 400,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json'
         }
       });
     }
-    if (action === 'exchangeCode') {
-      const redirectUri = `${req.headers.get('origin')}/`;
-      console.log('Exchanging code for access token with redirect URI:', redirectUri);
-      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+    // Create a new spreadsheet
+    const createResponse = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        properties: {
+          title: fileName
         },
-        body: new URLSearchParams({
-          client_id: CLIENT_ID,
-          client_secret: CLIENT_SECRET,
-          code: code,
-          grant_type: 'authorization_code',
-          redirect_uri: redirectUri
-        })
-      });
-      const tokenData = await tokenResponse.json();
-      if (!tokenResponse.ok) {
-        console.error('Token exchange failed:', tokenData);
-        throw new Error(`Token exchange failed: ${tokenData.error}`);
-      }
-      console.log('Token exchange successful');
-      return new Response(JSON.stringify(tokenData), {
+        sheets: [
+          {
+            properties: {
+              title: sheetData.sheetName || 'Sheet1'
+            }
+          }
+        ]
+      })
+    });
+    if (!createResponse.ok) {
+      const errorData = await createResponse.text();
+      console.error('Failed to create spreadsheet:', errorData);
+      return new Response(JSON.stringify({
+        error: 'Failed to create spreadsheet',
+        details: errorData
+      }), {
+        status: createResponse.status,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json'
         }
       });
     }
-    if (action === 'listFiles') {
-      console.log('Listing Google Drive files');
-      const filesResponse = await fetch('https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.spreadsheet"&fields=files(id,name,modifiedTime)', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
+    const newSpreadsheet = await createResponse.json();
+    const newSpreadsheetId = newSpreadsheet.spreadsheetId;
+    const newSheetId = newSpreadsheet.sheets[0].properties.sheetId;
+    let sourceFormatting = null;
+    if (originalFileId) {
+      try {
+        const sourceResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${originalFileId}?includeGridData=true`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+        if (sourceResponse.ok) {
+          const sourceData = await sourceResponse.json();
+          sourceFormatting = sourceData.sheets?.[0]?.data?.[0];
+          console.log('Retrieved source formatting');
         }
-      });
-      const filesData = await filesResponse.json();
-      if (!filesResponse.ok) {
-        console.error('Failed to fetch files:', filesData);
-        throw new Error(`Failed to fetch files: ${filesData.error}`);
+      } catch (error) {
+        console.error('Failed to get source formatting:', error);
       }
-      console.log('Successfully fetched', filesData.files?.length || 0, 'files');
-      return new Response(JSON.stringify(filesData), {
+    }
+    // Update the sheet with the data
+    const updateResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${newSpreadsheetId}/values/${encodeURIComponent(sheetData.sheetName || 'Sheet1')}?valueInputOption=RAW`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        values: sheetData.values
+      })
+    });
+    if (!updateResponse.ok) {
+      const errorData = await updateResponse.text();
+      console.error('Failed to update sheet data:', errorData);
+      return new Response(JSON.stringify({
+        error: 'Failed to update sheet data',
+        details: errorData
+      }), {
+        status: updateResponse.status,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json'
         }
       });
     }
-    if (action === 'readSheet') {
-      console.log('Reading Google Sheet data for file:', fileId);
-      // First, get sheet metadata to find available sheets
-      const metadataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
+    // Copy formatting - prioritize updated styles from our editor
+    const formatRequests = [];
+    // Helper function to convert hex color to RGB for Google Sheets
+    const hexToRgb = (hex)=>{
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})?$/i.exec(hex);
+      if (!result) return null;
+      return {
+        red: parseInt(result[1], 16) / 255,
+        green: parseInt(result[2], 16) / 255,
+        blue: parseInt(result[3], 16) / 255,
+        alpha: result[4] ? parseInt(result[4], 16) / 255 : 1
+      };
+    };
+    console.log(sheetData.formatting);
+    // Apply formatting from our editor if available
+    if (sheetData.formatting && Array.isArray(sheetData.formatting)) {
+      sheetData.formatting.forEach((style)=>{
+        const { rowIndex, columnIndex, format } = style;
+        const googleFormat = {};
+        if (format.backgroundColor) {
+          const rgb = hexToRgb(format.backgroundColor);
+          if (rowIndex === 11) console.log('Setting background color for row', rowIndex, 'column', columnIndex, 'to', format.backgroundColor, 'rgb', rgb);
+          if (rgb) googleFormat.backgroundColor = rgb;
         }
-      });
-      if (!metadataResponse.ok) {
-        const errorData = await metadataResponse.json();
-        console.error('Failed to fetch sheet metadata:', errorData);
-        throw new Error(`Failed to fetch sheet metadata: ${errorData.error?.message}`);
-      }
-      const metadata = await metadataResponse.json();
-      const firstSheet = metadata.sheets[0];
-      const sheetName = firstSheet.properties.title;
-      console.log('Reading data from sheet:', sheetName);
-      // Get the data from the first sheet
-      const dataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(sheetName)}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
+        if (format.textColor || format.fontWeight || format.fontStyle || format.fontSize) {
+          googleFormat.textFormat = {};
+          if (format.textColor) {
+            const rgb = hexToRgb(format.textColor);
+            if (rgb) googleFormat.textFormat.foregroundColor = rgb;
+          }
+          if (format.fontWeight === 'bold') {
+            googleFormat.textFormat.bold = true;
+          }
+          if (format.fontStyle === 'italic') {
+            googleFormat.textFormat.italic = true;
+          }
+          if (format.fontSize) {
+            googleFormat.textFormat.fontSize = format.fontSize;
+          }
         }
-      });
-      if (!dataResponse.ok) {
-        const errorData = await dataResponse.json();
-        console.error('Failed to fetch sheet data:', errorData);
-        throw new Error(`Failed to fetch sheet data: ${errorData.error?.message}`);
-      }
-      const sheetData = await dataResponse.json();
-      // Get formatting data with grid data
-      const formattingResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}?includeGridData=true`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
+        if (format.textAlign) {
+          googleFormat.horizontalAlignment = format.textAlign.toUpperCase();
         }
-      });
-      let formattingData = null;
-      if (formattingResponse.ok) {
-        try {
-          const formatData = await formattingResponse.json();
-          const sourceFormatting = formatData.sheets?.[0]?.data?.[0];
-          // Extract cell formatting using utility function
-          const cellStyles = [];
-          if (sourceFormatting?.rowData) {
-            sourceFormatting.rowData.forEach((row, rowIndex)=>{
-              if (row.values) {
-                row.values.forEach((cell, colIndex)=>{
-                  if (cell.userEnteredFormat || cell.effectiveFormat) {
-                    const format = cell.effectiveFormat || cell.userEnteredFormat;
-                    // Helper function to convert normalized RGB to hex
-                    const normalizedRgbToHex = (red, green, blue)=>{
-                      const toHex = (val)=>{
-                        const hex = Math.round(Math.max(0, Math.min(255, val * 255))).toString(16);
-                        return hex.length === 1 ? '0' + hex : hex;
-                      };
-                      return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
-                    };
-                    // Convert Google Sheets format to our format with proper color handling
-                    const convertedFormat = {};
-                    // Handle background color - only if explicitly set and not white
-                    if (format.backgroundColor) {
-                      const { red, green, blue } = format.backgroundColor;
-                      // Google Sheets may omit channels; default missing channels to 0
-                      const r = red ?? 0;
-                      const g = green ?? 0;
-                      const b = blue ?? 0;
-                      // Don't add white backgrounds as they're default
-                      if (!(r >= 0.99 && g >= 0.99 && b >= 0.99)) {
-                        convertedFormat.backgroundColor = normalizedRgbToHex(r, g, b);
-                      }
-                    }
-                    if (format.textFormat) {
-                      // Handle text color - only if explicitly set and not black
-                      if (format.textFormat.foregroundColor) {
-                        const { red, green, blue } = format.textFormat.foregroundColor;
-                        const r = red ?? 0;
-                        const g = green ?? 0;
-                        const b = blue ?? 0;
-                        // Don't add black text as it's default
-                        if (!(r <= 0.01 && g <= 0.01 && b <= 0.01)) {
-                          convertedFormat.textColor = normalizedRgbToHex(r, g, b);
-                        }
-                      }
-                      if (format.textFormat.bold) convertedFormat.fontWeight = 'bold';
-                      if (format.textFormat.italic) convertedFormat.fontStyle = 'italic';
-                      if (format.textFormat.fontSize) convertedFormat.fontSize = format.textFormat.fontSize;
-                    }
-                    if (format.horizontalAlignment) {
-                      const alignment = format.horizontalAlignment.toLowerCase();
-                      if ([
-                        'left',
-                        'center',
-                        'right'
-                      ].includes(alignment)) {
-                        convertedFormat.textAlign = alignment;
-                      }
-                    }
-                    if (format.borders) {
-                      convertedFormat.borders = {};
-                      [
-                        'top',
-                        'bottom',
-                        'left',
-                        'right'
-                      ].forEach((side)=>{
-                        const border = format.borders[side];
-                        if (border && border.style !== 'NONE') {
-                          let color = '#000000';
-                          if (border.color) {
-                            const { red = 0, green = 0, blue = 0 } = border.color;
-                            color = normalizedRgbToHex(red, green, blue);
-                          }
-                          convertedFormat.borders[side] = {
-                            style: border.style.toLowerCase(),
-                            color,
-                            width: border.width || 1
-                          };
-                        }
-                      });
-                    }
-                    if (Object.keys(convertedFormat).length > 0) {
-                      cellStyles.push({
-                        rowIndex,
-                        columnIndex: colIndex,
-                        format: convertedFormat
-                      });
-                    }
-                  }
-                });
+        if (format.borders) {
+          googleFormat.borders = {};
+          Object.entries(format.borders).forEach(([side, border])=>{
+            if (border) {
+              const rgb = hexToRgb(border.color);
+              if (rgb) {
+                googleFormat.borders[side] = {
+                  style: border.style.toUpperCase(),
+                  color: rgb,
+                  width: border.width
+                };
               }
-            });
-          }
-          formattingData = cellStyles;
-          console.log('Extracted', cellStyles.length, 'formatted cells from Google Sheets');
-          // Log sample of formatting for debugging
-          if (cellStyles.length > 0) {
-            console.log('Sample formatting styles:', JSON.stringify(cellStyles.slice(0, 3), null, 2));
-          }
-        } catch (error) {
-          console.error('Failed to parse formatting data:', error);
+            }
+          });
         }
-      }
-      console.log('Successfully read sheet data with', sheetData.values?.length || 0, 'rows and', formattingData?.length || 0, 'formatted cells');
-      return new Response(JSON.stringify({
-        sheetName,
-        values: sheetData.values || [],
-        metadata: {
-          title: metadata.properties.title,
-          sheetCount: metadata.sheets.length
-        },
-        formatting: formattingData
-      }), {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
+        if (Object.keys(googleFormat).length > 0) {
+          formatRequests.push({
+            repeatCell: {
+              range: {
+                sheetId: newSheetId,
+                startRowIndex: rowIndex,
+                endRowIndex: rowIndex + 1,
+                startColumnIndex: columnIndex,
+                endColumnIndex: columnIndex + 1
+              },
+              cell: {
+                userEnteredFormat: googleFormat
+              },
+              fields: 'userEnteredFormat'
+            }
+          });
+        }
+      });
+    } else if (sourceFormatting && sourceFormatting.rowData) {
+      sourceFormatting.rowData.forEach((row, rowIndex)=>{
+        if (row.values) {
+          row.values.forEach((cell, colIndex)=>{
+            if (cell.userEnteredFormat || cell.effectiveFormat) {
+              const format = cell.userEnteredFormat || cell.effectiveFormat;
+              formatRequests.push({
+                repeatCell: {
+                  range: {
+                    sheetId: newSheetId,
+                    startRowIndex: rowIndex,
+                    endRowIndex: rowIndex + 1,
+                    startColumnIndex: colIndex,
+                    endColumnIndex: colIndex + 1
+                  },
+                  cell: {
+                    userEnteredFormat: format
+                  },
+                  fields: 'userEnteredFormat'
+                }
+              });
+            }
+          });
         }
       });
     }
-    throw new Error('Invalid action');
-  } catch (error) {
-    console.error('Error in google-drive-auth function:', error);
+    // Copy column widths
+    if (sourceFormatting?.columnMetadata) {
+      sourceFormatting.columnMetadata.forEach((column, index)=>{
+        if (column.pixelSize) {
+          formatRequests.push({
+            updateDimensionProperties: {
+              range: {
+                sheetId: newSheetId,
+                dimension: 'COLUMNS',
+                startIndex: index,
+                endIndex: index + 1
+              },
+              properties: {
+                pixelSize: column.pixelSize
+              },
+              fields: 'pixelSize'
+            }
+          });
+        }
+      });
+    }
+    // Copy row heights
+    if (sourceFormatting?.rowMetadata) {
+      sourceFormatting.rowMetadata.forEach((row, index)=>{
+        if (row.pixelSize) {
+          formatRequests.push({
+            updateDimensionProperties: {
+              range: {
+                sheetId: newSheetId,
+                dimension: 'ROWS',
+                startIndex: index,
+                endIndex: index + 1
+              },
+              properties: {
+                pixelSize: row.pixelSize
+              },
+              fields: 'pixelSize'
+            }
+          });
+        }
+      });
+    }
+    // Apply all formatting requests
+    if (formatRequests.length > 0) {
+      try {
+        const formatResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${newSpreadsheetId}:batchUpdate`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            requests: formatRequests
+          })
+        });
+        if (formatResponse.ok) {
+          console.log('Successfully applied formatting with updated styles');
+        } else {
+          const formatError = await formatResponse.text();
+          console.error('Failed to apply formatting:', formatError);
+        }
+      } catch (formatError) {
+        console.error('Error applying formatting:', formatError);
+      }
+    }
+    // If originalFileId is provided, copy permissions from the original file
+    if (originalFileId) {
+      try {
+        // Get permissions from original file
+        const permissionsResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${originalFileId}/permissions`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+        if (permissionsResponse.ok) {
+          const permissions = await permissionsResponse.json();
+          // Copy each permission to the new file (skip owner permission)
+          for (const permission of permissions.permissions || []){
+            if (permission.role !== 'owner') {
+              await fetch(`https://www.googleapis.com/drive/v3/files/${newSpreadsheetId}/permissions`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  role: permission.role,
+                  type: permission.type,
+                  ...permission.emailAddress && {
+                    emailAddress: permission.emailAddress
+                  },
+                  ...permission.domain && {
+                    domain: permission.domain
+                  }
+                })
+              });
+            }
+          }
+        }
+      } catch (permissionError) {
+        console.error('Failed to copy permissions:', permissionError);
+      // Continue even if permission copying fails
+      }
+    }
     return new Response(JSON.stringify({
-      error: error.message
+      success: true,
+      spreadsheetId: newSpreadsheetId,
+      spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${newSpreadsheetId}/edit`
     }), {
-      status: 400,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      }
+    });
+  } catch (error) {
+    console.error('Error creating Google Sheet:', error);
+    return new Response(JSON.stringify({
+      error: 'Internal server error',
+      details: error.message
+    }), {
+      status: 500,
       headers: {
         ...corsHeaders,
         'Content-Type': 'application/json'
