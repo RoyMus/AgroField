@@ -213,6 +213,7 @@ const GoogleDriveFilePicker = () => {
                   placeholder="חפש קבצים"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.stopPropagation()}   
                   className="pl-10 bg-gray-50 border-gray-200 focus:border-blue-300 focus:ring-blue-200"
                 />
               </div>
