@@ -6,12 +6,31 @@ import { useToast } from "@/hooks/use-toast";
 import { useCellStyling } from "@/hooks/useCellStyling";
 import { applyCellFormatToStyle, extractStylesFromSheetData } from "@/utils/formatConverters";
 import { SheetData, ModifiedCellData } from "@/types/cellTypes";
+import { set } from "date-fns";
 
 interface EditableSheetTableProps {
   sheetData: SheetData;
 }
 
 const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
+  const headersRowIndex = 6;
+  const headers = sheetData.values[headersRowIndex -1] || [];
+  var AlreadySetFirst = false;
+  for (let i = 0; i < headers.length; i++) {
+    if (headers[i] == "")
+    {
+      if (!AlreadySetFirst)
+      {
+        AlreadySetFirst = true;
+      }
+      else
+      {
+        var lastindex = i - 1;
+      }
+    }
+  }
+
+  const [maxColIndex, setMaxColIndex] = useState(lastindex);
   const [localData, setLocalData] = useState<string[][]>([]);
   const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
   const [hasChanges, setHasChanges] = useState(false);
@@ -108,20 +127,26 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
 
   // Add new row
   const addRow = () => {
-    const maxCols = Math.max(...localData.map(row => row.length), 0);
     const newRow = new Array(maxCols).fill("");
-    const insertIndex = localData.length; // Insert at end
-    
-    setLocalData(prev => [...prev, newRow]);
-    insertRow(insertIndex); // Update styles
+    const insertIndex = localData.length - 3; // Insert at second to last position
+    setLocalData(prev => {
+      const updated = [...prev];
+      updated.splice(insertIndex + 1, 0, newRow); // insert *after* old row
+      return updated;
+    });
+    insertRow(insertIndex + 1); // Update styles
     setHasChanges(true);
   };
 
   // Remove last row
   const removeRow = () => {
     if (localData.length > 1) {
-      const removeIndex = localData.length - 1;
-      setLocalData(prev => prev.slice(0, -1));
+      const removeIndex = localData.length - 3;
+      setLocalData(prev => {
+        const updated = [...prev];
+        updated.splice(removeIndex, 1);
+        return updated;
+      });
       deleteRow(removeIndex); // Update styles
       setHasChanges(true);
     }
@@ -129,21 +154,29 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
 
   // Add new column
   const addColumn = () => {
-    const insertIndex = Math.max(...localData.map(row => row.length), 0);
-    setLocalData(prev => prev.map(row => [...row, ""]));
+    const insertIndex = maxColIndex + 1;
+    setLocalData(prev => {
+      const updated = [...prev];
+      updated.forEach(row => {
+        row.splice(insertIndex, 0, "");
+      });
+      return updated;
+    });
     insertColumn(insertIndex); // Update styles
     setHasChanges(true);
+    setMaxColIndex(insertIndex);
   };
 
   // Remove last column
   const removeColumn = () => {
-    const maxCols = Math.max(...localData.map(row => row.length), 0);
-    if (maxCols > 1) {
-      const removeIndex = maxCols - 1;
-      setLocalData(prev => prev.map(row => row.slice(0, -1)));
-      deleteColumn(removeIndex); // Update styles
-      setHasChanges(true);
-    }
+    const removeIndex = maxColIndex;
+    setLocalData(prev => prev.map(row => {
+      row.splice(removeIndex, 1);
+      return row;
+    }));
+    deleteColumn(removeIndex); // Update styles
+    setHasChanges(true);
+    setMaxColIndex(removeIndex - 1);
   };
 
   // Save current modifications

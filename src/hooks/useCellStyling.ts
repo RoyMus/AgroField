@@ -64,13 +64,26 @@ export const useCellStyling = (): UseCellStylingReturn => {
   }, []);
 
   const insertRow = useCallback((atIndex: number) => {
-    setCellStyles(prev => 
-      prev.map(style => 
-        style.rowIndex >= atIndex 
-          ? { ...style, rowIndex: style.rowIndex + 1 }
-          : style
-      )
+     setCellStyles(prev => {
+    // 1. Shift styles down (same as before)
+    const shifted = prev.map(style =>
+      style.rowIndex >= atIndex
+        ? { ...style, rowIndex: style.rowIndex + 1 }
+        : style
     );
+
+    // 2. Find styles from the row above (atIndex - 1)
+    const prevRowStyles = prev.filter(style => style.rowIndex === atIndex - 1);
+
+    // 3. Duplicate them for the new row, but update rowIndex
+    const newRowStyles = prevRowStyles.map(style => ({
+      ...style,
+      rowIndex: atIndex
+    }));
+
+    // 4. Return merged result
+    return [...shifted, ...newRowStyles];
+  });
   }, []);
 
   const deleteRow = useCallback((atIndex: number) => {
@@ -85,13 +98,26 @@ export const useCellStyling = (): UseCellStylingReturn => {
   }, []);
 
   const insertColumn = useCallback((atIndex: number) => {
-    setCellStyles(prev => 
-      prev.map(style => 
-        style.columnIndex >= atIndex 
-          ? { ...style, columnIndex: style.columnIndex + 1 }
-          : style
-      )
+    setCellStyles(prev => {
+    // 1. Shift all columns to the right
+    const shifted = prev.map(style =>
+      style.columnIndex >= atIndex
+        ? { ...style, columnIndex: style.columnIndex + 1 }
+        : style
     );
+
+    // 2. Collect all styles from the previous column (atIndex - 1)
+    const prevColStyles = prev.filter(style => style.columnIndex === atIndex - 1);
+
+    // 3. Duplicate them for the new column, but update columnIndex
+    const newColStyles = prevColStyles.map(style => ({
+      ...style,
+      columnIndex: atIndex
+    }));
+
+    // 4. Return merged result
+    return [...shifted, ...newColStyles];
+    });
   }, []);
 
   const deleteColumn = useCallback((atIndex: number) => {
