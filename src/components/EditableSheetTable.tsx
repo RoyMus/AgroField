@@ -210,7 +210,7 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
             className="h-10 text-sm"
           >
             <Plus className="w-4 h-4 mr-1" />
-            <span className="hidden sm:inline">הוסף שורה</span>
+            <span className="sm:inline">הוסף שורה</span>
           </Button>
           <Button
             onClick={removeRow}
@@ -220,7 +220,7 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
             className="h-10 text-sm"
           >
             <Minus className="w-4 h-4 mr-1" />
-            <span className="hidden sm:inline">מחק שורה</span>
+            <span className="sm:inline">מחק שורה</span>
           </Button>
           <Button
             onClick={addColumn}
@@ -229,7 +229,7 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
             className="h-10 text-sm"
           >
             <Plus className="w-4 h-4 mr-1" />
-            <span className="hidden sm:inline">הוסף עמודה</span>
+            <span className="sm:inline">הוסף עמודה</span>
           </Button>
           <Button
             onClick={removeColumn}
@@ -239,7 +239,7 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
             className="h-10 text-sm"
           >
             <Minus className="w-4 h-4 mr-1" />
-            <span className="hidden sm:inline">מחק עמודה</span>
+            <span className="sm:inline">מחק עמודה</span>
           </Button>
         </div>
         
@@ -255,7 +255,7 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
             disabled={Object.keys(modifiedData).length === 0}
           >
             <Save className="w-4 h-4 mr-1" />
-            <span>Save Progress</span>
+            <span>שמור התקדמות</span>
           </Button>
         </div>
       </div>

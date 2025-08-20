@@ -227,10 +227,10 @@ const CellEditor = ({
             variant="outline"
             size="sm"
             className="h-10 text-sm"
+            dir="rtl"
           >
             <Save className="mr-1 h-4 w-4" />
-            <span className="hidden sm:inline">שמור התקדמות</span>
-            <span className="sm:hidden">Save</span>
+            <span className="sm:inline">שמור התקדמות</span>
           </Button>
           {onSaveToNewSheet && (
             <Button
@@ -238,10 +238,10 @@ const CellEditor = ({
               variant="default"
               size="sm"
               className="bg-blue-600 hover:bg-blue-700 h-10 text-sm"
+              dir="rtl"
             >
               <Save className="mr-1 h-4 w-4" />
-              <span className="hidden sm:inline">שמור לגיליון חדש</span>
-              <span className="sm:hidden">New Sheet</span>
+              <span className="sm:inline">שמור לגיליון חדש</span>
             </Button>
           )}
         </div>
