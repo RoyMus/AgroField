@@ -216,28 +216,26 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
 
   const handleInputChange = (value: string) => {
     console.log('Recognized word:', value);
-    switch(true)
+    if (value.includes("דלג") || value.includes("הבא")) {
+      skipCurrentValue();
+      setCurrentValue("");
+    }
+    else if (value.includes("חזור") || value.includes("אחורה")) {
+      moveToPreviousCell();
+      setCurrentValue("");
+    }
+    else if(value.includes("בטל"))
     {
-      case value.includes("דלג"):
-      case value.includes("הבא"):
-        skipCurrentValue();
+      resetCurrentCell();
+    }
+    else if (value.includes("שמור")) {
+      if(currentValue) {
+        recordCurrentValue();
         setCurrentValue("");
-        break;
-      case value.includes("חזור"):
-      case value.includes("אחורה"):
-        moveToPreviousCell();
-        setCurrentValue("");
-        break;
-      case value.includes("שמור"):
-        if(currentValue)
-        {
-          recordCurrentValue();
-          setCurrentValue("");
-        }
-        break;
-      default:
-        setCurrentValue(value);
-        break;
+      }
+    }
+    else {
+      setCurrentValue(value);
     }
     
   };
