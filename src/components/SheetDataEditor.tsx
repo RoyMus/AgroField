@@ -216,19 +216,19 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
 
   const handleInputChange = (value: string) => {
     console.log('Recognized word:', value);
-    switch(value)
+    switch(true)
     {
-      case "דלג":
-      case "הבא":
+      case value.includes("דלג"):
+      case value.includes("הבא"):
         skipCurrentValue();
         setCurrentValue("");
         break;
-      case "חזור":
-      case "אחורה":
+      case value.includes("חזור"):
+      case value.includes("אחורה"):
         moveToPreviousCell();
         setCurrentValue("");
         break;
-      case "שמור":
+      case value.includes("שמור"):
         if(currentValue)
         {
           recordCurrentValue();
