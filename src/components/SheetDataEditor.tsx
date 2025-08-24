@@ -9,6 +9,7 @@ import CellEditor from "./CellEditor";
 import DataPreviewTable from "./DataPreviewTable";
 import SaveToNewSheetDialog from "./SaveToNewSheetDialog";
 import { SheetData, ModifiedCellData } from "@/types/cellTypes";
+import { set } from "date-fns";
 
 interface SheetDataEditorProps {
   sheetData: SheetData;
@@ -209,55 +210,36 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     }
   }, [currentRowIndex, currentColumnIndex]);
 
-  const [recordValue, setRecordValue] = useState(false);
-  const recordValueRef = useRef(false);
-
-  const setRecordValueState = (value: boolean) => {
-    recordValueRef.current = value;
-    setRecordValue(value);
-  };
-
   onWordRecognized((word: string) => {
-    switch(word)
+    handleInputChange(word);
+  });
+
+  const handleInputChange = (value: string) => {
+    console.log('Recognized word:', value);
+    switch(value)
     {
       case "דלג":
       case "הבא":
         skipCurrentValue();
-        setRecordValueState(false);
+        setCurrentValue("");
         break;
       case "חזור":
       case "אחורה":
         moveToPreviousCell();
-        setRecordValueState(false);
-        break;
-      case "הזן":
-        setRecordValueState(true);
-        break;
-      case "עצור":
-        setRecordValueState(false);
+        setCurrentValue("");
         break;
       case "שמור":
         if(currentValue)
         {
           recordCurrentValue();
-          setRecordValueState(false);
+          setCurrentValue("");
         }
-        break;
-      case "בטל":
-        resetCurrentCell();
-        setRecordValueState(true);
         break;
       default:
-        if (recordValueRef.current) {
-          handleInputChange(word);
-        }
+        setCurrentValue(value);
         break;
     }
-      
-  });
-
-  const handleInputChange = (value: string) => {
-    setCurrentValue(value);
+    
   };
 
   const handleChangeToNewRow = (value: number) => {
