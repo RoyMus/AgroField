@@ -256,6 +256,7 @@ const CellEditor = ({
           <Input
             value={currentValue}
             onChange={(e) => onInputChange(e.target.value)}
+            onInput={(e)=> onInputChange((e.target as HTMLInputElement).value)}
             placeholder={dataRows[currentRowIndex][currentColumnIndex]}
             className="text-lg p-3 h-12"
             autoFocus
