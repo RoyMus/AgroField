@@ -9,7 +9,29 @@ interface VoiceControlsProps {
   onStopRecording: () => Promise<void>;
 }
 
+const EXAMPLE_PHRASES = [
+  "(ערך) הזן",
+  "דלג \\ הבא ",
+  "אחורה \\ חזור",
+  "שמור",
+  "מחק",
+];
+
+
 const VoiceControls = ({ isRecording, onStartRecording, onStopRecording }: VoiceControlsProps) => {
+  const [currentExample, setCurrentExample] = useState(EXAMPLE_PHRASES[0]);
+
+  // Effect to change the example phrase every 5 seconds during recording
+  useEffect(() => {
+    if (!isRecording) return;
+
+    const intervalId = setInterval(() => {
+      const randomIndex = Math.floor(Math.random() * EXAMPLE_PHRASES.length);
+      setCurrentExample(EXAMPLE_PHRASES[randomIndex]);
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [isRecording]);
   return (
     <div className="p-4 bg-gray-50 rounded-lg">
       <div className="flex flex-col items-center space-y-4">
