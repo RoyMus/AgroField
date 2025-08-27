@@ -219,14 +219,12 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     if (value.includes("דלג") || value.includes("הבא")) {
       skipCurrentValue();
       setCurrentValue("");
-      if(isRecording)
-        speak(headers[currentColumnIndex + 1]);
+      speak(headers[currentColumnIndex + 1]);
     }
     else if (value.includes("חזור") || value.includes("אחורה")) {
       moveToPreviousCell();
       setCurrentValue("");
-      if(isRecording)
-        speak(headers[currentColumnIndex - 1]);
+      speak(headers[currentColumnIndex - 1]);
     }
     else if(value.includes("בטל"))
     {
@@ -236,8 +234,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       if(currentValue) {
         recordCurrentValue();
         setCurrentValue("");
-        if(isRecording)
-          speak(headers[currentColumnIndex + 1]);
+        speak(headers[currentColumnIndex + 1]);
       }
     }
     else {
