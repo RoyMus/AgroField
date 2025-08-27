@@ -220,7 +220,7 @@ const CellEditor = ({
             disabled={!isCurrentCellModified}
             className="h-10 text-sm"
           >
-            בטל
+            מחק
           </Button>
           <Button
             onClick={onSaveProgress}
