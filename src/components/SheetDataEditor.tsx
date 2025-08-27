@@ -211,7 +211,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
   }, [currentRowIndex, currentColumnIndex]);
 
   onWordRecognized((word: string) => {
-    handleInputChange(word);
+      handleInputChange(word);
   });
 
   const handleInputChange = (value: string) => {
@@ -350,9 +350,40 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       await stopRecording();
     }
   };
+  const [voices, setVoices] = useState([]);
+
+  useEffect(() => {
+    const loadVoices = () => {
+      const allVoices = window.speechSynthesis.getVoices();
+      setVoices(allVoices);
+    };
+
+    // Chrome fires voiceschanged async
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    loadVoices();
+  }, []);
+
+  const speak = (text) => {
+    if ("speechSynthesis" in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      // Try to find a Hebrew voice
+      const hebrewVoice = voices.find((v) => v.lang.startsWith("he"));
+      if (hebrewVoice) {
+        utterance.voice = hebrewVoice;
+      } else {
+        alert("No Hebrew voice found on your system!");
+      }
+
+      window.speechSynthesis.speak(utterance);
+    } else {
+      alert("Sorry, your browser does not support text-to-speech!");
+    }
+  };
+
 
   const skipCurrentValue = () => {
     moveToNextCell();
+    speak(headers[currentColumnIndex + 1]);
   };
 
   const moveToNextCell = () => {
