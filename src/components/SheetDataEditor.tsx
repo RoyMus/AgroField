@@ -219,10 +219,14 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     if (value.includes("דלג") || value.includes("הבא")) {
       skipCurrentValue();
       setCurrentValue("");
+      if(isRecording)
+        speak(headers[currentColumnIndex + 1]);
     }
     else if (value.includes("חזור") || value.includes("אחורה")) {
       moveToPreviousCell();
       setCurrentValue("");
+      if(isRecording)
+        speak(headers[currentColumnIndex - 1]);
     }
     else if(value.includes("בטל"))
     {
@@ -232,6 +236,8 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       if(currentValue) {
         recordCurrentValue();
         setCurrentValue("");
+        if(isRecording)
+          speak(headers[currentColumnIndex + 1]);
       }
     }
     else {
@@ -370,20 +376,16 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       const hebrewVoice = voices.find((v) => v.lang.startsWith("he"));
       if (hebrewVoice) {
         utterance.voice = hebrewVoice;
-      } else {
-        alert("No Hebrew voice found on your system!");
       }
+      console.log('Speaking:', text);
 
       window.speechSynthesis.speak(utterance);
-    } else {
-      alert("Sorry, your browser does not support text-to-speech!");
-    }
+    } 
   };
 
 
   const skipCurrentValue = () => {
     moveToNextCell();
-    speak(headers[currentColumnIndex + 1]);
   };
 
   const moveToNextCell = () => {
