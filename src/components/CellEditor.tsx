@@ -176,8 +176,10 @@ const CellEditor = ({
   useEffect (() => {
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] != "" && dataRows[i][0] != "חממה" && !optionsHamama.includes(dataRows[i][0]))
+      if (dataRows[i][0] != null && dataRows[i][0] != "" && dataRows[i][0] != "חממה" && !optionsHamama.includes(dataRows[i][0]))
+      {
         optionsHamama.push(dataRows[i][0]);
+      }
       setOptionsHamama([...optionsHamama]);
     }
     handleSelectHamama(optionsHamama[0]);
