@@ -31,8 +31,8 @@ const EditableSheetPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
-      <div className="container mx-auto px-6 py-8">
-        <div className="space-y-6">
+      <div className="w-full px-6 py-8">
+        <div className="space-y-6 h-full">
           {/* Header - Mobile Optimized */}
           <div className="bg-white rounded-lg shadow-sm p-4">
             <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
@@ -55,7 +55,6 @@ const EditableSheetPage = () => {
               </div>
             </div>
           </div>
-
           {/* Editable Table */}
           <EditableSheetTable sheetData={sheetData} />
         </div>
