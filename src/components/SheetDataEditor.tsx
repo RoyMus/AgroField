@@ -202,7 +202,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     // Only set current cell value when position changes
     const cellKey = `${currentRowIndex}-${currentColumnIndex}`;
     const savedModification = modifiedData[cellKey];
-    
+    speak(headers[currentColumnIndex]);
     if (savedModification) {
       setCurrentValue(savedModification.modifiedValue);
     } else {
@@ -232,7 +232,6 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       if(currentValue) {
         recordCurrentValue();
         setCurrentValue("");
-        speak(headers[currentColumnIndex + 1]);
       }
     }
     else {
@@ -381,7 +380,6 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
 
   const skipCurrentValue = () => {
     moveToNextCell();
-    speak(headers[currentColumnIndex + 1]);
   };
 
   const moveToNextCell = () => {
@@ -403,7 +401,6 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       setCurrentColumnIndex(maxColIndex);
       setRowChangeCounter(rowChangeCounter + 1);
     }
-    speak(headers[currentColumnIndex - 1]);
   };
 
   const resetCurrentCell = () => {
