@@ -78,6 +78,11 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     faucetConductivity,
   } = getData(false, null, null, null, null, null);
   useEffect(()=>{
+    const savedModifications = localStorage.getItem('sheet_cell_modifications');
+    const parsedSavedModifications = savedModifications ? JSON.parse(savedModifications) : {};
+    if (savedModifications) {
+      setModifiedData(parsedSavedModifications);
+    }
     const topBarRowIndex = 0;
     const faucetRowIndex = 1;
     const topBarRow = sheetData.values[topBarRowIndex];
@@ -99,6 +104,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       }
     }
     const newModifiedData = {
+      ...parsedSavedModifications,
       ...modifiedData,
       [`${faucetRowIndex}-${faucetIndex}`]: {
         originalValue: `${faucetConductivity} - מוליכות ברז`,
@@ -118,7 +124,6 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
           };
     }
 
-    
 
     setModifiedData(newModifiedData);
     localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
@@ -197,7 +202,6 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       clearInterval(interval);
     };
   }, []);
-
   useEffect(() => {
     // Only set current cell value when position changes
     const cellKey = `${currentRowIndex}-${currentColumnIndex}`;
