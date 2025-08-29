@@ -16,7 +16,14 @@ interface SheetDataEditorProps {
 }
 
 const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
-  const headersRowIndex = 6;
+  for (let i = 0; i < sheetData.values.length; i++) {
+    if (sheetData.values[i][0] != null && sheetData.values[i][0].trim() != "")
+    {
+      var found_headers_row_index = i;
+      break;
+    }
+  }
+  const headersRowIndex = found_headers_row_index + 1;
   const headers = sheetData.values[headersRowIndex -1] || [];
   const [rowChangeCounter, setRowChangeCounter] = useState(0);
   const {

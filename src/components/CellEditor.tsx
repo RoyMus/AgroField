@@ -108,7 +108,6 @@ const CellEditor = ({
     while (optionsMagof.length != 0)
       optionsMagof.pop();
     
-    console.log(selectedValue);
     for (let i = 0; i < dataRows.length; i++)
     {
       if (dataRows[i][0] != null && dataRows[i][0].trim() == selectedValue.trim() && dataRows[i][1] != null && !optionsMagof.includes(dataRows[i][1].trim()))
