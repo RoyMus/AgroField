@@ -71,7 +71,7 @@ const CellEditor = ({
   const [dropDownValueOfGidul, setDropDownGidul] = useState(null);
 
   const handleChangedRow = () => {
-    let curHam = dataRows[currentRowIndex][0];
+    let curHam = dataRows[currentRowIndex][0].trim();
     let curMag = dataRows[currentRowIndex][1];
     let curGid = dataRows[currentRowIndex][3];
     setDropDownHamama(curHam);
@@ -89,14 +89,14 @@ const CellEditor = ({
     
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] == curHam && !optionsMagof.includes(dataRows[i][1]))
+      if (dataRows[i][0] != null && dataRows[i][0].trim() == curHam && !optionsMagof.includes(dataRows[i][1]))
         optionsMagof.push(dataRows[i][1]);
     }
     setOptionsMagof([...optionsMagof]);
     
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] == curHam && dataRows[i][1] == curMag)
+      if (dataRows[i][0] != null && dataRows[i][0].trim() == curHam && dataRows[i][1] == curMag)
       {
         optionsGidul.push(dataRows[i][3]);
       }
@@ -108,10 +108,16 @@ const CellEditor = ({
     while (optionsMagof.length != 0)
       optionsMagof.pop();
     
+    console.log(selectedValue);
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] == selectedValue && !optionsMagof.includes(dataRows[i][1]))
+      console.log(i);
+      console.log(dataRows[i][0] != null && dataRows[i][0].trim() == selectedValue.trim() && !optionsMagof.includes(dataRows[i][1]));
+      if (dataRows[i][0] != null && dataRows[i][0].trim() == selectedValue.trim() && !optionsMagof.includes(dataRows[i][1]))
+      {
+        console.log(dataRows[i][1]);
         optionsMagof.push(dataRows[i][1]);
+      }
     }
     setOptionsMagof([...optionsMagof]);
     setCurrentHamama(selectedValue);
@@ -124,7 +130,7 @@ const CellEditor = ({
 
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] == dropDownValueOfHamama && dataRows[i][1] == selectedValue)
+      if (dataRows[i][0] != null && dataRows[i][0].trim() == dropDownValueOfHamama.trim() && dataRows[i][1] == selectedValue)
       {
         optionsGidul.push(dataRows[i][3]);
       }
@@ -144,7 +150,7 @@ const CellEditor = ({
   const handleSelectGidul = (selectedValue) => {
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] == dropDownValueOfHamama && dataRows[i][1] == dropDownValueOfMagof && dataRows[i][3] == selectedValue)
+      if (dataRows[i][0] != null && dataRows[i][0].trim() == dropDownValueOfHamama.trim() && dataRows[i][1] == dropDownValueOfMagof && dataRows[i][3] == selectedValue)
       {
         onChangeToRow(i);
         break;
@@ -176,9 +182,9 @@ const CellEditor = ({
   useEffect (() => {
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] != null && dataRows[i][0] != "" && dataRows[i][0] != "חממה" && !optionsHamama.includes(dataRows[i][0]))
+      if (dataRows[i][0] != null && dataRows[i][0] != "" && dataRows[i][0] != "חממה" && !optionsHamama.includes(dataRows[i][0].trim()))
       {
-        optionsHamama.push(dataRows[i][0]);
+        optionsHamama.push(dataRows[i][0].trim());
       }
       setOptionsHamama([...optionsHamama]);
     }
