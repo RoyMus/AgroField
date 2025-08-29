@@ -111,12 +111,9 @@ const CellEditor = ({
     console.log(selectedValue);
     for (let i = 0; i < dataRows.length; i++)
     {
-      console.log(i);
-      console.log(dataRows[i][0] != null && dataRows[i][0].trim() == selectedValue.trim() && !optionsMagof.includes(dataRows[i][1]));
-      if (dataRows[i][0] != null && dataRows[i][0].trim() == selectedValue.trim() && !optionsMagof.includes(dataRows[i][1]))
+      if (dataRows[i][0] != null && dataRows[i][0].trim() == selectedValue.trim() && dataRows[i][1] != null && !optionsMagof.includes(dataRows[i][1].trim()))
       {
-        console.log(dataRows[i][1]);
-        optionsMagof.push(dataRows[i][1]);
+        optionsMagof.push(dataRows[i][1].trim());
       }
     }
     setOptionsMagof([...optionsMagof]);
@@ -130,7 +127,7 @@ const CellEditor = ({
 
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] != null && dataRows[i][0].trim() == dropDownValueOfHamama.trim() && dataRows[i][1] == selectedValue)
+      if (dataRows[i][0] != null && dataRows[i][0].trim() == dropDownValueOfHamama.trim() && dataRows[i][1] != null && dataRows[i][1].trim() == selectedValue.trim())
       {
         optionsGidul.push(dataRows[i][3]);
       }
