@@ -72,7 +72,7 @@ const CellEditor = ({
 
   const handleChangedRow = () => {
     let curHam = dataRows[currentRowIndex][0].trim();
-    let curMag = dataRows[currentRowIndex][1];
+    let curMag = dataRows[currentRowIndex][1].trim();
     let curGid = dataRows[currentRowIndex][3];
     setDropDownHamama(curHam);
     setDropDownMagof(curMag);
@@ -89,14 +89,14 @@ const CellEditor = ({
     
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] != null && dataRows[i][0].trim() == curHam && !optionsMagof.includes(dataRows[i][1]))
-        optionsMagof.push(dataRows[i][1]);
+      if (dataRows[i][0] != null && dataRows[i][0].trim() == curHam && dataRows[i][1] != null && !optionsMagof.includes(dataRows[i][1].trim()))
+        optionsMagof.push(dataRows[i][1].trim());
     }
     setOptionsMagof([...optionsMagof]);
     
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] != null && dataRows[i][0].trim() == curHam && dataRows[i][1] == curMag)
+      if (dataRows[i][0] != null && dataRows[i][0].trim() == curHam && dataRows[i][1] != null && dataRows[i][1].trim() == curMag)
       {
         optionsGidul.push(dataRows[i][3]);
       }
