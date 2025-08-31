@@ -192,37 +192,46 @@ const CellEditor = ({
   }, [rowChangeCounter]);
   
   return (
-    <div className="bg-white border-2 border-gray-200 rounded-xl p-4 md:p-6 shadow-lg">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4 space-y-4 lg:space-y-0">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold">
+    <div className="bg-card border-2 border-border rounded-xl p-4 shadow-lg">
+      {/* Header Section - Consistent on mobile and desktop */}
+      <div className="mb-4">
+        <div className="flex flex-col space-y-3">
+          <h3 className="text-lg font-semibold text-foreground">
             {headers[currentColumnIndex]}
             {isCurrentCellModified && 
               <span className="ml-2 text-sm text-green-600">(Modified)</span>
             }
           </h3>
-          <h3 className="text-lg font-semibold">
-            <SimpleDropdown options={optionsHamama} value = {dropDownValueOfHamama} onSelect={handleSelectHamama} /> חממה
-          </h3>
-          <h3 className="text-lg font-semibold">
-            <SimpleDropdown options={optionsMagof} value = {dropDownValueOfMagof} onSelect={handleSelectMagof} /> מגוף
-          </h3>
-          <h3 className="text-lg font-semibold">
-            <SimpleDropdown options={optionsGidul} value = {dropDownValueOfGidul} onSelect={handleSelectGidul} /> גידול
-          </h3>
-          <p className="text-sm text-gray-600">
+          
+          {/* Dropdown Controls - Same layout on mobile */}
+          <div className="grid grid-cols-1 gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground min-w-[60px]">חממה</span>
+              <SimpleDropdown options={optionsHamama} value={dropDownValueOfHamama} onSelect={handleSelectHamama} />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground min-w-[60px]">מגוף</span>
+              <SimpleDropdown options={optionsMagof} value={dropDownValueOfMagof} onSelect={handleSelectMagof} />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground min-w-[60px]">גידול</span>
+              <SimpleDropdown options={optionsGidul} value={dropDownValueOfGidul} onSelect={handleSelectGidul} />
+            </div>
+          </div>
+          
+          <p className="text-sm text-muted-foreground">
             Cell {currentRowIndex * headers.length + currentColumnIndex + 1} of {dataRows.length * headers.length}
           </p>
         </div>
         
-        {/* Mobile-optimized action buttons */}
-        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+        {/* Top Action Buttons - Always visible */}
+        <div className="flex flex-wrap gap-2 mt-4">
           <Button
             onClick={onResetCell}
             variant="outline"
             size="sm"
             disabled={!isCurrentCellModified}
-            className="h-10 text-sm"
+            className="h-9 text-sm"
           >
             מחק
           </Button>
@@ -230,31 +239,31 @@ const CellEditor = ({
             onClick={onSaveProgress}
             variant="outline"
             size="sm"
-            className="h-10 text-sm"
+            className="h-9 text-sm"
             dir="rtl"
           >
             <Save className="mr-1 h-4 w-4" />
-            <span className="sm:inline">שמור התקדמות</span>
+            <span>שמור התקדמות</span>
           </Button>
           {onSaveToNewSheet && (
             <Button
               onClick={onSaveToNewSheet}
               variant="default"
               size="sm"
-              className="bg-blue-600 hover:bg-blue-700 h-10 text-sm"
+              className="bg-blue-600 hover:bg-blue-700 h-9 text-sm"
               dir="rtl"
             >
               <Save className="mr-1 h-4 w-4" />
-              <span className="sm:inline">שמור לגיליון חדש</span>
+              <span>שמור לגיליון חדש</span>
             </Button>
           )}
         </div>
       </div>
 
-      {/* Current Cell Focus */}
-      <div className="space-y-4 mb-6">        
+      {/* Input Section */}
+      <div className="mb-4">        
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-muted-foreground mb-2">
             Value:
           </label>
           <Input
@@ -262,55 +271,89 @@ const CellEditor = ({
             onChange={(e) => onInputChange(e.target.value)}
             onInput={(e)=> onInputChange((e.target as HTMLInputElement).value)}
             placeholder={dataRows[currentRowIndex][currentColumnIndex]}
-            className="text-lg p-3 h-12"
+            className="text-base p-3 h-11"
             autoFocus
           />
         </div>
       </div>
 
       {/* Voice Recording Controls */}
-      <div className="mb-6">
+      <div className="mb-4">
         <VoiceControls
           isRecording={isRecording}
           onStartRecording={onStartRecording}
           onStopRecording={onStopRecording}
         />
       </div>
-
-      {/* Action Buttons - Mobile Optimized */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center pt-4 border-t space-y-3 sm:space-y-0">
-        <Button
-          onClick={onMovePrevious}
-          disabled={isFirstCell}
-          variant="outline"
-          className="h-12 w-full sm:w-auto text-base"
-        >
-          <ChevronLeft className="mr-2 h-5 w-5" />
-          חזור
-        </Button>
-
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-          <Button
-            onClick={onSkipCurrent}
-            disabled={isLastCell}
-            variant="outline"
-            className="text-orange-600 border-orange-300 hover:bg-orange-50 h-12 text-base"
-          >
-            <SkipForward className="mr-2 h-5 w-5" />
-            דלג
-          </Button>
-          <Button
-            onClick={onRecordValue}
-            disabled={isLastCell}
-            className="bg-green-600 hover:bg-green-700 text-white h-12 text-base"
-          >
-            <Type className="mr-2 h-5 w-5" />
-            שמור
-          </Button>
-        </div>
-      </div>
     </div>
   );
 };
 
-export default CellEditor;
+// Fixed bottom action bar that stays visible when keyboard opens
+const FixedActionBar = ({ 
+  onMovePrevious, 
+  onSkipCurrent, 
+  onRecordValue,
+  isFirstCell,
+  isLastCell 
+}: {
+  onMovePrevious: () => void;
+  onSkipCurrent: () => void;
+  onRecordValue: () => Promise<void>;
+  isFirstCell: boolean;
+  isLastCell: boolean;
+}) => (
+  <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50 safe-area-bottom">
+    <div className="flex justify-between items-center max-w-md mx-auto">
+      <Button
+        onClick={onMovePrevious}
+        disabled={isFirstCell}
+        variant="outline"
+        className="h-11 px-6 text-base"
+      >
+        <ChevronLeft className="mr-2 h-5 w-5" />
+        חזור
+      </Button>
+
+      <div className="flex gap-3">
+        <Button
+          onClick={onSkipCurrent}
+          disabled={isLastCell}
+          variant="outline"
+          className="text-orange-600 border-orange-300 hover:bg-orange-50 h-11 px-4 text-base"
+        >
+          <SkipForward className="mr-2 h-5 w-5" />
+          דלג
+        </Button>
+        <Button
+          onClick={onRecordValue}
+          disabled={isLastCell}
+          className="bg-green-600 hover:bg-green-700 text-white h-11 px-6 text-base"
+        >
+          <Type className="mr-2 h-5 w-5" />
+          שמור
+        </Button>
+      </div>
+    </div>
+  </div>
+);
+
+// Main component with fixed action bar for mobile
+const CellEditorWithFixedActions = (props: CellEditorProps) => {
+  return (
+    <>
+      <div className="pb-24"> {/* Add padding to prevent overlap with fixed bar */}
+        <CellEditor {...props} />
+      </div>
+      <FixedActionBar 
+        onMovePrevious={props.onMovePrevious}
+        onSkipCurrent={props.onSkipCurrent} 
+        onRecordValue={props.onRecordValue}
+        isFirstCell={props.isFirstCell}
+        isLastCell={props.isLastCell}
+      />
+    </>
+  );
+};
+
+export default CellEditorWithFixedActions;

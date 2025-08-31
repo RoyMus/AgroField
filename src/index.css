@@ -99,3 +99,17 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Ensure fixed elements stay visible when keyboard opens on mobile */
+  @supports (-webkit-touch-callout: none) {
+    .keyboard-safe {
+      position: fixed;
+      bottom: env(keyboard-inset-height, 0px);
+    }
+  }
+}
