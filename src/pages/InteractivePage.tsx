@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
 import TopBar from "@/components/TopBarr";
@@ -7,6 +8,8 @@ import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 const InteractivePage = () => {
   const navigate = useNavigate();
   const { sheetData, selectedFile, clearSheetData } = useGoogleDrive();
+  const [saveProgressFunc, setSaveProgressFunc] = useState<(() => void) | null>(null);
+  const [saveToNewSheetFunc, setSaveToNewSheetFunc] = useState<(() => void) | null>(null);
 
   const handleBackToHome = () => {
     console.log('Going back to home screen');
@@ -29,13 +32,19 @@ const InteractivePage = () => {
                 handleGoHome={handleBackToHome} 
                 selectedFile={selectedFile} 
                 onOpenEditor={handleEditSheet}
-                onSaveProgress={null}
-                onSaveToNewSheet={null}
+                onSaveProgress={saveProgressFunc}
+                onSaveToNewSheet={saveToNewSheetFunc}
               />
             )}
             
             {/* Sheet Data Editor */}
-            {sheetData && <SheetDataEditor sheetData={sheetData} />}
+            {sheetData && (
+              <SheetDataEditor 
+                sheetData={sheetData}
+                onSaveProgress={(func) => setSaveProgressFunc(() => func)}
+                onSaveToNewSheet={(func) => setSaveToNewSheetFunc(() => func)}
+              />
+            )}
           </div>
       </div>
     </div>

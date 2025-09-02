@@ -13,11 +13,20 @@ import { set } from "date-fns";
 
 interface SheetDataEditorProps {
   sheetData: SheetData;
-  onSaveProgress?: () => void;
-  onSaveToNewSheet?: () => void;
+  onSaveProgress?: (saveFunc: () => void) => void;
+  onSaveToNewSheet?: (saveFunc: () => void) => void;
 }
 
 const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetDataEditorProps) => {
+  // Set up the callback functions for the parent component
+  useEffect(() => {
+    if (onSaveProgress) {
+      onSaveProgress(saveModifications);
+    }
+    if (onSaveToNewSheet) {
+      onSaveToNewSheet(handleSaveToNewSheet);
+    }
+  }, [onSaveProgress, onSaveToNewSheet]);
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && sheetData.values[i][0].trim() != "")
     {
@@ -260,7 +269,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
       title: "Progress Saved",
       description: `Saved modifications for ${Object.keys(modifiedData).length} cells`,
     });
-    onSaveProgress?.();
+    
   };
 
   const handleSaveToNewSheet = () => {
@@ -274,7 +283,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
     }
     calcAverages();
     setShowSaveDialog(true);
-    onSaveToNewSheet?.();
+    
   };
 
   const handleCreateNewSheet = async (fileName: string) => {
