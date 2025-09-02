@@ -236,27 +236,31 @@ const CellEditor = ({
             מחק
           </Button>
           <Button
-            onClick={onSaveProgress}
+            onClick={onMovePrevious}
+            disabled={isFirstCell}
             variant="outline"
-            size="sm"
-            className="h-9 text-sm"
-            dir="rtl"
+            className="h-9 px-4 text-sm"
           >
-            <Save className="mr-1 h-4 w-4" />
-            <span>שמור התקדמות</span>
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            חזור
           </Button>
-          {onSaveToNewSheet && (
-            <Button
-              onClick={onSaveToNewSheet}
-              variant="default"
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700 h-9 text-sm"
-              dir="rtl"
-            >
-              <Save className="mr-1 h-4 w-4" />
-              <span>שמור לגיליון חדש</span>
-            </Button>
-          )}
+          <Button
+            onClick={onSkipCurrent}
+            disabled={isLastCell}
+            variant="outline"
+            className="text-orange-600 border-orange-300 hover:bg-orange-50 h-9 px-4 text-sm"
+          >
+            <SkipForward className="mr-2 h-4 w-4" />
+            דלג
+          </Button>
+          <Button
+            onClick={onRecordValue}
+            disabled={isLastCell}
+            className="bg-green-600 hover:bg-green-700 text-white h-9 px-4 text-sm"
+          >
+            <Type className="mr-2 h-4 w-4" />
+            שמור
+          </Button>
         </div>
       </div>
 
@@ -291,71 +295,4 @@ const CellEditor = ({
   );
 };
 
-// Fixed bottom action bar that stays visible when keyboard opens
-const FixedActionBar = ({ 
-  onMovePrevious, 
-  onSkipCurrent, 
-  onRecordValue,
-  isFirstCell,
-  isLastCell 
-}: {
-  onMovePrevious: () => void;
-  onSkipCurrent: () => void;
-  onRecordValue: () => Promise<void>;
-  isFirstCell: boolean;
-  isLastCell: boolean;
-}) => (
-  <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-50 safe-area-bottom">
-    <div className="flex justify-between items-center max-w-md mx-auto">
-      <Button
-        onClick={onMovePrevious}
-        disabled={isFirstCell}
-        variant="outline"
-        className="h-11 px-6 text-base"
-      >
-        <ChevronLeft className="mr-2 h-5 w-5" />
-        חזור
-      </Button>
-
-      <div className="flex gap-3">
-        <Button
-          onClick={onSkipCurrent}
-          disabled={isLastCell}
-          variant="outline"
-          className="text-orange-600 border-orange-300 hover:bg-orange-50 h-11 px-4 text-base"
-        >
-          <SkipForward className="mr-2 h-5 w-5" />
-          דלג
-        </Button>
-        <Button
-          onClick={onRecordValue}
-          disabled={isLastCell}
-          className="bg-green-600 hover:bg-green-700 text-white h-11 px-6 text-base"
-        >
-          <Type className="mr-2 h-5 w-5" />
-          שמור
-        </Button>
-      </div>
-    </div>
-  </div>
-);
-
-// Main component with fixed action bar for mobile
-const CellEditorWithFixedActions = (props: CellEditorProps) => {
-  return (
-    <>
-      <div className="pb-24"> {/* Add padding to prevent overlap with fixed bar */}
-        <CellEditor {...props} />
-      </div>
-      <FixedActionBar 
-        onMovePrevious={props.onMovePrevious}
-        onSkipCurrent={props.onSkipCurrent} 
-        onRecordValue={props.onRecordValue}
-        isFirstCell={props.isFirstCell}
-        isLastCell={props.isLastCell}
-      />
-    </>
-  );
-};
-
-export default CellEditorWithFixedActions;
+export default CellEditor;

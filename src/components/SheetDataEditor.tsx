@@ -13,9 +13,11 @@ import { set } from "date-fns";
 
 interface SheetDataEditorProps {
   sheetData: SheetData;
+  onSaveProgress?: () => void;
+  onSaveToNewSheet?: () => void;
 }
 
-const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
+const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetDataEditorProps) => {
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && sheetData.values[i][0].trim() != "")
     {
@@ -258,6 +260,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
       title: "Progress Saved",
       description: `Saved modifications for ${Object.keys(modifiedData).length} cells`,
     });
+    onSaveProgress?.();
   };
 
   const handleSaveToNewSheet = () => {
@@ -271,6 +274,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     }
     calcAverages();
     setShowSaveDialog(true);
+    onSaveToNewSheet?.();
   };
 
   const handleCreateNewSheet = async (fileName: string) => {

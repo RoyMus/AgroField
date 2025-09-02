@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { getData } from "@/hooks/getData";
 import { useState, useEffect } from 'react';
-import { Edit } from "lucide-react";
+import { Edit, Save } from "lucide-react";
 
-const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor}) => {
+const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet}) => {
     const{
     isTemplate,
     plant,
@@ -47,6 +47,30 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor}) => {
                     </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    {onSaveProgress && (
+                        <Button
+                            onClick={onSaveProgress}
+                            variant="outline"
+                            size="sm"
+                            className="h-9 text-sm"
+                            dir="rtl"
+                        >
+                            <Save className="mr-1 h-4 w-4" />
+                            <span>שמור התקדמות</span>
+                        </Button>
+                    )}
+                    {onSaveToNewSheet && (
+                        <Button
+                            onClick={onSaveToNewSheet}
+                            variant="default"
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700 h-9 text-sm"
+                            dir="rtl"
+                        >
+                            <Save className="mr-1 h-4 w-4" />
+                            <span>שמור לגיליון חדש</span>
+                        </Button>
+                    )}
                     <Button
                         onClick={onOpenEditor}
                         variant="default"

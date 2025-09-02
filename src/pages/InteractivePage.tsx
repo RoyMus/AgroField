@@ -23,7 +23,16 @@ const InteractivePage = () => {
       <div className="container mx-auto px-6 py-8">
           <div className="space-y-6">
             {/* Header With File info */}
-            {sheetData && <TopBar sheetData={sheetData} handleGoHome={handleBackToHome} selectedFile={selectedFile} onOpenEditor={handleEditSheet}/>}
+            {sheetData && (
+              <TopBar 
+                sheetData={sheetData} 
+                handleGoHome={handleBackToHome} 
+                selectedFile={selectedFile} 
+                onOpenEditor={handleEditSheet}
+                onSaveProgress={null}
+                onSaveToNewSheet={null}
+              />
+            )}
             
             {/* Sheet Data Editor */}
             {sheetData && <SheetDataEditor sheetData={sheetData} />}
