@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
@@ -18,15 +18,6 @@ interface SheetDataEditorProps {
 }
 
 const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetDataEditorProps) => {
-  // Set up the callback functions for the parent component
-  useEffect(() => {
-    if (onSaveProgress) {
-      onSaveProgress(saveModifications);
-    }
-    if (onSaveToNewSheet) {
-      onSaveToNewSheet(handleSaveToNewSheet);
-    }
-  }, [onSaveProgress, onSaveToNewSheet]);
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && sheetData.values[i][0].trim() != "")
     {
@@ -263,16 +254,16 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
     setCurrentColumnIndex(minColIndex);
   };
 
-  const saveModifications = () => {
+  const saveModifications = useCallback(() => {
     localStorage.setItem('sheet_cell_modifications', JSON.stringify(modifiedData));
     toast({
       title: "Progress Saved",
       description: `Saved modifications for ${Object.keys(modifiedData).length} cells`,
     });
     
-  };
+  }, [modifiedData, toast]);
 
-  const handleSaveToNewSheet = () => {
+  const handleSaveToNewSheet = useCallback(() => {
     if (Object.keys(modifiedData).length === 0) {
       toast({
         title: "No Changes to Save",
@@ -284,7 +275,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
     calcAverages();
     setShowSaveDialog(true);
     
-  };
+  }, [modifiedData, toast]);
 
   const handleCreateNewSheet = async (fileName: string) => {
     setIsSaving(true);
@@ -453,6 +444,16 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
 
   const isLastCell = currentRowIndex === dataRows.length - 1 && currentColumnIndex === headers.length - 1;
   const isFirstCell = currentRowIndex === 0 && currentColumnIndex === 0;
+
+  // Set up the callback functions for the parent component
+  useEffect(() => {
+    if (onSaveProgress) {
+      onSaveProgress(saveModifications);
+    }
+    if (onSaveToNewSheet) {
+      onSaveToNewSheet(handleSaveToNewSheet);
+    }
+  }, [onSaveProgress, onSaveToNewSheet, saveModifications, handleSaveToNewSheet]);
 
   return (
     <div className="space-y-6">
