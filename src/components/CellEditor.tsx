@@ -69,7 +69,7 @@ const CellEditor = ({
   const [dropDownValueOfHamama, setDropDownHamama] = useState(null);
   const [dropDownValueOfMagof, setDropDownMagof] = useState(null);
   const [dropDownValueOfGidul, setDropDownGidul] = useState(null);
-
+  
   const handleChangedRow = () => {
     let curHam = dataRows[currentRowIndex][0].trim();
     let curMag = dataRows[currentRowIndex][1].trim();
@@ -270,7 +270,9 @@ const CellEditor = ({
             value={currentValue}
             onChange={(e) => onInputChange(e.target.value)}
             onInput={(e)=> onInputChange((e.target as HTMLInputElement).value)}
-            placeholder={dataRows[currentRowIndex][currentColumnIndex]}
+            placeholder={
+              `${currentRowIndex}-${currentColumnIndex}` in modifiedData ? modifiedData[`${currentRowIndex}-${currentColumnIndex}`].modifiedValue : dataRows[currentRowIndex][currentColumnIndex]
+            }
             className="text-base p-3 h-11"
             autoFocus
           />

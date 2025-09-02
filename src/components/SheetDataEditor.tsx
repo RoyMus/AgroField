@@ -214,11 +214,7 @@ const SheetDataEditor = ({ sheetData }: SheetDataEditorProps) => {
     const cellKey = `${currentRowIndex}-${currentColumnIndex}`;
     const savedModification = modifiedData[cellKey];
     speak(headers[currentColumnIndex]);
-    if (savedModification) {
-      setCurrentValue(savedModification.modifiedValue);
-    } else {
-      setCurrentValue("");
-    }
+    setCurrentValue("");
   }, [currentRowIndex, currentColumnIndex]);
 
   onWordRecognized((word: string) => {
