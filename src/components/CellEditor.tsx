@@ -225,7 +225,8 @@ const CellEditor = ({
         </div>
         
         {/* Top Action Buttons - Always visible */}
-        <div className="flex flex-wrap gap-2 mt-4">
+        <div className="mt-4 space-y-2">
+          <div className="flex">
           <Button
             onClick={onResetCell}
             variant="outline"
@@ -235,6 +236,9 @@ const CellEditor = ({
           >
             מחק
           </Button>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
           <Button
             onClick={onMovePrevious}
             disabled={isFirstCell}
@@ -261,9 +265,8 @@ const CellEditor = ({
             <Type className="mr-2 h-4 w-4" />
             שמור
           </Button>
-        </div>
       </div>
-
+      </div>
       {/* Input Section */}
       <div className="mb-4">        
         <div>
