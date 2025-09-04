@@ -13,7 +13,14 @@ interface EditableSheetTableProps {
 }
 
 const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
-  const headersRowIndex = 6;
+   for (let i = 0; i < sheetData.values.length; i++) {
+    if (sheetData.values[i][0] != null && sheetData.values[i][0].trim() != "")
+    {
+      var found_headers_row_index = i;
+      break;
+    }
+  }
+  const headersRowIndex = found_headers_row_index + 1;
   const headers = sheetData.values[headersRowIndex -1] || [];
   var AlreadySetFirst = false;
   for (let i = 0; i < headers.length; i++) {
@@ -37,14 +44,14 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
   const { toast } = useToast();
   
   const {
-    cellStyles,
     getCellStyle,
     insertRow,
     deleteRow,
     insertColumn,
     deleteColumn,
     loadInitialStyles,
-    clearStyles
+    clearStyles,
+    saveStyles
   } = useCellStyling();
 
   // Load saved modifications from localStorage and apply to sheet data
@@ -83,9 +90,6 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
 
   // Handle cell value changes and sync with localStorage
   const handleCellChange = useCallback((rowIndex: number, colIndex: number, value: string) => {
-    const cellKey = `${rowIndex}-${colIndex}`;
-    const originalValue = sheetData?.values?.[rowIndex]?.[colIndex] || "";
-    
     // Update local data
     setLocalData(prev => {
       const newData = prev.map(row => [...row]);
@@ -102,27 +106,8 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
       
       newData[rowIndex][colIndex] = value;
       return newData;
-    });
-    
-    // Update modifiedData and sync to localStorage
-    const newModifiedData = { ...modifiedData };
-    
-    if (value === originalValue || value === "") {
-      // Remove from modifications if reverting to original or empty
-      delete newModifiedData[cellKey];
-    } else {
-      // Add/update modification
-      newModifiedData[cellKey] = {
-        originalValue,
-        modifiedValue: value,
-        rowIndex,
-        columnIndex: colIndex
-      };
-    }
-    
-    setModifiedData(newModifiedData);
-    localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
-    setHasChanges(Object.keys(newModifiedData).length > 0);
+    });    
+    setHasChanges(localData.length > 0);
   }, [sheetData, modifiedData]);
 
   // Add new row
@@ -181,13 +166,22 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
 
   // Save current modifications
   const saveModifications = () => {
-    const modifiedDataWithStyles = {
-      ...modifiedData,
-      _styles: cellStyles // Include styles in saved data
-    };
+    for (let r = 0; r < localData.length; r++) {
+      for (let c = 0; c < localData[r].length; c++) {
+        const originalValue = (sheetData.values[r] && sheetData.values[r][c]) || "";
+        const currentValue = localData[r][c] || "";
+        if (originalValue !== currentValue) {
+          modifiedData[`${r}-${c}`] = {
+            originalValue,
+            modifiedValue: currentValue,
+            rowIndex: r,
+            columnIndex: c
+          };
+        }
+      }
+    }
     localStorage.setItem('sheet_cell_modifications', JSON.stringify(modifiedData));
-    localStorage.setItem('sheet_cell_styles', JSON.stringify(cellStyles));
-    
+    saveStyles();
     toast({
       title: "Progress Saved",
       description: `Saved modifications for ${Object.keys(modifiedData).length} cells with formatting`,

@@ -12,7 +12,8 @@ interface UseCellStylingReturn {
   deleteColumn: (atIndex: number) => void;
   loadInitialStyles: (styles: CellStyle[]) => void;
   clearStyles: () => void;
-}``
+  saveStyles: ()=>void;
+}
 
 export const useCellStyling = (): UseCellStylingReturn => {
   const [cellStyles, setCellStyles] = useState<CellStyle[]>([]);
@@ -28,11 +29,6 @@ export const useCellStyling = (): UseCellStylingReturn => {
       }
     }
   }, []);
-
-  // Save styles to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('sheet_cell_styles', JSON.stringify(cellStyles));
-  }, [cellStyles]);
 
   const getCellStyle = useCallback((rowIndex: number, columnIndex: number): CellFormat | undefined => {
     const style = cellStyles.find(s => s.rowIndex === rowIndex && s.columnIndex === columnIndex);
@@ -140,6 +136,14 @@ export const useCellStyling = (): UseCellStylingReturn => {
     setCellStyles([]);
     localStorage.removeItem('sheet_cell_styles');
   }, []);
+  
+  const saveStyles = useCallback(() => {
+    setCellStyles(currentStyles => {
+      console.log('Saving styles to localStorage:', currentStyles.length);
+      localStorage.setItem('sheet_cell_styles', JSON.stringify(currentStyles));
+      return currentStyles;
+    });
+  }, []);
 
   return {
     cellStyles,
@@ -152,5 +156,6 @@ export const useCellStyling = (): UseCellStylingReturn => {
     loadInitialStyles,
     clearStyles,
     setCellStyleFormat,
+    saveStyles
   };
 };

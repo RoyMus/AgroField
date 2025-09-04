@@ -32,18 +32,22 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
     loadInitialStyles,
     clearStyles,
     setCellStyleFormat,
+    saveStyles
   } = useCellStyling();
-  
+
   // Load initial styles when component mounts
   useEffect(() => {
     const cellStyles = localStorage.getItem('sheet_cell_styles');
-    if (cellStyles.length === 0) 
+    if (cellStyles && cellStyles.length === 0) 
     {
+      console.log("Has data");
       return;
     }
     if (sheetData.formatting && sheetData.formatting.length > 0) {
       console.log('SheetDataEditor: Loading formatting with', sheetData.formatting.length, 'styles');
       loadInitialStyles(sheetData.formatting);
+      saveStyles();
+
     } else {
       console.log('SheetDataEditor: No formatting available, clearing styles');
       clearStyles();
@@ -174,6 +178,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
       backgroundColor:  isBetween ? '#00ff15ff' : '#ff0000ff',
     });
     }
+    saveStyles();
     setModifiedData(newModifiedData);
     localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
   };
@@ -292,7 +297,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
         // Clear modifications since they've been saved to a new sheet
         setModifiedData({});
         localStorage.removeItem('sheet_cell_modifications');
-        localStorage.removeItem('sheet_cell_styles');
 
         // Optionally open the new sheet
         if (result.url) {
