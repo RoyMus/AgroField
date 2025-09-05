@@ -38,9 +38,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
   // Load initial styles when component mounts
   useEffect(() => {
     const cellStyles = localStorage.getItem('sheet_cell_styles');
-    if (cellStyles && cellStyles.length === 0) 
+    if (cellStyles) 
     {
-      console.log("Has data");
       return;
     }
     if (sheetData.formatting && sheetData.formatting.length > 0) {
