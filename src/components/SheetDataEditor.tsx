@@ -459,6 +459,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
     }
   }, [onSaveProgress, onSaveToNewSheet, saveModifications, handleSaveToNewSheet]);
 
+  const [formattedDate] = useState(() => new Date().toLocaleDateString());
   return (
     <div className="space-y-6">
       {/* Current Cell Editor */}
@@ -492,7 +493,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
         onConfirm={handleCreateNewSheet}
         onCancel={() => setShowSaveDialog(false)}
         modifiedCount={Object.keys(modifiedData).length}
-        previousFileName={`${sheetData.metadata.title} ${new Date().toLocaleDateString()}`}
+        previousFileName={`${sheetData.metadata.title} ${formattedDate}`}
         isLoading={isSaving}
       />
       {/* Data Preview Table *}
