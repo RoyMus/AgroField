@@ -14,32 +14,35 @@ interface EditableSheetTableProps {
 }
 
 const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTableProps) => {
-   for (let i = 0; i < sheetData.values.length; i++) {
-    if (sheetData.values[i][0] != null && sheetData.values[i][0].trim() != "")
-    {
-      var found_headers_row_index = i;
-      break;
-    }
-  }
-  const headersRowIndex = found_headers_row_index + 1;
-  const headers = sheetData.values[headersRowIndex -1] || [];
-  var AlreadySetFirst = false;
-  console.log("MaxCols", headers.length);
-  for (let i = 0; i < headers.length; i++) {
-    if (headers[i] == "")
-    {
-      if (!AlreadySetFirst)
+  useEffect(() => {
+    for (let i = 0; i < sheetData.values.length; i++) {
+      if (sheetData.values[i][0] != null && sheetData.values[i][0].trim() != "")
       {
-        AlreadySetFirst = true;
-      }
-      else
-      {
-        var lastindex = i - 1;
+        var found_headers_row_index = i;
+        break;
       }
     }
-  }
+    const headersRowIndex = found_headers_row_index + 1;
+    const headers = sheetData.values[headersRowIndex -1] || [];
+    var AlreadySetFirst = false;
+    console.log("MaxCols", headers.length);
+    for (let i = 0; i < headers.length; i++) {
+      if (headers[i] == "")
+      {
+        if (!AlreadySetFirst)
+        {
+          AlreadySetFirst = true;
+        }
+        else
+        {
+          var lastindex = i - 1;
+        }
+      }
+    }
+    setMaxColIndex(lastindex);
+  },[sheetData]);
 
-  const [maxColIndex, setMaxColIndex] = useState(lastindex);
+  const [maxColIndex, setMaxColIndex] = useState(0);
   const [localData, setLocalData] = useState<string[][]>([]);
   const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
   const [hasChanges, setHasChanges] = useState(false);
