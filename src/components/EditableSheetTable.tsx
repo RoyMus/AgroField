@@ -10,9 +10,10 @@ import { set } from "date-fns";
 
 interface EditableSheetTableProps {
   sheetData: SheetData;
+  onSaveProgress: (newData: SheetData) => void;
 }
 
-const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
+const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTableProps) => {
    for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && sheetData.values[i][0].trim() != "")
     {
@@ -23,6 +24,7 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
   const headersRowIndex = found_headers_row_index + 1;
   const headers = sheetData.values[headersRowIndex -1] || [];
   var AlreadySetFirst = false;
+  console.log("MaxCols", headers.length);
   for (let i = 0; i < headers.length; i++) {
     if (headers[i] == "")
     {
@@ -166,25 +168,60 @@ const EditableSheetTable = ({ sheetData }: EditableSheetTableProps) => {
 
   // Save current modifications
   const saveModifications = () => {
+    // Create new modifications object
+    const newModifications: Record<string, ModifiedCellData> = {};
+    
+    // Create new sheet data values
+    const newSheetValues = [...sheetData.values];
+    
+    // Update both modifications and sheet values
     for (let r = 0; r < localData.length; r++) {
       for (let c = 0; c < localData[r].length; c++) {
         const originalValue = (sheetData.values[r] && sheetData.values[r][c]) || "";
         const currentValue = localData[r][c] || "";
+        
         if (originalValue !== currentValue) {
-          modifiedData[`${r}-${c}`] = {
+          // Update modifications
+          newModifications[`${r}-${c}`] = {
             originalValue,
             modifiedValue: currentValue,
             rowIndex: r,
             columnIndex: c
           };
+          
+          // Update sheet values
+          while (newSheetValues.length <= r) {
+            newSheetValues.push([]);
+          }
+          while (newSheetValues[r].length <= c) {
+            newSheetValues[r].push("");
+          }
+          newSheetValues[r][c] = currentValue;
         }
       }
     }
-    localStorage.setItem('sheet_cell_modifications', JSON.stringify(modifiedData));
+
+    // Update local storage
+    localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifications));
+    
+    // Save styles
     saveStyles();
+    
+    // Update state
+    setModifiedData(newModifications);
+    
+    // Create new sheet data with updated values
+    const updatedSheetData: SheetData = {
+      ...sheetData,
+      values: newSheetValues
+    };
+    
+    // Sync with other pages
+    onSaveProgress(updatedSheetData);
+    // Show success message
     toast({
       title: "Progress Saved",
-      description: `Saved modifications for ${Object.keys(modifiedData).length} cells with formatting`,
+      description: `Saved modifications for ${Object.keys(newModifications).length} cells with formatting`,
     });
   };
 

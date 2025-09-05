@@ -139,7 +139,7 @@ export const useCellStyling = (): UseCellStylingReturn => {
   
   const saveStyles = useCallback(() => {
     setCellStyles(currentStyles => {
-      console.log('Saving styles to localStorage:', currentStyles.length);
+      console.log('Saving styles to localStorage:', currentStyles);
       localStorage.setItem('sheet_cell_styles', JSON.stringify(currentStyles));
       return currentStyles;
     });

@@ -34,6 +34,7 @@ interface UseGoogleDriveReturn {
   logout: () => void;
   clearSheetData: () => void;
   createNewSheet: (fileName: string, modifiedData: Record<string, any>) => Promise<{ success: boolean; url?: string; error?: string }>;
+  handleSaveProgress: (newData: SheetData) => void;
 }
 
 export const useGoogleDrive = (): UseGoogleDriveReturn => {
@@ -290,6 +291,10 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     }
   }, [isAuthenticated, accessToken]);
 
+  const handleSaveProgress = (newData: SheetData) => {
+    setSheetData(newData);
+    localStorage.setItem('google_drive_sheet_data', JSON.stringify(newData));
+  };
   // Debug logging for sheetData changes
   useEffect(() => {
     console.log('Sheet data changed in hook:', sheetData);
@@ -309,5 +314,6 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     logout,
     clearSheetData,
     createNewSheet,
+    handleSaveProgress
   };
 };

@@ -167,11 +167,11 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
         rowIndex: dataRows.length - 1,
         columnIndex: i
       };
-      const wantedResult = sheetData.values[dataRows.length - 2][i].split('-');
+      const wantedResult = sheetData.values[dataRows.length - 2][i]?.split('-');
       let isBetween = false;
-      if(wantedResult.length > 1)
+      if(wantedResult && wantedResult.length > 1)
         isBetween = sum > parseFloat(wantedResult[0]) && sum < parseFloat(wantedResult[1]);
-      else
+      else if (wantedResult && wantedResult.length === 1)
         isBetween = sum < parseFloat(wantedResult[0]);
       setCellStyleFormat(dataRows.length - 1,i,{
       backgroundColor:  isBetween ? '#00ff15ff' : '#ff0000ff',

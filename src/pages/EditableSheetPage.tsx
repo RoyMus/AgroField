@@ -6,7 +6,7 @@ import EditableSheetTable from "@/components/EditableSheetTable";
 
 const EditableSheetPage = () => {
   const navigate = useNavigate();
-  const { sheetData, selectedFile } = useGoogleDrive();
+  const { sheetData, selectedFile, handleSaveProgress } = useGoogleDrive();
 
   const handleBackToInteractive = () => {
     navigate(-1); // Go back to previous page
@@ -56,7 +56,7 @@ const EditableSheetPage = () => {
             </div>
           </div>
           {/* Editable Table */}
-          <EditableSheetTable sheetData={sheetData} />
+          <EditableSheetTable sheetData={sheetData} onSaveProgress={handleSaveProgress} />
         </div>
       </div>
     </div>
