@@ -17,6 +17,7 @@ interface SaveToNewSheetDialogProps {
   onConfirm: (fileName: string) => void;
   onCancel: () => void;
   modifiedCount: number;
+  previousFileName: string;
   isLoading?: boolean;
 }
 
@@ -26,9 +27,10 @@ const SaveToNewSheetDialog = ({
   onConfirm, 
   onCancel, 
   modifiedCount,
+  previousFileName,
   isLoading = false
 }: SaveToNewSheetDialogProps) => {
-  const [fileName, setFileName] = useState("");
+  const [fileName, setFileName] = useState(previousFileName);
 
   const handleConfirm = () => {
     if (fileName.trim()) {
@@ -57,7 +59,7 @@ const SaveToNewSheetDialog = ({
             <Label htmlFor="fileName">File Name</Label>
             <Input
               id="fileName"
-              placeholder="Enter the name for your new sheet"
+              placeholder={previousFileName}
               value={fileName}
               onChange={(e) => setFileName(e.target.value)}
               disabled={isLoading}

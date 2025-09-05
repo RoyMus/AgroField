@@ -492,6 +492,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
         onConfirm={handleCreateNewSheet}
         onCancel={() => setShowSaveDialog(false)}
         modifiedCount={Object.keys(modifiedData).length}
+        previousFileName={sheetData.metadata.title + new Date().toLocaleDateString()}
         isLoading={isSaving}
       />
       {/* Data Preview Table *}
