@@ -169,37 +169,41 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
   // Save current modifications
   const saveModifications = () => {
     // Create new modifications object
-    const newModifications: Record<string, ModifiedCellData> = {};
+  const newModifications: Record<string, ModifiedCellData> = {};
     
     // Create new sheet data values
-    const newSheetValues = [...sheetData.values];
-    
-    // Update both modifications and sheet values
-    for (let r = 0; r < localData.length; r++) {
-      for (let c = 0; c < localData[r].length; c++) {
-        const originalValue = (sheetData.values[r] && sheetData.values[r][c]) || "";
-        const currentValue = localData[r][c] || "";
-        
-        if (originalValue !== currentValue) {
-          // Update modifications
-          newModifications[`${r}-${c}`] = {
-            originalValue,
-            modifiedValue: currentValue,
-            rowIndex: r,
-            columnIndex: c
-          };
-          
-          // Update sheet values
-          while (newSheetValues.length <= r) {
-            newSheetValues.push([]);
-          }
-          while (newSheetValues[r].length <= c) {
-            newSheetValues[r].push("");
-          }
-          newSheetValues[r][c] = currentValue;
-        }
+    // Create new sheet data values matching the current dimensions
+  const newSheetValues: string[][] = [];
+  
+  // Get current dimensions
+  const currentRows = localData.length;
+  const currentCols = Math.max(...localData.map(row => row.length), 0);
+  
+  // Initialize newSheetValues with current dimensions
+  for (let r = 0; r < currentRows; r++) {
+    newSheetValues[r] = new Array(currentCols).fill("");
+  }
+  
+  // Copy current values and track modifications
+  for (let r = 0; r < currentRows; r++) {
+    for (let c = 0; c < currentCols; c++) {
+      const currentValue = localData[r][c] || "";
+      const originalValue = (sheetData.values[r] && sheetData.values[r][c]) || "";
+      
+      // Set the value in new sheet data
+      newSheetValues[r][c] = currentValue;
+      
+      // Track modification if value is different from original
+      if (originalValue !== currentValue) {
+        newModifications[`${r}-${c}`] = {
+          originalValue,
+          modifiedValue: currentValue,
+          rowIndex: r,
+          columnIndex: c
+        };
       }
     }
+  }
 
     // Update local storage
     localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifications));
