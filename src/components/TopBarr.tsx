@@ -64,7 +64,7 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
                             onClick={onSaveToNewSheet}
                             variant="default"
                             size="sm"
-                            className="bg-blue-600 hover:bg-blue-700 h-9 text-sm"
+                            className="bg-green-600 hover:bg-green-700 h-9 text-sm"
                             dir="rtl"
                         >
                             <Save className="mr-1 h-4 w-4" />
