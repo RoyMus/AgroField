@@ -25,6 +25,22 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
       break;
     }
   }
+  for (let i = found_headers_row_index + 1; i < sheetData.values.length; i++) {
+    var found_comment_index = true;
+    for (let j = 0; j < sheetData.values[i].length; j++)
+    {
+      if (sheetData.values[i][j] != null && sheetData.values[i][j].trim() != "")
+      {
+        found_comment_index = false;
+        break;
+      }
+    }
+    if (found_comment_index)
+    {
+      var commentIndex = i;
+      break;
+    }
+  }
   const headersRowIndex = found_headers_row_index + 1;
   const headers = sheetData.values[headersRowIndex -1] || [];
   const [rowChangeCounter, setRowChangeCounter] = useState(0);
@@ -81,7 +97,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
   const { toast } = useToast();
   const { isRecording, startRecording, stopRecording, error: recordingError, onWordRecognized } = useVoiceRecording();
   const { createNewSheet } = useGoogleDrive();
-  const dataRows = sheetData.values;
+  const dataRows = sheetData.values.slice(0, commentIndex);
   const{
     isTemplate,
     plant,
