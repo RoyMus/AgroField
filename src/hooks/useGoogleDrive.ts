@@ -7,12 +7,19 @@ interface GoogleDriveFile {
   modifiedTime: string;
 }
 
+interface SheetTab {
+  id: number;
+  title: string;
+  index: number;
+}
+
 interface SheetData {
   sheetName: string;
   values: string[][];
   metadata: {
     title: string;
     sheetCount: number;
+    availableSheets?: SheetTab[];
   };
   formatting?: Array<{
     rowIndex: number;
@@ -30,7 +37,7 @@ interface UseGoogleDriveReturn {
   error: string | null;
   authenticate: () => Promise<void>;
   selectFile: (file: GoogleDriveFile) => void;
-  readSheet: (fileId: string) => Promise<void>;
+  readSheet: (fileId: string, sheetName?: string) => Promise<void>;
   logout: () => void;
   clearSheetData: () => void;
   createNewSheet: (fileName: string, modifiedData: Record<string, any>) => Promise<{ success: boolean; url?: string; error?: string }>;
@@ -169,9 +176,9 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     localStorage.removeItem('google_drive_sheet_data');
   };
 
-  const readSheet = async (fileId: string) => {
+  const readSheet = async (fileId: string, sheetName?: string) => {
     try {
-      console.log('Starting readSheet for fileId:', fileId);
+      console.log('Starting readSheet for fileId:', fileId, 'sheetName:', sheetName);
       setIsLoading(true);
       setError(null);
       
@@ -180,7 +187,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       setSheetData(null);
       
       const { data, error } = await supabase.functions.invoke('google-drive-auth', {
-        body: { action: 'readSheet', accessToken, fileId }
+        body: { action: 'readSheet', accessToken, fileId, sheetName }
       });
 
       if (error) {

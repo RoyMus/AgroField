@@ -3,14 +3,28 @@ import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import EditableSheetTable from "@/components/EditableSheetTable";
+import SheetSelector from "@/components/SheetSelector";
+import { useCallback } from "react";
 
 const EditableSheetPage = () => {
   const navigate = useNavigate();
-  const { sheetData, selectedFile, handleSaveProgress } = useGoogleDrive();
+  const { sheetData, selectedFile, handleSaveProgress, readSheet, isLoading } = useGoogleDrive();
 
   const handleBackToInteractive = () => {
     navigate(-1); // Go back to previous page
   };
+
+  const handleSheetChange = useCallback(async (sheetName: string) => {
+    if (selectedFile) {
+      try {
+        await readSheet(selectedFile.id, sheetName);
+        // Clear modifications when switching sheets
+        localStorage.removeItem('sheet_cell_modifications');
+      } catch (error) {
+        console.error('Error switching sheet:', error);
+      }
+    }
+  }, [selectedFile, readSheet]);
 
   if (!sheetData || !selectedFile) {
     return (
@@ -46,9 +60,20 @@ const EditableSheetPage = () => {
                 <span>Back to Preview</span>
               </Button>
               <div className="flex-1">
-                <h1 className="text-lg sm:text-xl font-semibold text-gray-800 truncate">
-                  Edit Sheet: {selectedFile.name}
-                </h1>
+                <div className="flex items-center gap-4 mb-2">
+                  <h1 className="text-lg sm:text-xl font-semibold text-gray-800 truncate">
+                    Edit Sheet: {selectedFile.name}
+                  </h1>
+                  {sheetData.metadata?.availableSheets && (
+                    <SheetSelector
+                      availableSheets={sheetData.metadata.availableSheets}
+                      currentSheet={sheetData.sheetName}
+                      onSheetSelect={handleSheetChange}
+                      isLoading={isLoading}
+                      disabled={isLoading}
+                    />
+                  )}
+                </div>
                 <p className="text-sm text-gray-600">
                   Make changes locally without affecting the original sheet
                 </p>

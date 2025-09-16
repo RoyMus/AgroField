@@ -26,12 +26,19 @@ export interface ModifiedCellData {
   columnIndex: number;
 }
 
+export interface SheetTab {
+  id: number;
+  title: string;
+  index: number;
+}
+
 export interface SheetData {
   values: string[][];
   sheetName: string;
   metadata?: {
     title: string;
     sheetCount: number;
+    availableSheets?: SheetTab[];
   };
   formatting?: CellStyle[];
 }

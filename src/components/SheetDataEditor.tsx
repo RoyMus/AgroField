@@ -15,9 +15,10 @@ interface SheetDataEditorProps {
   sheetData: SheetData;
   onSaveProgress?: (saveFunc: () => void) => void;
   onSaveToNewSheet?: (saveFunc: () => void) => void;
+  onSheetChange?: (sheetName: string) => void;
 }
 
-const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetDataEditorProps) => {
+const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetChange }: SheetDataEditorProps) => {
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && sheetData.values[i][0].trim() != "")
     {
@@ -96,7 +97,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const { isRecording, startRecording, stopRecording, error: recordingError, onWordRecognized } = useVoiceRecording();
-  const { createNewSheet } = useGoogleDrive();
+  const { createNewSheet, readSheet, selectedFile, isLoading } = useGoogleDrive();
   const dataRows = sheetData.values.slice(0, commentIndex);
   const{
     isTemplate,
@@ -296,6 +297,21 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
     setShowSaveDialog(true);
     
   }, [modifiedData, toast]);
+
+  const handleSheetChange = useCallback(async (sheetName: string) => {
+    if (selectedFile) {
+      try {
+        await readSheet(selectedFile.id, sheetName);
+        onSheetChange?.(sheetName);
+      } catch (error) {
+        toast({
+          title: "Failed to switch sheet",
+          description: "Could not load the selected sheet",
+          variant: "destructive"
+        });
+      }
+    }
+  }, [selectedFile, readSheet, onSheetChange, toast]);
 
   const handleCreateNewSheet = async (fileName: string) => {
     setIsSaving(true);

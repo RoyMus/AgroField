@@ -13,7 +13,7 @@ serve(async (req)=>{
   try {
     // Read the request body once and store it
     const requestBody = await req.json();
-    const { action, code, accessToken, fileId } = requestBody;
+    const { action, code, accessToken, fileId, sheetName } = requestBody;
     console.log('Request action:', action);
     const CLIENT_ID = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID');
     const CLIENT_SECRET = Deno.env.get('GOOGLE_DRIVE_CLIENT_SECRET');
@@ -83,7 +83,7 @@ serve(async (req)=>{
       });
     }
     if (action === 'readSheet') {
-      console.log('Reading Google Sheet data for file:', fileId);
+      console.log('Reading Google Sheet data for file:', fileId, 'sheet:', sheetName);
       // First, get sheet metadata to find available sheets
       const metadataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}`, {
         headers: {
@@ -96,11 +96,21 @@ serve(async (req)=>{
         throw new Error(`Failed to fetch sheet metadata: ${errorData.error?.message}`);
       }
       const metadata = await metadataResponse.json();
-      const firstSheet = metadata.sheets[0];
-      const sheetName = firstSheet.properties.title;
-      console.log('Reading data from sheet:', sheetName);
-      // Get the data from the first sheet
-      const dataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(sheetName)}`, {
+      
+      // Use provided sheetName or default to first sheet
+      const targetSheet = sheetName 
+        ? metadata.sheets.find(sheet => sheet.properties.title === sheetName)
+        : metadata.sheets[0];
+      
+      if (!targetSheet) {
+        throw new Error(`Sheet "${sheetName}" not found`);
+      }
+      
+      const selectedSheetName = targetSheet.properties.title;
+      const selectedSheetIndex = metadata.sheets.findIndex(sheet => sheet.properties.title === selectedSheetName);
+      console.log('Reading data from sheet:', selectedSheetName, 'at index:', selectedSheetIndex);
+      // Get the data from the selected sheet
+      const dataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(selectedSheetName)}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -121,7 +131,7 @@ serve(async (req)=>{
       if (formattingResponse.ok) {
         try {
           const formatData = await formattingResponse.json();
-          const sourceFormatting = formatData.sheets?.[0]?.data?.[0];
+          const sourceFormatting = formatData.sheets?.[selectedSheetIndex]?.data?.[0];
           // Extract cell formatting using utility function
           const cellStyles = [];
           if (sourceFormatting?.rowData) {
@@ -225,11 +235,16 @@ serve(async (req)=>{
       }
       console.log('Successfully read sheet data with', sheetData.values?.length || 0, 'rows and', formattingData?.length || 0, 'formatted cells');
       return new Response(JSON.stringify({
-        sheetName,
+        sheetName: selectedSheetName,
         values: sheetData.values || [],
         metadata: {
           title: metadata.properties.title,
-          sheetCount: metadata.sheets.length
+          sheetCount: metadata.sheets.length,
+          availableSheets: metadata.sheets.map(sheet => ({
+            id: sheet.properties.sheetId,
+            title: sheet.properties.title,
+            index: sheet.properties.index
+          }))
         },
         formatting: formattingData
       }), {
