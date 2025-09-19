@@ -198,6 +198,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       console.log('Sheet data received from API:', data);
       
       // Set the sheet data immediately for responsive UI
+
       setSheetData(data);
       localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
       

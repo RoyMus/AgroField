@@ -6,8 +6,7 @@ import SheetSelector from "./SheetSelector";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { useToast } from "@/hooks/use-toast";
 
-const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet}) => {
-    const { readSheet, isLoading } = useGoogleDrive();
+const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet, readSheet, isLoading}) => {
     const { toast } = useToast();
     const{
     isTemplate,
