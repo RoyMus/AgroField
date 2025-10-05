@@ -107,11 +107,13 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
     faucetConductivity,
   } = getData(false, null, null, null, null, null);
   useEffect(()=>{
-    const savedModifications = localStorage.getItem('sheet_cell_modifications');
-    const parsedSavedModifications = savedModifications ? JSON.parse(savedModifications) : {};
-    if (savedModifications) {
-      setModifiedData(parsedSavedModifications);
-    }
+    const sheetName = sheetData?.sheetName;
+    if (!sheetName) return;
+
+    const allModifications = localStorage.getItem('all_sheet_modifications');
+    const allSheetModifications = allModifications ? JSON.parse(allModifications) : {};
+    const parsedSavedModifications = allSheetModifications[sheetName] || {};
+    
     const topBarRowIndex = 0;
     const faucetRowIndex = 1;
     const topBarRow = sheetData.values[topBarRowIndex];
@@ -153,10 +155,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
           };
     }
 
-
     setModifiedData(newModifiedData);
-    localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
-  }, []);
+    allSheetModifications[sheetName] = newModifiedData;
+    localStorage.setItem('all_sheet_modifications', JSON.stringify(allSheetModifications));
+  }, [sheetData?.sheetName]);
 
   const calcAverages = () =>
   {
@@ -196,20 +198,36 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
     }
     saveStyles();
     setModifiedData(newModifiedData);
-    localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
+    
+    const sheetName = sheetData?.sheetName;
+    if (sheetName) {
+      const allModifications = localStorage.getItem('all_sheet_modifications');
+      const allSheetModifications = allModifications ? JSON.parse(allModifications) : {};
+      allSheetModifications[sheetName] = newModifiedData;
+      localStorage.setItem('all_sheet_modifications', JSON.stringify(allSheetModifications));
+    }
   };
 
   useEffect(() => {
-    // Load saved modifications from localStorage
-    const savedModifications = localStorage.getItem('sheet_cell_modifications');
-    if (savedModifications) {
-      setModifiedData(JSON.parse(savedModifications));
+    // Load saved modifications for current sheet from localStorage
+    const sheetName = sheetData?.sheetName;
+    if (!sheetName) return;
+
+    const allModifications = localStorage.getItem('all_sheet_modifications');
+    if (allModifications) {
+      try {
+        const parsed = JSON.parse(allModifications);
+        setModifiedData(parsed[sheetName] || {});
+      } catch (error) {
+        console.error('Failed to parse saved modifications:', error);
+      }
     }
 
     // Listen for storage changes from other components (like EditableSheetTable)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'sheet_cell_modifications' && e.newValue) {
-        setModifiedData(JSON.parse(e.newValue));
+      if (e.key === 'all_sheet_modifications' && e.newValue) {
+        const parsed = JSON.parse(e.newValue);
+        setModifiedData(parsed[sheetName] || {});
       }
     };
 
@@ -217,10 +235,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
     
     // Also listen for localStorage changes within the same tab
     const handleLocalStorageUpdate = () => {
-      const savedModifications = localStorage.getItem('sheet_cell_modifications');
-      if (savedModifications) {
-        const parsedData = JSON.parse(savedModifications);
-        setModifiedData(parsedData);
+      const allModifications = localStorage.getItem('all_sheet_modifications');
+      if (allModifications) {
+        const parsed = JSON.parse(allModifications);
+        setModifiedData(parsed[sheetName] || {});
       }
     };
 
@@ -231,7 +249,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
       window.removeEventListener('storage', handleStorageChange);
       clearInterval(interval);
     };
-  }, []);
+  }, [sheetData?.sheetName]);
   useEffect(() => {
     // Only set current cell value when position changes
     const cellKey = `${currentRowIndex}-${currentColumnIndex}`;
@@ -276,13 +294,20 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
   };
 
   const saveModifications = useCallback(() => {
-    localStorage.setItem('sheet_cell_modifications', JSON.stringify(modifiedData));
+    const sheetName = sheetData?.sheetName;
+    if (!sheetName) return;
+
+    const allModifications = localStorage.getItem('all_sheet_modifications');
+    const allSheetModifications = allModifications ? JSON.parse(allModifications) : {};
+    allSheetModifications[sheetName] = modifiedData;
+    localStorage.setItem('all_sheet_modifications', JSON.stringify(allSheetModifications));
+    
     toast({
       title: "Progress Saved",
       description: `Saved modifications for ${Object.keys(modifiedData).length} cells`,
     });
     
-  }, [modifiedData, toast]);
+  }, [modifiedData, sheetData?.sheetName, toast]);
 
   const handleSaveToNewSheet = useCallback(() => {
     if (Object.keys(modifiedData).length === 0) {
@@ -325,9 +350,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
         });
         setShowSaveDialog(false);
         
-        // Clear modifications since they've been saved to a new sheet
+        // Clear all modifications since they've been saved to a new sheet
         setModifiedData({});
-        localStorage.removeItem('sheet_cell_modifications');
+        localStorage.removeItem('all_sheet_modifications');
+        localStorage.removeItem('all_sheet_styles');
 
         // Optionally open the new sheet
         if (result.url) {
@@ -369,7 +395,14 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
       }
     };
     setModifiedData(newModifiedData);
-    localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
+    
+    const sheetName = sheetData?.sheetName;
+    if (sheetName) {
+      const allModifications = localStorage.getItem('all_sheet_modifications');
+      const allSheetModifications = allModifications ? JSON.parse(allModifications) : {};
+      allSheetModifications[sheetName] = newModifiedData;
+      localStorage.setItem('all_sheet_modifications', JSON.stringify(allSheetModifications));
+    }
     
     toast({
       title: "Value Recorded",
@@ -456,7 +489,14 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
     const newModifiedData = { ...modifiedData };
     delete newModifiedData[cellKey];
     setModifiedData(newModifiedData);
-    localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifiedData));
+    
+    const sheetName = sheetData?.sheetName;
+    if (sheetName) {
+      const allModifications = localStorage.getItem('all_sheet_modifications');
+      const allSheetModifications = allModifications ? JSON.parse(allModifications) : {};
+      allSheetModifications[sheetName] = newModifiedData;
+      localStorage.setItem('all_sheet_modifications', JSON.stringify(allSheetModifications));
+    }
   };
 
   useEffect(() => {

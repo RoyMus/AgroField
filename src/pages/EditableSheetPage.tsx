@@ -18,8 +18,7 @@ const EditableSheetPage = () => {
     if (selectedFile) {
       try {
         await readSheet(selectedFile.id, sheetName);
-        // Clear modifications when switching sheets
-        localStorage.removeItem('sheet_cell_modifications');
+        // Don't clear modifications - we're tracking all sheets now
       } catch (error) {
         console.error('Error switching sheet:', error);
       }
