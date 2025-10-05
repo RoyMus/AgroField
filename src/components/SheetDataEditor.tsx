@@ -9,8 +9,7 @@ import CellEditor from "./CellEditor";
 import DataPreviewTable from "./DataPreviewTable";
 import SaveToNewSheetDialog from "./SaveToNewSheetDialog";
 import { SheetData, ModifiedCellData } from "@/types/cellTypes";
-import { set } from "date-fns";
-import { start } from "repl";
+
 
 interface SheetDataEditorProps {
   sheetData: SheetData;
@@ -43,6 +42,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
       break;
     }
   }
+
+
   const headersRowIndex = found_headers_row_index + 1;
   const headers = sheetData.values[headersRowIndex -1] || [];
   const [rowChangeCounter, setRowChangeCounter] = useState(0);
@@ -51,7 +52,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
     clearStyles,
     setCellStyleFormat,
     saveStyles
-  } = useCellStyling();
+  } = useCellStyling(sheetData?.sheetName);
 
   // Load initial styles when component mounts
   useEffect(() => {
@@ -99,6 +100,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
   const { toast } = useToast();
   const { isRecording, startRecording, stopRecording, error: recordingError, onWordRecognized } = useVoiceRecording();
   const { createNewSheet, readSheet, selectedFile, isLoading } = useGoogleDrive();
+  const navigate = useNavigate();
   const dataRows = sheetData.values.slice(0, commentIndex);
   const{
     isTemplate,
@@ -596,6 +598,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
       </div>*/}
     </div>
   );
+  
 };
 
 export default SheetDataEditor;

@@ -4,6 +4,8 @@ import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
 import TopBar from "@/components/TopBarr";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 
 const InteractivePage = () => {
   const navigate = useNavigate();
@@ -25,7 +27,23 @@ const InteractivePage = () => {
   const handleEditSheet = () => {
     navigate("/edit-sheet");
   };
-
+  
+  if (!sheetData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+        <div className="container mx-auto px-6 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-800 mb-4">No Sheet Data Available</h1>
+            <p className="text-gray-600 mb-6">Please select a Google Sheet first.</p>
+            <Button onClick={() => navigate("/")} variant="outline">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Go to Home
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
       <div className="container mx-auto px-6 py-8">
