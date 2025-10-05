@@ -13,7 +13,7 @@ const InteractivePage = () => {
 
   const handleSheetChange = useCallback((sheetName: string) => {
     // Clear modifications when switching sheets
-    localStorage.removeItem('sheet_cell_modifications');
+    localStorage.removeItem('all_sheet_modifications');
   }, []);
 
   const handleBackToHome = () => {

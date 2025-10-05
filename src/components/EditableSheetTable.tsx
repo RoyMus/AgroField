@@ -57,19 +57,25 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     loadInitialStyles,
     clearStyles,
     saveStyles
-  } = useCellStyling();
+  } = useCellStyling(sheetData.sheetName);
 
   // Load saved modifications from localStorage and apply to sheet data
   useEffect(() => {
-    const savedModifications = localStorage.getItem('sheet_cell_modifications');
+    const savedModifications = localStorage.getItem('all_sheet_modifications');
     if (savedModifications) {
-      setModifiedData(JSON.parse(savedModifications));
+      const parsedModifications = JSON.parse(savedModifications);
+      setModifiedData(parsedModifications[sheetData.sheetName] || {});
     }
-  }, []);
+  }, [sheetData.sheetName]);
 
   // Initialize local data from sheet data and apply modifications
   useEffect(() => {
     if (sheetData?.values) {
+      // Load initial styles from sheet data if available
+      if (sheetData.formatting) {
+        loadInitialStyles(sheetData.formatting);
+      }
+      
       const baseData = sheetData.values.map(row => [...row]); // Deep copy
       // Apply modifications from localStorage
       Object.values(modifiedData).forEach(modification => {
@@ -91,7 +97,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       setLocalData(baseData);
       setHasChanges(Object.keys(modifiedData).length > 0);
     }
-  }, [sheetData, modifiedData, loadInitialStyles, clearStyles]);
+  }, [sheetData, modifiedData, loadInitialStyles, clearStyles, sheetData.formatting]);
 
   // Handle cell value changes and sync with localStorage
   const handleCellChange = useCallback((rowIndex: number, colIndex: number, value: string) => {
@@ -208,8 +214,10 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     }
   }
 
-    // Update local storage
-    localStorage.setItem('sheet_cell_modifications', JSON.stringify(newModifications));
+    // Update local storage while preserving other sheets' modifications
+    const allModifications = JSON.parse(localStorage.getItem('all_sheet_modifications') || '{}');
+    allModifications[sheetData.sheetName] = newModifications;
+    localStorage.setItem('all_sheet_modifications', JSON.stringify(allModifications));
     
     // Save styles
     saveStyles();

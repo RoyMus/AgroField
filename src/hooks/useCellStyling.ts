@@ -15,20 +15,22 @@ interface UseCellStylingReturn {
   saveStyles: ()=>void;
 }
 
-export const useCellStyling = (): UseCellStylingReturn => {
+export const useCellStyling = (sheetName: string): UseCellStylingReturn => {
   const [cellStyles, setCellStyles] = useState<CellStyle[]>([]);
 
-  // Load styles from localStorage on mount
+  // Load styles from localStorage for the current sheet
   useEffect(() => {
-    const savedStyles = localStorage.getItem('sheet_cell_styles');
+    const savedStyles = localStorage.getItem('all_sheet_styles');
     if (savedStyles) {
       try {
-        setCellStyles(JSON.parse(savedStyles));
+        const allStyles = JSON.parse(savedStyles);
+        const currentSheetStyles = allStyles[sheetName] || [];
+        setCellStyles(currentSheetStyles);
       } catch (error) {
         console.error('Failed to parse saved styles:', error);
       }
     }
-  }, []);
+  }, [sheetName]);
 
   const getCellStyle = useCallback((rowIndex: number, columnIndex: number): CellFormat | undefined => {
     const style = cellStyles.find(s => s.rowIndex === rowIndex && s.columnIndex === columnIndex);
@@ -127,23 +129,63 @@ export const useCellStyling = (): UseCellStylingReturn => {
     );
   }, []);
 
-  // Load initial styles and merge with existing ones
+  // Load initial styles and merge with stored ones
   const loadInitialStyles = useCallback((styles: CellStyle[]) => {
-    setCellStyles(styles);
-  }, []);
+    // Get stored styles for this sheet
+    const savedStyles = localStorage.getItem('all_sheet_styles');
+    let storedStyles: CellStyle[] = [];
+    if (savedStyles) {
+      try {
+        const allStyles = JSON.parse(savedStyles);
+        storedStyles = allStyles[sheetName] || [];
+      } catch (error) {
+        console.error('Failed to parse saved styles:', error);
+      }
+    }
+
+    // Merge stored styles with new styles, preferring stored styles for cells that exist in both
+    const mergedStyles = [...styles];
+    storedStyles.forEach(storedStyle => {
+      const existingIndex = mergedStyles.findIndex(
+        s => s.rowIndex === storedStyle.rowIndex && s.columnIndex === storedStyle.columnIndex
+      );
+      if (existingIndex !== -1) {
+        mergedStyles[existingIndex] = storedStyle;
+      } else {
+        mergedStyles.push(storedStyle);
+      }
+    });
+
+    setCellStyles(mergedStyles);
+  }, [sheetName]);
 
   const clearStyles = useCallback(() => {
     setCellStyles([]);
-    localStorage.removeItem('sheet_cell_styles');
-  }, []);
+    const allStyles = JSON.parse(localStorage.getItem('all_sheet_styles') || '{}');
+    delete allStyles[sheetName];
+    localStorage.setItem('all_sheet_styles', JSON.stringify(allStyles));
+  }, [sheetName]);
   
   const saveStyles = useCallback(() => {
     setCellStyles(currentStyles => {
-      console.log('Saving styles to localStorage:', currentStyles);
-      localStorage.setItem('sheet_cell_styles', JSON.stringify(currentStyles));
+      console.log('Saving styles to localStorage for sheet:', sheetName, currentStyles);
+      const allStyles = JSON.parse(localStorage.getItem('all_sheet_styles') || '{}');
+      
+      // Only save non-empty styles
+      const validStyles = currentStyles.filter(style => 
+        style && style.format && Object.keys(style.format).length > 0
+      );
+      
+      if (validStyles.length > 0) {
+        allStyles[sheetName] = validStyles;
+      } else {
+        delete allStyles[sheetName];
+      }
+      
+      localStorage.setItem('all_sheet_styles', JSON.stringify(allStyles));
       return currentStyles;
     });
-  }, []);
+  }, [sheetName]);
 
   return {
     cellStyles,

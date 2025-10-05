@@ -182,10 +182,6 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       setIsLoading(true);
       setError(null);
       
-      // Clear existing sheet data immediately for responsive UI
-      console.log('Clearing existing sheet data before reading new data');
-      setSheetData(null);
-      
       const { data, error } = await supabase.functions.invoke('google-drive-auth', {
         body: { action: 'readSheet', accessToken, fileId, sheetName }
       });

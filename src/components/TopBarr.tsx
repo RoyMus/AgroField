@@ -43,7 +43,7 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
             try {
                 await readSheet(selectedFile.id, sheetName);
                 // Clear modifications when switching sheets
-                localStorage.removeItem('sheet_cell_modifications');
+                localStorage.removeItem('all_sheet_modifications');
             } catch (error) {
                 toast({
                     title: "Failed to switch sheet",

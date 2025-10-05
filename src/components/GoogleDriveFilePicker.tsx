@@ -97,7 +97,7 @@ const GoogleDriveFilePicker = () => {
   const proceedWithFileSelection = () => {
     if (pendingFile) {
       selectFile(pendingFile);
-      localStorage.removeItem('sheet_cell_modifications'); // Clear current modifications
+      localStorage.removeItem('all_sheet_modifications'); // Clear current modifications
       toast({
         title: "קובץ נבחר",
         description: `${pendingFile.name}`,
