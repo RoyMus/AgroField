@@ -10,6 +10,7 @@ import DataPreviewTable from "./DataPreviewTable";
 import SaveToNewSheetDialog from "./SaveToNewSheetDialog";
 import { SheetData, ModifiedCellData } from "@/types/cellTypes";
 import { set } from "date-fns";
+import { start } from "repl";
 
 interface SheetDataEditorProps {
   sheetData: SheetData;
@@ -377,7 +378,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
     loadVoices();
   }, []);
 
-  const speak = (text) => {
+  const speak = async (text) => {
     if ("speechSynthesis" in window) {
       const utterance = new SpeechSynthesisUtterance(text);
       // Try to find a Hebrew voice
@@ -386,9 +387,16 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
         utterance.voice = hebrewVoice;
       }
       console.log('Speaking:', text);
-
+      if (isRecording) {
+        await stopRecording();
+        utterance.onend = ()=>
+        {
+          startRecording();
+        };
+      }
+     
       window.speechSynthesis.speak(utterance);
-    } 
+    }
   };
 
 

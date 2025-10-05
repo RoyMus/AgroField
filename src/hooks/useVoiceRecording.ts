@@ -18,6 +18,26 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   const onWordRecognized = useCallback((callback: (word: string) => void) => {
     wordCallbackRef.current = callback;
   }, []);
+  const hebrewToNumberMap: { [key: string]: number } = {
+    "אפס": 0,
+    "אחת": 1, "אחד": 1,
+    "שתיים": 2, "שניים": 2,
+    "שלוש": 3,
+    "ארבע": 4,
+    "חמש": 5,
+    "שש": 6,
+    "שבע": 7,
+    "שמונה": 8,
+    "תשע": 9,
+  };
+  const tryTranslate = (word: string): string => {
+    const normalizedWord = word.trim().toLowerCase();
+    if (hebrewToNumberMap[normalizedWord] !== undefined) {
+      return hebrewToNumberMap[normalizedWord].toString();
+    }
+    return word;
+  };
+
   const startRecording = async () => {
     try {
       setError(null);
@@ -61,7 +81,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
           const words = finalTranscript.trim().split(/\s+/);
           words.forEach(word => {
               if (word) {
-                wordCallbackRef.current(word);
+                wordCallbackRef.current(tryTranslate(word));
               }
           });
         }
