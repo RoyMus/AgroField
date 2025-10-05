@@ -100,7 +100,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
   const { toast } = useToast();
   const { isRecording, startRecording, stopRecording, error: recordingError, onWordRecognized } = useVoiceRecording();
   const { createNewSheet, readSheet, selectedFile, isLoading } = useGoogleDrive();
-  const navigate = useNavigate();
   const dataRows = sheetData.values.slice(0, commentIndex);
   const{
     isTemplate,
