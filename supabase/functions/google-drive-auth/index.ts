@@ -13,7 +13,7 @@ serve(async (req)=>{
   try {
     // Read the request body once and store it
     const requestBody = await req.json();
-    const { action, code, accessToken, fileId } = requestBody;
+    const { action, code, accessToken, fileId, sheetName } = requestBody;
     console.log('Request action:', action);
     const CLIENT_ID = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID');
     const CLIENT_SECRET = Deno.env.get('GOOGLE_DRIVE_CLIENT_SECRET');
@@ -83,7 +83,7 @@ serve(async (req)=>{
       });
     }
     if (action === 'readSheet') {
-      console.log('Reading Google Sheet data for file:', fileId);
+      console.log('Reading Google Sheet data for file:', fileId, 'sheet:', sheetName);
       // First, get sheet metadata to find available sheets
       const metadataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}`, {
         headers: {
@@ -96,11 +96,21 @@ serve(async (req)=>{
         throw new Error(`Failed to fetch sheet metadata: ${errorData.error?.message}`);
       }
       const metadata = await metadataResponse.json();
-      const firstSheet = metadata.sheets[0];
-      const sheetName = firstSheet.properties.title;
-      console.log('Reading data from sheet:', sheetName);
-      // Get the data from the first sheet
-      const dataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(sheetName)}`, {
+      
+      // Use provided sheetName or default to first sheet
+      const targetSheet = sheetName 
+        ? metadata.sheets.find(sheet => sheet.properties.title === sheetName)
+        : metadata.sheets[0];
+      
+      if (!targetSheet) {
+        throw new Error(`Sheet "${sheetName}" not found`);
+      }
+      
+      const selectedSheetName = targetSheet.properties.title;
+      const selectedSheetIndex = metadata.sheets.findIndex(sheet => sheet.properties.title === selectedSheetName);
+      console.log('Reading data from sheet:', selectedSheetName, 'at index:', selectedSheetIndex);
+      // Get the data from the selected sheet
+      const dataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(selectedSheetName)}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -121,7 +131,7 @@ serve(async (req)=>{
       if (formattingResponse.ok) {
         try {
           const formatData = await formattingResponse.json();
-          const sourceFormatting = formatData.sheets?.[0]?.data?.[0];
+          const sourceFormatting = formatData.sheets?.[selectedSheetIndex]?.data?.[0];
           // Extract cell formatting using utility function
           const cellStyles = [];
           if (sourceFormatting?.rowData) {
@@ -225,11 +235,16 @@ serve(async (req)=>{
       }
       console.log('Successfully read sheet data with', sheetData.values?.length || 0, 'rows and', formattingData?.length || 0, 'formatted cells');
       return new Response(JSON.stringify({
-        sheetName,
+        sheetName: selectedSheetName,
         values: sheetData.values || [],
         metadata: {
           title: metadata.properties.title,
-          sheetCount: metadata.sheets.length
+          sheetCount: metadata.sheets.length,
+          availableSheets: metadata.sheets.map(sheet => ({
+            id: sheet.properties.sheetId,
+            title: sheet.properties.title,
+            index: sheet.properties.index
+          }))
         },
         formatting: formattingData
       }), {
@@ -239,6 +254,125 @@ serve(async (req)=>{
         }
       });
     }
+
+    // Read all sheets action
+    if (action === 'readAllSheets') {
+      const { fileId } = requestBody;
+      
+      if (!fileId) {
+        return new Response(
+          JSON.stringify({ error: 'File ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      try {
+        // Get spreadsheet metadata
+        const metadataResponse = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${fileId}?includeGridData=true`,
+          {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+          }
+        );
+
+        if (!metadataResponse.ok) {
+          throw new Error(`Failed to fetch spreadsheet: ${metadataResponse.statusText}`);
+        }
+
+        const metadata = await metadataResponse.json();
+        
+        const sheets = await Promise.all(metadata.sheets.map(async (sheet: any, sheetIndex: number) => {
+          const sheetName = sheet.properties.title;
+          
+          // Fetch values for this sheet
+          const dataResponse = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(sheetName)}`,
+            {
+              headers: { 'Authorization': `Bearer ${accessToken}` }
+            }
+          );
+
+          const data = await dataResponse.json();
+          
+          // Extract formatting
+          const sheetData = sheet.data?.[0];
+          let formatting = [];
+          if (sheetData?.rowData) {
+            sheetData.rowData.forEach((row: any, rowIndex: number) => {
+              if (row.values) {
+                row.values.forEach((cell: any, colIndex: number) => {
+                  if (cell.userEnteredFormat || cell.effectiveFormat) {
+                    const format = cell.effectiveFormat || cell.userEnteredFormat;
+                    const convertedFormat: any = {};
+                    
+                    // Helper to convert RGB
+                    const normalizedRgbToHex = (red: number, green: number, blue: number) => {
+                      const toHex = (val: number) => {
+                        const hex = Math.round(Math.max(0, Math.min(255, val * 255))).toString(16);
+                        return hex.length === 1 ? '0' + hex : hex;
+                      };
+                      return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
+                    };
+                    
+                    if (format.backgroundColor) {
+                      const { red = 0, green = 0, blue = 0 } = format.backgroundColor;
+                      if (!(red >= 0.99 && green >= 0.99 && blue >= 0.99)) {
+                        convertedFormat.backgroundColor = normalizedRgbToHex(red, green, blue);
+                      }
+                    }
+                    if (format.textFormat) {
+                      if (format.textFormat.foregroundColor) {
+                        const { red = 0, green = 0, blue = 0 } = format.textFormat.foregroundColor;
+                        if (!(red <= 0.01 && green <= 0.01 && blue <= 0.01)) {
+                          convertedFormat.textColor = normalizedRgbToHex(red, green, blue);
+                        }
+                      }
+                      if (format.textFormat.bold) convertedFormat.fontWeight = 'bold';
+                      if (format.textFormat.italic) convertedFormat.fontStyle = 'italic';
+                      if (format.textFormat.fontSize) convertedFormat.fontSize = format.textFormat.fontSize;
+                    }
+                    if (format.horizontalAlignment) {
+                      const alignment = format.horizontalAlignment.toLowerCase();
+                      if (['left', 'center', 'right'].includes(alignment)) {
+                        convertedFormat.textAlign = alignment;
+                      }
+                    }
+                    
+                    if (Object.keys(convertedFormat).length > 0) {
+                      formatting.push({
+                        rowIndex,
+                        columnIndex: colIndex,
+                        format: convertedFormat
+                      });
+                    }
+                  }
+                });
+              }
+            });
+          }
+
+          return {
+            sheetName,
+            sheetId: sheet.properties.sheetId,
+            values: data.values || [[]],
+            formatting,
+            properties: sheet.properties
+          };
+        }));
+
+        return new Response(
+          JSON.stringify({ sheets }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error reading all sheets:', error);
+        return new Response(
+          JSON.stringify({ error: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     throw new Error('Invalid action');
   } catch (error) {
     console.error('Error in google-drive-auth function:', error);

@@ -2,8 +2,12 @@ import { Button } from "@/components/ui/button";
 import { getData } from "@/hooks/getData";
 import { useState, useEffect } from 'react';
 import { Edit, Save } from "lucide-react";
+import SheetSelector from "./SheetSelector";
+import { useGoogleDrive } from "@/hooks/useGoogleDrive";
+import { useToast } from "@/hooks/use-toast";
 
-const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet}) => {
+const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet, readSheet, isLoading}) => {
+    const { toast } = useToast();
     const{
     isTemplate,
     plant,
@@ -33,15 +37,42 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
             setTopBar(sheetData.values[topBarRowIndex][topBarIndex]);
         }
     }, []);
+
+    const handleSheetChange = async (sheetName) => {
+        if (selectedFile) {
+            try {
+                await readSheet(selectedFile.id, sheetName);
+                // Clear modifications when switching sheets
+                localStorage.removeItem('sheet_cell_modifications');
+            } catch (error) {
+                toast({
+                    title: "Failed to switch sheet",
+                    description: "Could not load the selected sheet",
+                    variant: "destructive"
+                });
+            }
+        }
+    };
     
 
     return (
         <div className="bg-white rounded-xl p-4 sm:p-6 shadow-lg border-2 border-gray-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                    <h1 className="text-xl sm:text-2xl font-bold text-gray-800 truncate">
-                        {selectedFile?.name}
-                    </h1>
+                    <div className="flex items-center gap-4 mb-2">
+                        <h1 className="text-xl sm:text-2xl font-bold text-gray-800 truncate">
+                            {selectedFile?.name}
+                        </h1>
+                        {sheetData.metadata?.availableSheets && (
+                            <SheetSelector
+                                availableSheets={sheetData.metadata.availableSheets}
+                                currentSheet={sheetData.sheetName}
+                                onSheetSelect={handleSheetChange}
+                                isLoading={isLoading}
+                                disabled={isLoading}
+                            />
+                        )}
+                    </div>
                     <p className="text-sm sm:text-base text-gray-600 truncate">
                         {topBar}
                     </p>

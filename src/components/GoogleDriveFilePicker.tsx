@@ -107,12 +107,12 @@ const GoogleDriveFilePicker = () => {
     setShowSaveDialog(false);
   };
 
-  const handleReadSheet = async () => {
+  const handleReadSheet = async (sheetName?: string) => {
     if (selectedFile) {
       try {
         setIsReadingSheet(true);
-        console.log('Starting to read sheet for file:', selectedFile.id);
-        await readSheet(selectedFile.id);
+        console.log('Starting to read sheet for file:', selectedFile.id, 'sheet:', sheetName);
+        await readSheet(selectedFile.id, sheetName);
         console.log('Sheet read completed successfully');
         toast({
           title: "הקובץ נטען בהצלחה",
@@ -273,7 +273,7 @@ const GoogleDriveFilePicker = () => {
         
         {selectedFile && !sheetData && (
           <Button
-            onClick={handleReadSheet}
+            onClick={() => handleReadSheet()}
             disabled={isLoading || isReadingSheet}
             size="lg"
             className="w-full bg-green-600 hover:bg-green-700 text-white"
@@ -294,7 +294,7 @@ const GoogleDriveFilePicker = () => {
         
         {selectedFile && sheetData && (
           <Button
-            onClick={handleReadSheet}
+            onClick={() => handleReadSheet()}
             disabled={isLoading || isReadingSheet}
             size="lg"
             variant="outline"

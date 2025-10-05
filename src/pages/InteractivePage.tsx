@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
 import TopBar from "@/components/TopBarr";
@@ -7,9 +7,14 @@ import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 
 const InteractivePage = () => {
   const navigate = useNavigate();
-  const { sheetData, selectedFile, clearSheetData } = useGoogleDrive();
+  const { sheetData, selectedFile, clearSheetData, readSheet, isLoading} = useGoogleDrive();
   const [saveProgressFunc, setSaveProgressFunc] = useState<(() => void) | null>(null);
   const [saveToNewSheetFunc, setSaveToNewSheetFunc] = useState<(() => void) | null>(null);
+
+  const handleSheetChange = useCallback((sheetName: string) => {
+    // Clear modifications when switching sheets
+    localStorage.removeItem('sheet_cell_modifications');
+  }, []);
 
   const handleBackToHome = () => {
     console.log('Going back to home screen');
@@ -34,6 +39,8 @@ const InteractivePage = () => {
                 onOpenEditor={handleEditSheet}
                 onSaveProgress={saveProgressFunc}
                 onSaveToNewSheet={saveToNewSheetFunc}
+                readSheet={readSheet}
+                isLoading={isLoading}
               />
             )}
             
@@ -43,6 +50,7 @@ const InteractivePage = () => {
                 sheetData={sheetData}
                 onSaveProgress={(func) => setSaveProgressFunc(() => func)}
                 onSaveToNewSheet={(func) => setSaveToNewSheetFunc(() => func)}
+                onSheetChange={handleSheetChange}
               />
             )}
           </div>
