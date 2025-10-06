@@ -459,6 +459,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
         {
           startRecording();
         };
+        utterance.onerror =()=>
+        {
+          startRecording();
+        }
       }
      
       window.speechSynthesis.speak(utterance);
