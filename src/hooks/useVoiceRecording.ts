@@ -78,6 +78,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         // Accumulate final transcripts
         if (finalTranscript) {
           console.log('Final transcript:', finalTranscript);
+          alert(finalTranscript);
           
           // Split by potential decimal separators
           const parts = finalTranscript.split(/\.|\s+נקודה\s+/);
