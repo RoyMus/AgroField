@@ -452,6 +452,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
       if (hebrewVoice) {
         utterance.voice = hebrewVoice;
       }
+      else
+      {
+        return;
+      }
       console.log('Speaking:', text);
       if (isRecording) {
         await stopRecording();
@@ -459,13 +463,15 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
         {
           startRecording();
         };
-        utterance.onerror =()=>
-        {
-          startRecording();
-        }
       }
-     
-      window.speechSynthesis.speak(utterance);
+      try
+      {
+        window.speechSynthesis.speak(utterance);
+      }
+      catch(error)
+      {
+        startRecording();
+      } 
     }
   };
 
