@@ -79,8 +79,15 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         if (finalTranscript) {
           console.log('Final transcript:', finalTranscript);
           
+          // First translate any Hebrew number words to digits
+          let processedTranscript = finalTranscript;
+          Object.entries(hebrewToNumberMap).forEach(([word, num]) => {
+            const regex = new RegExp(`\\b${word}\\b`, 'g');
+            processedTranscript = processedTranscript.replace(regex, num.toString());
+          });
+
           // Clean up the transcript (normalize dots, spaces, and Hebrew word for dot)
-          const cleanTranscript = finalTranscript.trim()
+          const cleanTranscript = processedTranscript.trim()
             .replace(/\s*\.\s*/g, '.') // normalize spaces around dots
             .replace(/\s*נקודה\s*/g, '.') // replace Hebrew word for dot
             .replace(/\s+/g, ' '); // normalize other spaces
@@ -96,7 +103,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
             console.log('Found numeric decimal:', numericDecimal[0]);
             wordCallbackRef.current(numericDecimal[0]);
           } else if (wordDecimal) {
-            // Handle word decimal (e.g., "one.eight")
+            // Handle any remaining word decimals
             const firstPart = tryTranslate(wordDecimal[1]);
             const secondPart = tryTranslate(wordDecimal[2]);
             if (!isNaN(Number(firstPart)) && !isNaN(Number(secondPart))) {
