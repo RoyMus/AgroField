@@ -458,20 +458,12 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
       }
       console.log('Speaking:', text);
       if (isRecording) {
-        await stopRecording();
-        utterance.onend = ()=>
-        {
+        utterance.onstart = () =>
+          stopRecording();
+        utterance.onend = () =>
           startRecording();
-        };
       }
-      try
-      {
-        window.speechSynthesis.speak(utterance);
-      }
-      catch(error)
-      {
-        startRecording();
-      } 
+      window.speechSynthesis.speak(utterance);
     }
   };
 
