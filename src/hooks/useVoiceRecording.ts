@@ -79,55 +79,31 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         if (finalTranscript) {
           console.log('Final transcript:', finalTranscript);
           
-          // First translate any Hebrew number words to digits
-          let processedTranscript = finalTranscript;
-          Object.entries(hebrewToNumberMap).forEach(([word, num]) => {
-            const regex = new RegExp(`\\b${word}\\b`, 'g');
-            processedTranscript = processedTranscript.replace(regex, num.toString());
-          });
-
-          // Clean up the transcript (normalize dots, spaces, and Hebrew word for dot)
-          const cleanTranscript = processedTranscript.trim()
-            .replace(/\s*\.\s*/g, '.') // normalize spaces around dots
-            .replace(/\s*נקודה\s*/g, '.') // replace Hebrew word for dot
-            .replace(/\s+/g, ' '); // normalize other spaces
+          // Split by potential decimal separators
+          const parts = finalTranscript.split(/\.|\s+נקודה\s+/);
           
-          console.log('Cleaned transcript:', cleanTranscript);
-          
-          // Try to match various decimal number patterns
-          const numericDecimal = cleanTranscript.match(/\d+\.\d+/);
-          const wordDecimal = cleanTranscript.match(/(\w+)\.(\w+)/);
-          
-          if (numericDecimal) {
-            // Handle numeric decimal (e.g., "1.8")
-            console.log('Found numeric decimal:', numericDecimal[0]);
-            wordCallbackRef.current(numericDecimal[0]);
-          } else if (wordDecimal) {
-            // Handle any remaining word decimals
-            const firstPart = tryTranslate(wordDecimal[1]);
-            const secondPart = tryTranslate(wordDecimal[2]);
-            if (!isNaN(Number(firstPart)) && !isNaN(Number(secondPart))) {
-              const result = `${firstPart}.${secondPart}`;
-              console.log('Found word decimal:', result);
+          if (parts.length === 2) {
+            // We have a potential decimal number
+            const firstNum = tryTranslate(parts[0].trim());
+            const secondNum = tryTranslate(parts[1].trim());
+            
+            if (!isNaN(Number(firstNum)) && !isNaN(Number(secondNum))) {
+              // Both parts are valid numbers, combine as decimal
+              const result = `${firstNum}.${secondNum}`;
+              console.log('Processed decimal:', result);
               wordCallbackRef.current(result);
-            } else {
-              // If parts don't translate to numbers, process as regular words
-              const words = cleanTranscript.split(/\s+/);
-              words.forEach(word => {
-                if (word) {
-                  wordCallbackRef.current(tryTranslate(word));
-                }
-              });
+              return;
             }
-          } else {
-            // If no decimal pattern found, process words normally
-            const words = cleanTranscript.split(/\s+/);
-            words.forEach(word => {
-              if (word) {
-                wordCallbackRef.current(tryTranslate(word));
-              }
-            });
           }
+          
+          // If we're here, either it's not a decimal or conversion failed
+          // Process as single words
+          const words = finalTranscript.trim().split(/\s+/);
+          words.forEach(word => {
+            if (word && word !== 'נקודה') {
+              wordCallbackRef.current(tryTranslate(word));
+            }
+          });
         }
       };
       
