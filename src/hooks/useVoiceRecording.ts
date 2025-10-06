@@ -81,7 +81,9 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
           alert(finalTranscript);
           
           // Split by potential decimal separators
-          const parts = finalTranscript.split(/\.|\s+נקודה\s+/);
+          const parts = finalTranscript
+            .replace(/[^\w\u0590-\u05FF\s.]/g, '') // remove weird punctuation
+            .split(/\.|\s*נקודה\s*/);
           
           if (parts.length === 2) {
             // We have a potential decimal number
