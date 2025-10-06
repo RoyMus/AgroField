@@ -266,7 +266,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
 
   const handleInputChange = (value: string) => {
     console.log('Recognized word:', value);
-    if (value.includes("דלג") || value.includes("הבא")) {
+    if (value.includes("דלג") || value.includes("הבא")|| value.includes("אבא")) {
       skipCurrentValue();
       setCurrentValue("");
     }

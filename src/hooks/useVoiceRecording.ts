@@ -77,17 +77,50 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         
         // Accumulate final transcripts
         if (finalTranscript) {
-          console.log(finalTranscript);
-          const words = finalTranscript.trim().split(/\s+/);
-          words.forEach(word => {
+          console.log('Final transcript:', finalTranscript);
+          
+          // Clean up the transcript (normalize dots, spaces, and Hebrew word for dot)
+          const cleanTranscript = finalTranscript.trim()
+            .replace(/\s*\.\s*/g, '.') // normalize spaces around dots
+            .replace(/\s*נקודה\s*/g, '.') // replace Hebrew word for dot
+            .replace(/\s+/g, ' '); // normalize other spaces
+          
+          console.log('Cleaned transcript:', cleanTranscript);
+          
+          // Try to match various decimal number patterns
+          const numericDecimal = cleanTranscript.match(/\d+\.\d+/);
+          const wordDecimal = cleanTranscript.match(/(\w+)\.(\w+)/);
+          
+          if (numericDecimal) {
+            // Handle numeric decimal (e.g., "1.8")
+            console.log('Found numeric decimal:', numericDecimal[0]);
+            wordCallbackRef.current(numericDecimal[0]);
+          } else if (wordDecimal) {
+            // Handle word decimal (e.g., "one.eight")
+            const firstPart = tryTranslate(wordDecimal[1]);
+            const secondPart = tryTranslate(wordDecimal[2]);
+            if (!isNaN(Number(firstPart)) && !isNaN(Number(secondPart))) {
+              const result = `${firstPart}.${secondPart}`;
+              console.log('Found word decimal:', result);
+              wordCallbackRef.current(result);
+            } else {
+              // If parts don't translate to numbers, process as regular words
+              const words = cleanTranscript.split(/\s+/);
+              words.forEach(word => {
+                if (word) {
+                  wordCallbackRef.current(tryTranslate(word));
+                }
+              });
+            }
+          } else {
+            // If no decimal pattern found, process words normally
+            const words = cleanTranscript.split(/\s+/);
+            words.forEach(word => {
               if (word) {
                 wordCallbackRef.current(tryTranslate(word));
               }
-          });
-        }
-        
-        // Log interim results for debugging
-        if (interimTranscript) {
+            });
+          }
         }
       };
       
