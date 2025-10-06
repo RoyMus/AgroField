@@ -78,8 +78,6 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         // Accumulate final transcripts
         if (finalTranscript) {
           console.log('Final transcript:', finalTranscript);
-          alert(finalTranscript);
-          
           // Split by potential decimal separators
           const parts = finalTranscript
             .replace(/[^\w\u0590-\u05FF\s.]/g, '') // remove weird punctuation
