@@ -59,7 +59,11 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     
-    if (code && !isAuthenticated) {
+    // Prevent reusing the same code
+    const usedCode = sessionStorage.getItem('google_auth_code_used');
+    
+    if (code && !isAuthenticated && code !== usedCode) {
+      sessionStorage.setItem('google_auth_code_used', code);
       handleAuthCode(code);
       return;
     }
@@ -204,6 +208,10 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     try {
       setIsLoading(true);
       
+      if (!token) {
+        throw new Error('No access token available. Please authenticate first.');
+      }
+      
       await makeApiCall(async (tkn) => {
         const { data, error } = await supabase.functions.invoke('google-drive-auth', {
           body: { action: 'listFiles', accessToken: tkn }
@@ -236,6 +244,10 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       console.log('Starting readSheet for fileId:', fileId, 'sheetName:', sheetName);
       setIsLoading(true);
       setError(null);
+      
+      if (!accessToken) {
+        throw new Error('No access token available. Please authenticate first.');
+      }
       
       await makeApiCall(async (tkn) => {
         const { data, error } = await supabase.functions.invoke('google-drive-auth', {
@@ -281,6 +293,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     localStorage.removeItem('google_drive_refresh_token');
     localStorage.removeItem('google_drive_selected_file');
     localStorage.removeItem('google_drive_sheet_data');
+    sessionStorage.removeItem('google_auth_code_used');
   };
 
   const createNewSheet = async (fileName: string, modifiedData: Record<string, any>): Promise<{ success: boolean; url?: string; error?: string }> => {

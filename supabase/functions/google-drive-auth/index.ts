@@ -93,6 +93,11 @@ serve(async (req)=>{
     }
     if (action === 'listFiles') {
       console.log('Listing Google Drive files');
+      
+      if (!accessToken) {
+        throw new Error('Access token is required for listFiles action');
+      }
+      
       const filesResponse = await fetch('https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.spreadsheet"&fields=files(id,name,modifiedTime)', {
         headers: {
           'Authorization': `Bearer ${accessToken}`
@@ -101,7 +106,7 @@ serve(async (req)=>{
       const filesData = await filesResponse.json();
       if (!filesResponse.ok) {
         console.error('Failed to fetch files:', filesData);
-        throw new Error(`Failed to fetch files: ${filesData.error}`);
+        throw new Error(`Failed to fetch files: ${JSON.stringify(filesData.error)}`);
       }
       console.log('Successfully fetched', filesData.files?.length || 0, 'files');
       return new Response(JSON.stringify(filesData), {
@@ -113,6 +118,11 @@ serve(async (req)=>{
     }
     if (action === 'readSheet') {
       console.log('Reading Google Sheet data for file:', fileId, 'sheet:', sheetName);
+      
+      if (!accessToken) {
+        throw new Error('Access token is required for readSheet action');
+      }
+      
       // First, get sheet metadata to find available sheets
       const metadataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}`, {
         headers: {
@@ -291,6 +301,13 @@ serve(async (req)=>{
       if (!fileId) {
         return new Response(
           JSON.stringify({ error: 'File ID is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (!accessToken) {
+        return new Response(
+          JSON.stringify({ error: 'Access token is required' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
