@@ -5,8 +5,9 @@ import { Edit, Save } from "lucide-react";
 import SheetSelector from "./SheetSelector";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { useToast } from "@/hooks/use-toast";
+import { set } from "date-fns";
 
-const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet, readSheet, isLoading}) => {
+const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet, readSheet, isLoading, modifiedData,setModifiedData}) => {
     const { toast } = useToast();
     const{
     isTemplate,
@@ -42,8 +43,7 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
         if (selectedFile) {
             try {
                 await readSheet(selectedFile.id, sheetName);
-                // Clear modifications when switching sheets
-                localStorage.removeItem('all_sheet_modifications');
+                setModifiedData({});
             } catch (error) {
                 toast({
                     title: "Failed to switch sheet",

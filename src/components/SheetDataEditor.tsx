@@ -6,7 +6,6 @@ import { getData } from "@/hooks/getData";
 import { useCellStyling } from "@/hooks/useCellStyling";
 import ProgressStats from "./ProgressStats";
 import CellEditor from "./CellEditor";
-import DataPreviewTable from "./DataPreviewTable";
 import SaveToNewSheetDialog from "./SaveToNewSheetDialog";
 import { SheetData, ModifiedCellData } from "@/types/cellTypes";
 
@@ -15,10 +14,11 @@ interface SheetDataEditorProps {
   sheetData: SheetData;
   onSaveProgress?: (saveFunc: () => void) => void;
   onSaveToNewSheet?: (saveFunc: () => void) => void;
-  onSheetChange?: (sheetName: string) => void;
+  modifiedData: Record<string, ModifiedCellData>;
+  setModifiedData: (data: Record<string, ModifiedCellData>) => void;
 }
 
-const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetChange }: SheetDataEditorProps) => {
+const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, setModifiedData, modifiedData }: SheetDataEditorProps) => {
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && sheetData.values[i][0].trim() != "")
     {
@@ -93,7 +93,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
   const [currentRowIndex, setCurrentRowIndex] = useState(headersRowIndex);
   const [currentColumnIndex, setCurrentColumnIndex] = useState(minColIndex);
   const [currentCount, setCurrentCount] = useState(1);
-  const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
   const [currentValue, setCurrentValue] = useState<string>("");
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -295,6 +294,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
     setCurrentColumnIndex(minColIndex);
   };
 
+  const resetModifiedData = () => {
+    setModifiedData({});
+  };
   const saveModifications = useCallback(() => {
     const sheetName = sheetData?.sheetName;
     if (!sheetName) return;
@@ -324,21 +326,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
     setShowSaveDialog(true);
     
   }, [modifiedData, toast]);
-
-  const handleSheetChange = useCallback(async (sheetName: string) => {
-    if (selectedFile) {
-      try {
-        await readSheet(selectedFile.id, sheetName);
-        onSheetChange?.(sheetName);
-      } catch (error) {
-        toast({
-          title: "Failed to switch sheet",
-          description: "Could not load the selected sheet",
-          variant: "destructive"
-        });
-      }
-    }
-  }, [selectedFile, readSheet, onSheetChange, toast]);
 
   const handleCreateNewSheet = async (fileName: string) => {
     setIsSaving(true);
@@ -578,26 +565,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
         previousFileName={`${sheetData.metadata.title} ${formattedDate}`}
         isLoading={isSaving}
       />
-      {/* Data Preview Table */}
-      <DataPreviewTable
-        headers={headers}
-        dataRows={dataRows}
-        currentRowIndex={currentRowIndex}
-        currentColumnIndex={currentColumnIndex}
-        currentValue={currentValue}
-        modifiedData={modifiedData}
-        sheetName={sheetData.sheetName}
-      />
-      {/* Progress Stats - Top Right 
-      <div className="flex">
-        <div className="w-full">
-          <ProgressStats
-            modifiedCount={currentCount}
-            currentPosition={currentRowIndex * headers.length + currentColumnIndex + 1}
-            totalCells={dataRows.length * headers.length}
-          />
-        </div>
-      </div>*/}
     </div>
   );
   

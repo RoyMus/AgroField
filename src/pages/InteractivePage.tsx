@@ -4,6 +4,7 @@ import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
 import TopBar from "@/components/TopBarr";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
+import { ModifiedCellData } from "@/types/cellTypes";
 
 const InteractivePage = () => {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ const InteractivePage = () => {
   const [saveProgressFunc, setSaveProgressFunc] = useState<(() => void) | null>(null);
   const [saveToNewSheetFunc, setSaveToNewSheetFunc] = useState<(() => void) | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
 
   // Track when loading completes
   useEffect(() => {
@@ -28,11 +30,6 @@ const InteractivePage = () => {
       navigate('/');
     }
   }, [sheetData, isLoading, hasLoadedOnce, navigate, clearSheetData]);
-
-  const handleSheetChange = useCallback((sheetName: string) => {
-    // Clear modifications when switching sheets
-    localStorage.removeItem('all_sheet_modifications');
-  }, []);
 
   const handleBackToHome = () => {
     console.log('Going back to home screen');
@@ -59,6 +56,8 @@ const InteractivePage = () => {
                 onSaveToNewSheet={saveToNewSheetFunc}
                 readSheet={readSheet}
                 isLoading={isLoading}
+                modifiedData={modifiedData}
+                setModifiedData={setModifiedData}
               />
             )}
             
@@ -66,9 +65,10 @@ const InteractivePage = () => {
             {sheetData && (
               <SheetDataEditor 
                 sheetData={sheetData}
+                modifiedData={modifiedData}
+                setModifiedData={setModifiedData}
                 onSaveProgress={(func) => setSaveProgressFunc(() => func)}
                 onSaveToNewSheet={(func) => setSaveToNewSheetFunc(() => func)}
-                onSheetChange={handleSheetChange}
               />
             )}
           </div>
