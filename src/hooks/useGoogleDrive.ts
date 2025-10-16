@@ -52,6 +52,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   const [sheetData, setSheetData] = useState<SheetData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
 
   useEffect(() => {
     // Check URL for authorization code
@@ -65,10 +66,11 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
 
     // Load saved state
     const savedToken = localStorage.getItem('google_drive_token');
+    const savedRefreshToken = localStorage.getItem('google_drive_refresh_token');
     const savedFile = localStorage.getItem('google_drive_selected_file');
     const savedSheetData = localStorage.getItem('google_drive_sheet_data');
     
-    console.log('Loading saved state:', { savedToken: !!savedToken, savedFile: !!savedFile, savedSheetData: !!savedSheetData });
+    console.log('Loading saved state:', { savedToken: !!savedToken, savedRefreshToken: !!savedRefreshToken, savedFile: !!savedFile, savedSheetData: !!savedSheetData });
     
     // Load saved file if it exists
     if (savedFile) {
@@ -94,10 +96,13 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       }
     }
     
-    // Set authentication state and token if available
+    // Set authentication state and tokens if available
     if (savedToken) {
       setAccessToken(savedToken);
       setIsAuthenticated(true);
+    }
+    if (savedRefreshToken) {
+      setRefreshToken(savedRefreshToken);
     }
   }, []);
 
@@ -112,10 +117,15 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
 
       if (error) throw error;
 
-      const { access_token } = data;
+      const { access_token, refresh_token } = data;
       setAccessToken(access_token);
       setIsAuthenticated(true);
       localStorage.setItem('google_drive_token', access_token);
+      
+      if (refresh_token) {
+        setRefreshToken(refresh_token);
+        localStorage.setItem('google_drive_refresh_token', refresh_token);
+      }
       
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -147,17 +157,62 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     }
   };
 
-  const loadFiles = async (token: string = accessToken!) => {
+  const refreshAccessToken = async (): Promise<string | null> => {
+    if (!refreshToken) {
+      console.error('No refresh token available');
+      return null;
+    }
+
     try {
-      setIsLoading(true);
-      
+      console.log('Attempting to refresh access token');
       const { data, error } = await supabase.functions.invoke('google-drive-auth', {
-        body: { action: 'listFiles', accessToken: token }
+        body: { action: 'refreshToken', refreshToken }
       });
 
       if (error) throw error;
 
-      setFiles(data.files || []);
+      const { access_token } = data;
+      setAccessToken(access_token);
+      localStorage.setItem('google_drive_token', access_token);
+      console.log('Access token refreshed successfully');
+      return access_token;
+    } catch (err) {
+      console.error('Failed to refresh token:', err);
+      setError('Session expired. Please re-authenticate.');
+      setIsAuthenticated(false);
+      return null;
+    }
+  };
+
+  const makeApiCall = async (apiCall: (token: string) => Promise<any>, retryOnError = true): Promise<any> => {
+    try {
+      return await apiCall(accessToken!);
+    } catch (err: any) {
+      // If we get a 401 or 403, try refreshing the token
+      if (retryOnError && refreshToken && (err.message?.includes('401') || err.message?.includes('403') || err.message?.includes('Invalid Credentials'))) {
+        console.log('Token may be expired, attempting refresh');
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          return await apiCall(newToken);
+        }
+      }
+      throw err;
+    }
+  };
+
+  const loadFiles = async (token: string = accessToken!) => {
+    try {
+      setIsLoading(true);
+      
+      await makeApiCall(async (tkn) => {
+        const { data, error } = await supabase.functions.invoke('google-drive-auth', {
+          body: { action: 'listFiles', accessToken: tkn }
+        });
+
+        if (error) throw error;
+        setFiles(data.files || []);
+        return data;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load files');
     } finally {
@@ -182,23 +237,24 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       setIsLoading(true);
       setError(null);
       
-      const { data, error } = await supabase.functions.invoke('google-drive-auth', {
-        body: { action: 'readSheet', accessToken, fileId, sheetName }
+      await makeApiCall(async (tkn) => {
+        const { data, error } = await supabase.functions.invoke('google-drive-auth', {
+          body: { action: 'readSheet', accessToken: tkn, fileId, sheetName }
+        });
+
+        if (error) {
+          console.error('Error from edge function:', error);
+          throw error;
+        }
+
+        console.log('Sheet data received from API:', data);
+        
+        setSheetData(data);
+        localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
+        
+        console.log('Sheet data set successfully, triggering re-render');
+        return data;
       });
-
-      if (error) {
-        console.error('Error from edge function:', error);
-        throw error;
-      }
-
-      console.log('Sheet data received from API:', data);
-      
-      // Set the sheet data immediately for responsive UI
-
-      setSheetData(data);
-      localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
-      
-      console.log('Sheet data set successfully, triggering re-render');
       
     } catch (err) {
       console.error('Error in readSheet:', err);
@@ -217,10 +273,12 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   const logout = () => {
     setIsAuthenticated(false);
     setAccessToken(null);
+    setRefreshToken(null);
     setFiles([]);
     setSelectedFile(null);
     setSheetData(null);
     localStorage.removeItem('google_drive_token');
+    localStorage.removeItem('google_drive_refresh_token');
     localStorage.removeItem('google_drive_selected_file');
     localStorage.removeItem('google_drive_sheet_data');
   };

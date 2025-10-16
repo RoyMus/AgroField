@@ -54,7 +54,36 @@ serve(async (req)=>{
         console.error('Token exchange failed:', tokenData);
         throw new Error(`Token exchange failed: ${tokenData.error}`);
       }
-      console.log('Token exchange successful');
+      console.log('Token exchange successful, includes refresh token:', !!tokenData.refresh_token);
+      return new Response(JSON.stringify(tokenData), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    if (action === 'refreshToken') {
+      const { refreshToken } = requestBody;
+      console.log('Refreshing access token');
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          client_id: CLIENT_ID,
+          client_secret: CLIENT_SECRET,
+          refresh_token: refreshToken,
+          grant_type: 'refresh_token'
+        })
+      });
+      const tokenData = await tokenResponse.json();
+      if (!tokenResponse.ok) {
+        console.error('Token refresh failed:', tokenData);
+        throw new Error(`Token refresh failed: ${tokenData.error}`);
+      }
+      console.log('Token refresh successful');
       return new Response(JSON.stringify(tokenData), {
         headers: {
           ...corsHeaders,
@@ -99,7 +128,7 @@ serve(async (req)=>{
       
       // Use provided sheetName or default to first sheet
       const targetSheet = sheetName 
-        ? metadata.sheets.find(sheet => sheet.properties.title === sheetName)
+        ? metadata.sheets.find((sheet: any) => sheet.properties.title === sheetName)
         : metadata.sheets[0];
       
       if (!targetSheet) {
@@ -107,7 +136,7 @@ serve(async (req)=>{
       }
       
       const selectedSheetName = targetSheet.properties.title;
-      const selectedSheetIndex = metadata.sheets.findIndex(sheet => sheet.properties.title === selectedSheetName);
+      const selectedSheetIndex = metadata.sheets.findIndex((sheet: any) => sheet.properties.title === selectedSheetName);
       console.log('Reading data from sheet:', selectedSheetName, 'at index:', selectedSheetIndex);
       // Get the data from the selected sheet
       const dataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(selectedSheetName)}`, {
@@ -133,23 +162,23 @@ serve(async (req)=>{
           const formatData = await formattingResponse.json();
           const sourceFormatting = formatData.sheets?.[selectedSheetIndex]?.data?.[0];
           // Extract cell formatting using utility function
-          const cellStyles = [];
+          const cellStyles: any[] = [];
           if (sourceFormatting?.rowData) {
-            sourceFormatting.rowData.forEach((row, rowIndex)=>{
+            sourceFormatting.rowData.forEach((row: any, rowIndex: number)=>{
               if (row.values) {
-                row.values.forEach((cell, colIndex)=>{
+                row.values.forEach((cell: any, colIndex: number)=>{
                   if (cell.userEnteredFormat || cell.effectiveFormat) {
                     const format = cell.effectiveFormat || cell.userEnteredFormat;
                     // Helper function to convert normalized RGB to hex
-                    const normalizedRgbToHex = (red, green, blue)=>{
-                      const toHex = (val)=>{
+                    const normalizedRgbToHex = (red: number, green: number, blue: number)=>{
+                      const toHex = (val: number)=>{
                         const hex = Math.round(Math.max(0, Math.min(255, val * 255))).toString(16);
                         return hex.length === 1 ? '0' + hex : hex;
                       };
                       return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
                     };
                     // Convert Google Sheets format to our format with proper color handling
-                    const convertedFormat = {};
+                    const convertedFormat: any = {};
                     // Handle background color - only if explicitly set and not white
                     if (format.backgroundColor) {
                       const { red, green, blue } = format.backgroundColor;
@@ -240,7 +269,7 @@ serve(async (req)=>{
         metadata: {
           title: metadata.properties.title,
           sheetCount: metadata.sheets.length,
-          availableSheets: metadata.sheets.map(sheet => ({
+          availableSheets: metadata.sheets.map((sheet: any) => ({
             id: sheet.properties.sheetId,
             title: sheet.properties.title,
             index: sheet.properties.index
@@ -296,7 +325,7 @@ serve(async (req)=>{
           
           // Extract formatting
           const sheetData = sheet.data?.[0];
-          let formatting = [];
+          let formatting: any[] = [];
           if (sheetData?.rowData) {
             sheetData.rowData.forEach((row: any, rowIndex: number) => {
               if (row.values) {
@@ -364,7 +393,7 @@ serve(async (req)=>{
           JSON.stringify({ sheets }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error reading all sheets:', error);
         return new Response(
           JSON.stringify({ error: error.message }),
@@ -374,10 +403,10 @@ serve(async (req)=>{
     }
 
     throw new Error('Invalid action');
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in google-drive-auth function:', error);
     return new Response(JSON.stringify({
-      error: error.message
+      error: error.message || 'Unknown error'
     }), {
       status: 400,
       headers: {

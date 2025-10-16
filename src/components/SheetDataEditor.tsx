@@ -578,7 +578,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
         previousFileName={`${sheetData.metadata.title} ${formattedDate}`}
         isLoading={isSaving}
       />
-      {/* Data Preview Table *}
+      {/* Data Preview Table */}
       <DataPreviewTable
         headers={headers}
         dataRows={dataRows}
@@ -586,6 +586,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, onSheetC
         currentColumnIndex={currentColumnIndex}
         currentValue={currentValue}
         modifiedData={modifiedData}
+        sheetName={sheetData.sheetName}
       />
       {/* Progress Stats - Top Right 
       <div className="flex">

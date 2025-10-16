@@ -12,6 +12,7 @@ interface DataPreviewTableProps {
   currentColumnIndex: number;
   currentValue: string;
   modifiedData: Record<string, ModifiedCellData>;
+  sheetName?: string;
 }
 
 const DataPreviewTable = ({
@@ -21,8 +22,9 @@ const DataPreviewTable = ({
   currentColumnIndex,
   currentValue,
   modifiedData,
+  sheetName,
 }: DataPreviewTableProps) => {
-  const { getCellStyle } = useCellStyling();
+  const { getCellStyle } = useCellStyling(sheetName);
   
   const getCellKey = (rowIndex: number, columnIndex: number) => `${rowIndex}-${columnIndex}`;
   

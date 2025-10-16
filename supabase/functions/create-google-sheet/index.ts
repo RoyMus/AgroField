@@ -247,11 +247,11 @@ serve(async (req)=>{
         'Content-Type': 'application/json'
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating Google Sheet:', error);
     return new Response(JSON.stringify({
       error: 'Internal server error',
-      details: error.message
+      details: error.message || 'Unknown error'
     }), {
       status: 500,
       headers: {
