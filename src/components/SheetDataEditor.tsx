@@ -214,6 +214,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, setModif
     const sheetName = sheetData?.sheetName;
     if (!sheetName) return;
 
+    setCurrentColumnIndex(minColIndex);
+    setCurrentRowIndex(headersRowIndex);
+    
     const allModifications = localStorage.getItem('all_sheet_modifications');
     if (allModifications) {
       try {
@@ -251,6 +254,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, setModif
       clearInterval(interval);
     };
   }, [sheetData?.sheetName]);
+
   useEffect(() => {
     // Only set current cell value when position changes
     const cellKey = `${currentRowIndex}-${currentColumnIndex}`;
