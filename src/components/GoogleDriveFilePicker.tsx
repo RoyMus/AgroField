@@ -13,10 +13,7 @@ import { useCellStyling } from "@/hooks/useCellStyling";
 
 const GoogleDriveFilePicker = () => {
   const navigate = useNavigate();
-  const
-  {
-    clearStyles
-  } = useCellStyling();
+ 
   const { 
     isAuthenticated, 
     isLoading, 
@@ -29,7 +26,10 @@ const GoogleDriveFilePicker = () => {
     readSheet,
     logout 
   } = useGoogleDrive();
-  
+  const
+  {
+    clearStyles
+  } = useCellStyling(sheetData?.sheetName);
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [isReadingSheet, setIsReadingSheet] = useState(false);
