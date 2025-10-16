@@ -135,7 +135,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       window.history.replaceState({}, document.title, window.location.pathname);
       
       // Load files
-      await loadFiles(access_token);
+      await loadFiles();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
@@ -190,39 +190,64 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
 
   const makeApiCall = async (apiCall: (token: string) => Promise<any>, retryOnError = true): Promise<any> => {
     try {
-      return await apiCall(accessToken!);
+      if (!accessToken) {
+        console.error('makeApiCall: No access token available');
+        throw new Error('No access token available. Please authenticate first.');
+      }
+
+      console.log('makeApiCall: Attempting API call with token');
+      return await apiCall(accessToken);
+      
     } catch (err: any) {
       // If we get a 401 or 403, try refreshing the token
-      if (retryOnError && refreshToken && (err.message?.includes('401') || err.message?.includes('403') || err.message?.includes('Invalid Credentials'))) {
-        console.log('Token may be expired, attempting refresh');
+      if (retryOnError && refreshToken && 
+          (err.message?.includes('401') || 
+           err.message?.includes('403') || 
+           err.message?.includes('Invalid Credentials'))) {
+        
+        console.log('makeApiCall: Token expired, attempting refresh');
         const newToken = await refreshAccessToken();
+        
         if (newToken) {
+          console.log('makeApiCall: Retrying with new token');
           return await apiCall(newToken);
+        } else {
+          console.error('makeApiCall: Token refresh failed');
+          throw new Error('Failed to refresh authentication. Please log in again.');
         }
       }
+      
+      // Log the error before rethrowing
+      console.error('makeApiCall error:', err);
       throw err;
     }
   };
 
-  const loadFiles = async (token: string = accessToken!) => {
+  const loadFiles = async () => {
+    if (!isAuthenticated) {
+      setError('Not authenticated. Please log in first.');
+      return;
+    }
+
     try {
       setIsLoading(true);
+      setError(null);
       
-      if (!token) {
-        throw new Error('No access token available. Please authenticate first.');
-      }
-      
-      await makeApiCall(async (tkn) => {
-        const { data, error } = await supabase.functions.invoke('google-drive-auth', {
-          body: { action: 'listFiles', accessToken: tkn }
-        });
-
-        if (error) throw error;
-        setFiles(data.files || []);
-        return data;
+      const { data, error } = await supabase.functions.invoke('google-drive-auth', {
+        body: { 
+          action: 'listFiles', 
+          accessToken: accessToken 
+        }
       });
+
+      if (error) throw error;
+
+      setFiles(data.files || []);
+      
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load files');
+      console.error('Failed to load files:', err);
+      setError('Failed to load files. Please try again.');
+      setFiles([]);
     } finally {
       setIsLoading(false);
     }
