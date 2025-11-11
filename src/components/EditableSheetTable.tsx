@@ -117,9 +117,33 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       
       newData[rowIndex][colIndex] = value;
       return newData;
-    });    
-    setHasChanges(localData.length > 0);
-  }, [sheetData, modifiedData]);
+    });
+    
+    // Track modification
+    const originalValue = (sheetData.values[rowIndex] && sheetData.values[rowIndex][colIndex]) || "";
+    const cellKey = `${rowIndex}-${colIndex}`;
+    
+    setModifiedData(prev => {
+      const updated = { ...prev };
+      
+      if (originalValue === value) {
+        // Value returned to original, remove modification
+        delete updated[cellKey];
+      } else {
+        // Value changed, track it
+        updated[cellKey] = {
+          originalValue,
+          modifiedValue: value,
+          rowIndex,
+          columnIndex: colIndex
+        };
+      }
+      
+      return updated;
+    });
+    
+    setHasChanges(true);
+  }, [sheetData]);
 
   // Add new row
   const addRow = () => {
@@ -177,66 +201,53 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
 
   // Save current modifications
   const saveModifications = () => {
-    // Create new modifications object
-  const newModifications: Record<string, ModifiedCellData> = {};
+    // Get current dimensions
+    const currentRows = localData.length;
+    const currentCols = Math.max(...localData.map(row => row.length), 0);
     
-    // Create new sheet data values
-    // Create new sheet data values matching the current dimensions
-  const newSheetValues: string[][] = [];
-  
-  // Get current dimensions
-  const currentRows = localData.length;
-  const currentCols = Math.max(...localData.map(row => row.length), 0);
-  
-  // Initialize newSheetValues with current dimensions
-  for (let r = 0; r < currentRows; r++) {
-    newSheetValues[r] = new Array(currentCols).fill("");
-  }
-  
-  // Copy current values and track modifications
-  for (let r = 0; r < currentRows; r++) {
-    for (let c = 0; c < currentCols; c++) {
-      const currentValue = localData[r][c] || "";
-      const originalValue = (sheetData.values[r] && sheetData.values[r][c]) || "";
-      
-      // Set the value in new sheet data
-      newSheetValues[r][c] = currentValue;
-      
-      // Track modification if value is different from original
-      if (originalValue !== currentValue) {
-        newModifications[`${r}-${c}`] = {
-          originalValue,
-          modifiedValue: currentValue,
-          rowIndex: r,
-          columnIndex: c
-        };
+    // Create new sheet data values matching current dimensions
+    const newSheetValues: string[][] = [];
+    for (let r = 0; r < currentRows; r++) {
+      newSheetValues[r] = new Array(currentCols).fill("");
+      for (let c = 0; c < currentCols; c++) {
+        newSheetValues[r][c] = localData[r][c] || "";
       }
     }
-  }
-
-    // Update local storage while preserving other sheets' modifications
+    
+    // Save styles and get current style formatting
+    saveStyles();
+    const currentStyles = getCellStyle ? 
+      Array.from({ length: currentRows }, (_, r) =>
+        Array.from({ length: currentCols }, (_, c) => ({
+          rowIndex: r,
+          columnIndex: c,
+          format: getCellStyle(r, c) || {}
+        }))
+      ).flat().filter(style => Object.keys(style.format).length > 0) : [];
+    
+    // Update local storage - clear modifications for this sheet since we're saving
     const allModifications = JSON.parse(localStorage.getItem('all_sheet_modifications') || '{}');
-    allModifications[sheetData.sheetName] = newModifications;
+    allModifications[sheetData.sheetName] = {};
     localStorage.setItem('all_sheet_modifications', JSON.stringify(allModifications));
     
-    // Save styles
-    saveStyles();
+    // Clear modification tracking
+    setModifiedData({});
+    setHasChanges(false);
     
-    // Update state
-    setModifiedData(newModifications);
-    
-    // Create new sheet data with updated values
+    // Create new sheet data with updated values and formatting
     const updatedSheetData: SheetData = {
       ...sheetData,
-      values: newSheetValues
+      values: newSheetValues,
+      formatting: currentStyles
     };
     
     // Sync with other pages
     onSaveProgress(updatedSheetData);
+    
     // Show success message
     toast({
       title: "Progress Saved",
-      description: `Saved modifications for ${Object.keys(newModifications).length} cells with formatting`,
+      description: `Saved ${currentRows} rows and ${currentCols} columns with formatting`,
     });
   };
 
@@ -298,7 +309,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
             onClick={saveModifications}
             variant="outline"
             className="h-10 text-sm"
-            disabled={Object.keys(modifiedData).length === 0}
+            disabled={!hasChanges}
           >
             <Save className="w-4 h-4 mr-1" />
             <span>שמור התקדמות</span>
