@@ -14,39 +14,13 @@ interface EditableSheetTableProps {
 }
 
 const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTableProps) => {
-  useEffect(() => {
-    for (let i = 0; i < sheetData.values.length; i++) {
-      if (sheetData.values[i][0] != null && sheetData.values[i][0].trim() != "")
-      {
-        var found_headers_row_index = i;
-        break;
-      }
-    }
-    const headersRowIndex = found_headers_row_index + 1;
-    const headers = sheetData.values[headersRowIndex -1] || [];
-    var AlreadySetFirst = false;
-    console.log("MaxCols", headers.length);
-    for (let i = 0; i < headers.length; i++) {
-      if (headers[i] == "")
-      {
-        if (!AlreadySetFirst)
-        {
-          AlreadySetFirst = true;
-        }
-        else
-        {
-          var lastindex = i - 1;
-        }
-      }
-    }
-    setMaxColIndex(lastindex);
-  },[sheetData]);
-
-  const [maxColIndex, setMaxColIndex] = useState(0);
   const [localData, setLocalData] = useState<string[][]>([]);
   const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
   const [hasChanges, setHasChanges] = useState(false);
   const { toast } = useToast();
+  
+  // Calculate max columns from local data
+  const maxCols = Math.max(...(localData.length > 0 ? localData.map(row => row.length) : [0]), 0);
   
   const {
     getCellStyle,
@@ -147,13 +121,15 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
 
   // Add new row
   const addRow = () => {
-    const newRow = new Array(maxCols).fill("");
-    const insertIndex = localData.length - 3; // Insert at second to last position
     setLocalData(prev => {
+      const currentMaxCols = Math.max(...prev.map(row => row.length), 0);
+      const newRow = new Array(currentMaxCols).fill("");
+      const insertIndex = prev.length - 3; // Insert at second to last position
       const updated = [...prev];
       updated.splice(insertIndex + 1, 0, newRow); // insert *after* old row
       return updated;
     });
+    const insertIndex = localData.length - 3;
     insertRow(insertIndex + 1); // Update styles
     setHasChanges(true);
   };
@@ -174,29 +150,43 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
 
   // Add new column
   const addColumn = () => {
-    const insertIndex = maxColIndex + 1;
     setLocalData(prev => {
-      const updated = [...prev];
-      updated.forEach(row => {
-        row.splice(insertIndex, 0, "");
+      const currentMaxCols = Math.max(...prev.map(row => row.length), 0);
+      const insertIndex = currentMaxCols;
+      const updated = prev.map(row => {
+        const newRow = [...row];
+        // Ensure row has the right length before adding
+        while (newRow.length < currentMaxCols) {
+          newRow.push("");
+        }
+        newRow.push(""); // Add new column at the end
+        return newRow;
       });
       return updated;
     });
-    insertColumn(insertIndex); // Update styles
+    const currentMaxCols = Math.max(...localData.map(row => row.length), 0);
+    insertColumn(currentMaxCols); // Update styles
     setHasChanges(true);
-    setMaxColIndex(insertIndex);
   };
 
   // Remove last column
   const removeColumn = () => {
-    const removeIndex = maxColIndex;
-    setLocalData(prev => prev.map(row => {
-      row.splice(removeIndex, 1);
-      return row;
-    }));
-    deleteColumn(removeIndex); // Update styles
+    if (maxCols <= 1) return;
+    
+    setLocalData(prev => {
+      const currentMaxCols = Math.max(...prev.map(row => row.length), 0);
+      const removeIndex = currentMaxCols - 1;
+      return prev.map(row => {
+        const newRow = [...row];
+        if (newRow.length > removeIndex) {
+          newRow.splice(removeIndex, 1);
+        }
+        return newRow;
+      });
+    });
+    const currentMaxCols = Math.max(...localData.map(row => row.length), 0);
+    deleteColumn(currentMaxCols - 1); // Update styles
     setHasChanges(true);
-    setMaxColIndex(removeIndex - 1);
   };
 
   // Save current modifications
@@ -251,8 +241,6 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     });
   };
 
-  // Calculate maximum columns needed
-  const maxCols = Math.max(...localData.map(row => row.length), 0);
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
