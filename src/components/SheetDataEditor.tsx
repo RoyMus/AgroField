@@ -390,7 +390,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, setModif
     // Reset to original value using centralized updateCell
     const originalValue = (sheetData.values[currentRowIndex] && sheetData.values[currentRowIndex][currentColumnIndex]) || "";
     updateCell(currentRowIndex, currentColumnIndex, originalValue);
-    }
   };
 
   useEffect(() => {
