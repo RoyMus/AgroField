@@ -237,9 +237,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
     setCurrentColumnIndex(minColIndex);
   };
 
-  const resetModifiedData = () => {
-    setModifiedData({});
-  };
   const saveModifications = useCallback(() => {
     // The context handles saving to localStorage, so this is just for the toast.
     toast({
@@ -412,6 +409,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
     // Remove from modified data if it exists
     const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
     const newModifiedData = { ...modifiedData };
+    dataRows[currentRowIndex][currentColumnIndex] = newModifiedData[cellKey]?.originalValue || "";
     delete newModifiedData[cellKey];
     setModifiedData(newModifiedData);
   };
