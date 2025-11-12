@@ -46,6 +46,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
   const [localData, setLocalData] = useState<string[][]>([]);
   const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
   const [hasChanges, setHasChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   
   const {
@@ -119,6 +120,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       return newData;
     });    
     setHasChanges(localData.length > 0);
+    setHasChanges(true);
   }, [sheetData, modifiedData]);
 
   // Add new row
@@ -176,7 +178,8 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
   };
 
   // Save current modifications
-  const saveModifications = () => {
+  const saveModifications = async () => {
+    if (isSaving) return;
     // Create new modifications object
   const newModifications: Record<string, ModifiedCellData> = {};
     
@@ -214,30 +217,50 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     }
   }
 
-    // Update local storage while preserving other sheets' modifications
-    const allModifications = JSON.parse(localStorage.getItem('all_sheet_modifications') || '{}');
-    allModifications[sheetData.sheetName] = newModifications;
-    localStorage.setItem('all_sheet_modifications', JSON.stringify(allModifications));
-    
-    // Save styles
-    saveStyles();
-    
-    // Update state
-    setModifiedData(newModifications);
-    
-    // Create new sheet data with updated values
-    const updatedSheetData: SheetData = {
-      ...sheetData,
-      values: newSheetValues
-    };
-    
-    // Sync with other pages
-    onSaveProgress(updatedSheetData);
-    // Show success message
-    toast({
-      title: "Progress Saved",
-      description: `Saved modifications for ${Object.keys(newModifications).length} cells with formatting`,
-    });
+    // If there are no modifications, don't overwrite existing saved modifications
+    if (Object.keys(newModifications).length === 0) {
+      toast({
+        title: "No changes to save",
+        description: "There are no modifications to save.",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // Persist modifications via shared helper when available
+      if (typeof persistModifiedData === "function") {
+        persistModifiedData(newModifications);
+      } else {
+        const allModifications = JSON.parse(localStorage.getItem('all_sheet_modifications') || '{}');
+        allModifications[sheetData.sheetName] = newModifications;
+        localStorage.setItem('all_sheet_modifications', JSON.stringify(allModifications));
+      }
+
+      // Save styles
+      saveStyles();
+
+      // Update state
+      setModifiedData(newModifications);
+      setHasChanges(false);
+
+      // Create new sheet data with updated values
+      const updatedSheetData: SheetData = {
+        ...sheetData,
+        values: newSheetValues
+      };
+
+      // Sync with other pages
+      onSaveProgress(updatedSheetData);
+      // Show success message
+      toast({
+        title: "Progress Saved",
+        description: `Saved modifications for ${Object.keys(newModifications).length} cells with formatting`,
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Calculate maximum columns needed
@@ -298,7 +321,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
             onClick={saveModifications}
             variant="outline"
             className="h-10 text-sm"
-            disabled={Object.keys(modifiedData).length === 0}
+            disabled={!hasChanges || isSaving}
           >
             <Save className="w-4 h-4 mr-1" />
             <span>שמור התקדמות</span>
