@@ -229,14 +229,9 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     setIsSaving(true);
 
     try {
-      // Persist modifications via shared helper when available
-      if (typeof persistModifiedData === "function") {
-        persistModifiedData(newModifications);
-      } else {
-        const allModifications = JSON.parse(localStorage.getItem('all_sheet_modifications') || '{}');
-        allModifications[sheetData.sheetName] = newModifications;
-        localStorage.setItem('all_sheet_modifications', JSON.stringify(allModifications));
-      }
+      const allModifications = JSON.parse(localStorage.getItem('all_sheet_modifications') || '{}');
+      allModifications[sheetData.sheetName] = newModifications;
+      localStorage.setItem('all_sheet_modifications', JSON.stringify(allModifications));
 
       // Save styles
       saveStyles();
