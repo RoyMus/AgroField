@@ -5,6 +5,7 @@ import SheetDataEditor from "@/components/SheetDataEditor";
 import TopBar from "@/components/TopBarr";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { ModifiedCellData } from "@/types/cellTypes";
+import { SheetModificationsProvider } from "@/contexts/SheetModificationsContext";
 
 const InteractivePage = () => {
   const navigate = useNavigate();
@@ -42,38 +43,40 @@ const InteractivePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
-      <div className="container mx-auto px-6 py-8">
-          <div className="space-y-6">
-            {/* Header With File info */}
-            {sheetData && (
-              <TopBar 
-                sheetData={sheetData} 
-                handleGoHome={handleBackToHome} 
-                selectedFile={selectedFile} 
-                onOpenEditor={handleEditSheet}
-                onSaveProgress={saveProgressFunc}
-                onSaveToNewSheet={saveToNewSheetFunc}
-                readSheet={readSheet}
-                isLoading={isLoading}
-                modifiedData={modifiedData}
-                setModifiedData={setModifiedData}
-              />
-            )}
-            
-            {/* Sheet Data Editor */}
-            {sheetData && (
-              <SheetDataEditor 
-                sheetData={sheetData}
-                modifiedData={modifiedData}
-                setModifiedData={setModifiedData}
-                onSaveProgress={(func) => setSaveProgressFunc(() => func)}
-                onSaveToNewSheet={(func) => setSaveToNewSheetFunc(() => func)}
-              />
-            )}
-          </div>
+    <SheetModificationsProvider sheetData={sheetData}>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+        <div className="container mx-auto px-6 py-8">
+            <div className="space-y-6">
+              {/* Header With File info */}
+              {sheetData && (
+                <TopBar 
+                  sheetData={sheetData} 
+                  handleGoHome={handleBackToHome} 
+                  selectedFile={selectedFile} 
+                  onOpenEditor={handleEditSheet}
+                  onSaveProgress={saveProgressFunc}
+                  onSaveToNewSheet={saveToNewSheetFunc}
+                  readSheet={readSheet}
+                  isLoading={isLoading}
+                  modifiedData={modifiedData}
+                  setModifiedData={setModifiedData}
+                />
+              )}
+              
+              {/* Sheet Data Editor */}
+              {sheetData && (
+                <SheetDataEditor 
+                  sheetData={sheetData}
+                  modifiedData={modifiedData}
+                  setModifiedData={setModifiedData}
+                  onSaveProgress={(func) => setSaveProgressFunc(() => func)}
+                  onSaveToNewSheet={(func) => setSaveToNewSheetFunc(() => func)}
+                />
+              )}
+            </div>
+        </div>
       </div>
-    </div>
+    </SheetModificationsProvider>
   );
 };
 

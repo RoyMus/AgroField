@@ -8,6 +8,7 @@ import ProgressStats from "./ProgressStats";
 import CellEditor from "./CellEditor";
 import SaveToNewSheetDialog from "./SaveToNewSheetDialog";
 import { SheetData, ModifiedCellData } from "@/types/cellTypes";
+import { useSheetModificationsContext } from "@/contexts/SheetModificationsContext";
 
 
 interface SheetDataEditorProps {
@@ -19,6 +20,8 @@ interface SheetDataEditorProps {
 }
 
 const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, setModifiedData, modifiedData }: SheetDataEditorProps) => {
+  const { modifications, updateCell } = useSheetModificationsContext();
+  
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && sheetData.values[i][0].trim() != "")
     {
@@ -42,7 +45,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, setModif
       break;
     }
   }
-
 
   const headersRowIndex = found_headers_row_index + 1;
   const headers = sheetData.values[headersRowIndex -1] || [];
@@ -110,10 +112,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, setModif
   useEffect(()=>{
     const sheetName = sheetData?.sheetName;
     if (!sheetName) return;
-
-    const allModifications = localStorage.getItem('all_sheet_modifications');
-    const allSheetModifications = allModifications ? JSON.parse(allModifications) : {};
-    const parsedSavedModifications = allSheetModifications[sheetName] || {};
     
     const topBarRowIndex = 0;
     const faucetRowIndex = 1;
@@ -135,37 +133,19 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, setModif
         break;
       }
     }
-    const newModifiedData = {
-      ...parsedSavedModifications,
-      ...modifiedData,
-      [`${faucetRowIndex}-${faucetIndex}`]: {
-        originalValue: `${faucetConductivity} - מוליכות ברז`,
-        modifiedValue: `${faucetConductivity} - מוליכות ברז`,
-        rowIndex: faucetRowIndex,
-        columnIndex: faucetIndex
-      }
-    };
+    
+    // Use centralized updateCell to set faucet conductivity
+    updateCell(faucetRowIndex, faucetIndex, `${faucetConductivity} - מוליכות ברז`);
         
     if (isTemplate)
     {
-        newModifiedData[`${topBarRowIndex}-${topBarIndex}`] = {
-            originalValue: `${place} - ${plant} - ${grower}`,
-            modifiedValue: `${place} - ${plant} - ${grower}`,
-            rowIndex: topBarRowIndex,
-            columnIndex: topBarIndex
-          };
+      // Use centralized updateCell to set top bar
+      updateCell(topBarRowIndex, topBarIndex, `${place} - ${plant} - ${grower}`);
     }
-
-    setModifiedData(newModifiedData);
-    allSheetModifications[sheetName] = newModifiedData;
-    localStorage.setItem('all_sheet_modifications', JSON.stringify(allSheetModifications));
-  }, [sheetData?.sheetName]);
+  }, [sheetData?.sheetName, faucetConductivity, isTemplate, place, plant, grower, updateCell]);
 
   const calcAverages = () =>
   {
-    const newModifiedData = {
-      ...modifiedData
-    };
     for (let i = minColIndex; i <= maxColIndex; i++)
     {
       let sum = 0;
@@ -181,12 +161,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, setModif
         }
       }
       sum /= counter;
-      newModifiedData[`${dataRows.length - 1}-${i}`] = {
-        originalValue: `${sum}`,
-        modifiedValue: `${sum}`,
-        rowIndex: dataRows.length - 1,
-        columnIndex: i
-      };
+      
+      // Use centralized updateCell
+      updateCell(dataRows.length - 1, i, `${sum}`);
+      
       const wantedResult = sheetData.values[dataRows.length - 2][i]?.split('-');
       let isBetween = false;
       if(wantedResult && wantedResult.length > 1)
@@ -198,67 +176,19 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, setModif
     });
     }
     saveStyles();
-    setModifiedData(newModifiedData);
-    
-    const sheetName = sheetData?.sheetName;
-    if (sheetName) {
-      const allModifications = localStorage.getItem('all_sheet_modifications');
-      const allSheetModifications = allModifications ? JSON.parse(allModifications) : {};
-      allSheetModifications[sheetName] = newModifiedData;
-      localStorage.setItem('all_sheet_modifications', JSON.stringify(allSheetModifications));
-    }
   };
 
   useEffect(() => {
-    // Load saved modifications for current sheet from localStorage
+    // Set initial position when sheet loads
     const sheetName = sheetData?.sheetName;
     if (!sheetName) return;
 
     setCurrentColumnIndex(minColIndex);
     setCurrentRowIndex(headersRowIndex);
-    
-    const allModifications = localStorage.getItem('all_sheet_modifications');
-    if (allModifications) {
-      try {
-        const parsed = JSON.parse(allModifications);
-        setModifiedData(parsed[sheetName] || {});
-      } catch (error) {
-        console.error('Failed to parse saved modifications:', error);
-      }
-    }
-
-    // Listen for storage changes from other components (like EditableSheetTable)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'all_sheet_modifications' && e.newValue) {
-        const parsed = JSON.parse(e.newValue);
-        setModifiedData(parsed[sheetName] || {});
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Also listen for localStorage changes within the same tab
-    const handleLocalStorageUpdate = () => {
-      const allModifications = localStorage.getItem('all_sheet_modifications');
-      if (allModifications) {
-        const parsed = JSON.parse(allModifications);
-        setModifiedData(parsed[sheetName] || {});
-      }
-    };
-
-    // Set up an interval to check for localStorage changes (for same-tab updates)
-    const interval = setInterval(handleLocalStorageUpdate, 500);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
-    };
-  }, [sheetData?.sheetName]);
+  }, [sheetData?.sheetName, minColIndex, headersRowIndex]);
 
   useEffect(() => {
     // Only set current cell value when position changes
-    const cellKey = `${currentRowIndex}-${currentColumnIndex}`;
-    const savedModification = modifiedData[cellKey];
     speak(headers[currentColumnIndex]);
     setCurrentValue("");
   }, [currentRowIndex, currentColumnIndex]);
@@ -302,23 +232,15 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, setModif
     setModifiedData({});
   };
   const saveModifications = useCallback(() => {
-    const sheetName = sheetData?.sheetName;
-    if (!sheetName) return;
-
-    const allModifications = localStorage.getItem('all_sheet_modifications');
-    const allSheetModifications = allModifications ? JSON.parse(allModifications) : {};
-    allSheetModifications[sheetName] = modifiedData;
-    localStorage.setItem('all_sheet_modifications', JSON.stringify(allSheetModifications));
-    
+    // Modifications are already saved via context, just show toast
     toast({
       title: "Progress Saved",
-      description: `Saved modifications for ${Object.keys(modifiedData).length} cells`,
+      description: `Saved modifications for ${Object.keys(modifications.cellChanges).length} cells`,
     });
-    
-  }, [modifiedData, sheetData?.sheetName, toast]);
+  }, [modifications.cellChanges, toast]);
 
   const handleSaveToNewSheet = useCallback(() => {
-    if (Object.keys(modifiedData).length === 0) {
+    if (Object.keys(modifications.cellChanges).length === 0) {
       toast({
         title: "No Changes to Save",
         description: "You haven't made any modifications to save.",
@@ -328,13 +250,12 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, setModif
     }
     calcAverages();
     setShowSaveDialog(true);
-    
-  }, [modifiedData, toast]);
+  }, [modifications.cellChanges, toast, calcAverages]);
 
   const handleCreateNewSheet = async (fileName: string) => {
     setIsSaving(true);
     try {
-      const result = await createNewSheet(fileName, modifiedData);
+      const result = await createNewSheet(fileName, modifications.cellChanges);
       
       if (result.success) {
         toast({
@@ -374,28 +295,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, setModif
   const getCellKey = (rowIndex: number, columnIndex: number) => `${rowIndex}-${columnIndex}`;
 
   const recordCurrentValue = async () => {
-    // Save the current value
-    const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
-    const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
-    
-    const newModifiedData = {
-      ...modifiedData,
-      [cellKey]: {
-        originalValue,
-        modifiedValue: currentValue,
-        rowIndex: currentRowIndex,
-        columnIndex: currentColumnIndex
-      }
-    };
-    setModifiedData(newModifiedData);
-    
-    const sheetName = sheetData?.sheetName;
-    if (sheetName) {
-      const allModifications = localStorage.getItem('all_sheet_modifications');
-      const allSheetModifications = allModifications ? JSON.parse(allModifications) : {};
-      allSheetModifications[sheetName] = newModifiedData;
-      localStorage.setItem('all_sheet_modifications', JSON.stringify(allSheetModifications));
-    }
+    // Use centralized updateCell
+    updateCell(currentRowIndex, currentColumnIndex, currentValue);
     
     toast({
       title: "Value Recorded",
@@ -486,19 +387,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, setModif
 
   const resetCurrentCell = () => {
     setCurrentValue("");
-    // Remove from modified data if it exists
-    const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
-    const newModifiedData = { ...modifiedData };
-    delete newModifiedData[cellKey];
-    setModifiedData(newModifiedData);
-    
-    const sheetName = sheetData?.sheetName;
-    if (sheetName) {
-      const allModifications = localStorage.getItem('all_sheet_modifications');
-      const allSheetModifications = allModifications ? JSON.parse(allModifications) : {};
-      allSheetModifications[sheetName] = newModifiedData;
-      localStorage.setItem('all_sheet_modifications', JSON.stringify(allSheetModifications));
-    }
+    // Reset to original value using centralized updateCell
+    const originalValue = (sheetData.values[currentRowIndex] && sheetData.values[currentRowIndex][currentColumnIndex]) || "";
+    updateCell(currentRowIndex, currentColumnIndex, originalValue);
   };
 
   useEffect(() => {
@@ -543,7 +434,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, setModif
         headers={headers}
         dataRows={dataRows}
         currentValue={currentValue}
-        modifiedData={modifiedData}
+        modifiedData={modifications.cellChanges}
         isRecording={isRecording}
         onInputChange={handleInputChange}
         onChangeToRow={handleChangeToNewRow}
@@ -565,7 +456,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet, setModif
         onOpenChange={setShowSaveDialog}
         onConfirm={handleCreateNewSheet}
         onCancel={() => setShowSaveDialog(false)}
-        modifiedCount={Object.keys(modifiedData).length}
+        modifiedCount={Object.keys(modifications.cellChanges).length}
         previousFileName={`${sheetData.metadata.title} ${formattedDate}`}
         isLoading={isSaving}
       />
