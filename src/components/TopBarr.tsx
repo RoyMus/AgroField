@@ -5,10 +5,12 @@ import { Edit, Save } from "lucide-react";
 import SheetSelector from "./SheetSelector";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { useToast } from "@/hooks/use-toast";
+import { useModifiedData } from "@/contexts/ModifiedDataContext";
 import { set } from "date-fns";
 
-const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet, readSheet, isLoading, modifiedData,setModifiedData}) => {
+const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet, readSheet, isLoading}) => {
     const { toast } = useToast();
+    const { setModifiedData } = useModifiedData();
     const{
     isTemplate,
     plant,

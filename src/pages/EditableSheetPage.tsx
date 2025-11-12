@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { ModifiedDataProvider } from "@/contexts/ModifiedDataContext";
 import EditableSheetTable from "@/components/EditableSheetTable";
 import SheetSelector from "@/components/SheetSelector";
 import { useCallback } from "react";
@@ -80,7 +81,9 @@ const EditableSheetPage = () => {
             </div>
           </div>
           {/* Editable Table */}
-          <EditableSheetTable sheetData={sheetData} onSaveProgress={handleSaveProgress} />
+          <ModifiedDataProvider sheetName={sheetData.sheetName}>
+            <EditableSheetTable sheetData={sheetData} onSaveProgress={handleSaveProgress} />
+          </ModifiedDataProvider>
         </div>
       </div>
     </div>

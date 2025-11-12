@@ -4,7 +4,7 @@ import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
 import TopBar from "@/components/TopBarr";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
-import { ModifiedCellData } from "@/types/cellTypes";
+import { ModifiedDataProvider } from "@/contexts/ModifiedDataContext";
 
 const InteractivePage = () => {
   const navigate = useNavigate();
@@ -12,7 +12,6 @@ const InteractivePage = () => {
   const [saveProgressFunc, setSaveProgressFunc] = useState<(() => void) | null>(null);
   const [saveToNewSheetFunc, setSaveToNewSheetFunc] = useState<(() => void) | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
 
   // Track when loading completes
   useEffect(() => {
@@ -47,29 +46,25 @@ const InteractivePage = () => {
           <div className="space-y-6">
             {/* Header With File info */}
             {sheetData && (
-              <TopBar 
-                sheetData={sheetData} 
-                handleGoHome={handleBackToHome} 
-                selectedFile={selectedFile} 
-                onOpenEditor={handleEditSheet}
-                onSaveProgress={saveProgressFunc}
-                onSaveToNewSheet={saveToNewSheetFunc}
-                readSheet={readSheet}
-                isLoading={isLoading}
-                modifiedData={modifiedData}
-                setModifiedData={setModifiedData}
-              />
-            )}
-            
-            {/* Sheet Data Editor */}
-            {sheetData && (
-              <SheetDataEditor 
-                sheetData={sheetData}
-                modifiedData={modifiedData}
-                setModifiedData={setModifiedData}
-                onSaveProgress={(func) => setSaveProgressFunc(() => func)}
-                onSaveToNewSheet={(func) => setSaveToNewSheetFunc(() => func)}
-              />
+              <ModifiedDataProvider sheetName={sheetData.sheetName}>
+                <TopBar 
+                  sheetData={sheetData} 
+                  handleGoHome={handleBackToHome} 
+                  selectedFile={selectedFile} 
+                  onOpenEditor={handleEditSheet}
+                  onSaveProgress={saveProgressFunc}
+                  onSaveToNewSheet={saveToNewSheetFunc}
+                  readSheet={readSheet}
+                  isLoading={isLoading}
+                />
+                
+                {/* Sheet Data Editor */}
+                <SheetDataEditor 
+                  sheetData={sheetData}
+                  onSaveProgress={(func) => setSaveProgressFunc(() => func)}
+                  onSaveToNewSheet={(func) => setSaveToNewSheetFunc(() => func)}
+                />
+              </ModifiedDataProvider>
             )}
           </div>
       </div>

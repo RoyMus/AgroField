@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCellStyling } from "@/hooks/useCellStyling";
 import { applyCellFormatToStyle, extractStylesFromSheetData } from "@/utils/formatConverters";
 import { SheetData, ModifiedCellData } from "@/types/cellTypes";
+import { useModifiedData } from "@/contexts/ModifiedDataContext";
 import { set } from "date-fns";
 
 interface EditableSheetTableProps {
@@ -14,38 +15,9 @@ interface EditableSheetTableProps {
 }
 
 const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTableProps) => {
-  useEffect(() => {
-    for (let i = 0; i < sheetData.values.length; i++) {
-      if (sheetData.values[i][0] != null && sheetData.values[i][0].trim() != "")
-      {
-        var found_headers_row_index = i;
-        break;
-      }
-    }
-    const headersRowIndex = found_headers_row_index + 1;
-    const headers = sheetData.values[headersRowIndex -1] || [];
-    var AlreadySetFirst = false;
-    console.log("MaxCols", headers.length);
-    for (let i = 0; i < headers.length; i++) {
-      if (headers[i] == "")
-      {
-        if (!AlreadySetFirst)
-        {
-          AlreadySetFirst = true;
-        }
-        else
-        {
-          var lastindex = i - 1;
-        }
-      }
-    }
-    setMaxColIndex(lastindex);
-  },[sheetData]);
-
-  const [maxColIndex, setMaxColIndex] = useState(0);
+  const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
   const [localData, setLocalData] = useState<string[][]>([]);
-  const [modifiedData, setModifiedData] = useState<Record<string, ModifiedCellData>>({});
-  const [hasChanges, setHasChanges] = useState(false);
+  const { modifiedData, setModifiedData } = useModifiedData();
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   
@@ -59,15 +31,6 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     clearStyles,
     saveStyles
   } = useCellStyling(sheetData.sheetName);
-
-  // Load saved modifications from localStorage and apply to sheet data
-  useEffect(() => {
-    const savedModifications = localStorage.getItem('all_sheet_modifications');
-    if (savedModifications) {
-      const parsedModifications = JSON.parse(savedModifications);
-      setModifiedData(parsedModifications[sheetData.sheetName] || {});
-    }
-  }, [sheetData.sheetName]);
 
   // Initialize local data from sheet data and apply modifications
   useEffect(() => {
@@ -96,7 +59,6 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       });
       
       setLocalData(baseData);
-      setHasChanges(Object.keys(modifiedData).length > 0);
     }
   }, [sheetData, modifiedData, loadInitialStyles, clearStyles, sheetData.formatting]);
 
@@ -118,41 +80,55 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       
       newData[rowIndex][colIndex] = value;
       return newData;
-    });    
-    setHasChanges(localData.length > 0);
-    setHasChanges(true);
+    });
+
+    const originalValue = (sheetData.values[rowIndex] && sheetData.values[rowIndex][colIndex]) || "";
+    const newModifiedData = { ...modifiedData };
+
+    if (originalValue !== value) {
+      newModifiedData[`${rowIndex}-${colIndex}`] = {
+        originalValue,
+        modifiedValue: value,
+        rowIndex,
+        columnIndex: colIndex
+      };
+    } else {
+      delete newModifiedData[`${rowIndex}-${colIndex}`];
+    }
   }, [sheetData, modifiedData]);
+
+  const handleCellFocus = (rowIndex: number, colIndex: number) => {
+    setSelectedCell({ rowIndex, colIndex });
+  };
 
   // Add new row
   const addRow = () => {
     const newRow = new Array(maxCols).fill("");
-    const insertIndex = localData.length - 3; // Insert at second to last position
+    const insertIndex = selectedCell ? selectedCell.rowIndex + 1 : localData.length;
     setLocalData(prev => {
       const updated = [...prev];
-      updated.splice(insertIndex + 1, 0, newRow); // insert *after* old row
+      updated.splice(insertIndex, 0, newRow); // insert *after* old row
       return updated;
     });
-    insertRow(insertIndex + 1); // Update styles
-    setHasChanges(true);
+    insertRow(insertIndex); // Update styles
   };
 
   // Remove last row
   const removeRow = () => {
-    if (localData.length > 1) {
-      const removeIndex = localData.length - 3;
+    if (localData.length > 1 && selectedCell) {
+      const removeIndex = selectedCell.rowIndex;
       setLocalData(prev => {
         const updated = [...prev];
         updated.splice(removeIndex, 1);
         return updated;
       });
       deleteRow(removeIndex); // Update styles
-      setHasChanges(true);
     }
   };
 
   // Add new column
   const addColumn = () => {
-    const insertIndex = maxColIndex + 1;
+    const insertIndex = selectedCell ? selectedCell.colIndex + 1 : maxCols;
     setLocalData(prev => {
       const updated = [...prev];
       updated.forEach(row => {
@@ -161,20 +137,19 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       return updated;
     });
     insertColumn(insertIndex); // Update styles
-    setHasChanges(true);
-    setMaxColIndex(insertIndex);
   };
 
   // Remove last column
   const removeColumn = () => {
-    const removeIndex = maxColIndex;
-    setLocalData(prev => prev.map(row => {
-      row.splice(removeIndex, 1);
-      return row;
-    }));
-    deleteColumn(removeIndex); // Update styles
-    setHasChanges(true);
-    setMaxColIndex(removeIndex - 1);
+    if (maxCols > 0 && selectedCell) {
+      const removeIndex = selectedCell.colIndex;
+      setLocalData(prev => prev.map(row => {
+        const newRow = [...row];
+        newRow.splice(removeIndex, 1);
+        return newRow;
+      }));
+      deleteColumn(removeIndex); // Update styles
+    }
   };
 
   // Save current modifications
@@ -216,39 +191,33 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       }
     }
   }
+    const hasChanges = Object.keys(newModifications).length > 0;
 
-    // If there are no modifications, don't overwrite existing saved modifications
-    if (Object.keys(newModifications).length === 0) {
+    if (!hasChanges) {
       toast({
         title: "No changes to save",
         description: "There are no modifications to save.",
       });
       return;
     }
-
+    
     setIsSaving(true);
 
     try {
-      const allModifications = JSON.parse(localStorage.getItem('all_sheet_modifications') || '{}');
-      allModifications[sheetData.sheetName] = newModifications;
-      localStorage.setItem('all_sheet_modifications', JSON.stringify(allModifications));
-
-      // Save styles
+      // The context already saved to localStorage.
+      // We just need to save styles and inform the parent.
       saveStyles();
 
-      // Update state
       setModifiedData(newModifications);
-      setHasChanges(false);
-
       // Create new sheet data with updated values
       const updatedSheetData: SheetData = {
         ...sheetData,
-        values: newSheetValues
+        values: localData
       };
 
       // Sync with other pages
       onSaveProgress(updatedSheetData);
-      // Show success message
+      
       toast({
         title: "Progress Saved",
         description: `Saved modifications for ${Object.keys(newModifications).length} cells with formatting`,
@@ -260,6 +229,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
 
   // Calculate maximum columns needed
   const maxCols = Math.max(...localData.map(row => row.length), 0);
+  const hasChanges = Object.keys(modifiedData).length > 0;
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
@@ -280,7 +250,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
             onClick={removeRow}
             variant="outline"
             size="sm"
-            disabled={localData.length <= 1}
+            disabled={localData.length <= 1 || !selectedCell}
             className="h-10 text-sm"
           >
             <Minus className="w-4 h-4 mr-1" />
@@ -299,7 +269,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
             onClick={removeColumn}
             variant="outline"
             size="sm"
-            disabled={maxCols <= 1}
+            disabled={maxCols <= 1 || !selectedCell}
             className="h-10 text-sm"
           >
             <Minus className="w-4 h-4 mr-1" />
@@ -357,8 +327,13 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
                       <td key={colIndex} className="border-r border-b p-0">
                         <Input
                           value={row[colIndex] || ""}
+                          onFocus={() => handleCellFocus(rowIndex, colIndex)}
                           onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
-                          className="border-0 rounded-none focus:ring-2 focus:ring-blue-500 focus:ring-inset h-8 text-sm"
+                          className={`border-0 rounded-none focus:ring-2 focus:ring-blue-500 focus:ring-inset h-8 text-sm ${
+                            selectedCell?.rowIndex === rowIndex && selectedCell?.colIndex === colIndex
+                              ? "ring-2 ring-blue-500"
+                              : ""
+                          }`}
                           style={cellCssStyle}
                           placeholder=""
                         />
