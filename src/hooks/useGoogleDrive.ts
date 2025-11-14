@@ -318,6 +318,8 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     localStorage.removeItem('google_drive_refresh_token');
     localStorage.removeItem('google_drive_selected_file');
     localStorage.removeItem('google_drive_sheet_data');
+    localStorage.removeItem('all_sheet_modifications');
+    localStorage.removeItem('all_sheet_styles');
     sessionStorage.removeItem('google_auth_code_used');
   };
 
