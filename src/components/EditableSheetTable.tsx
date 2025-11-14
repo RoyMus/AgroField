@@ -208,8 +208,6 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       // We just need to save styles and inform the parent.
       saveStyles();
 
-      setModifiedData(newModifications);
-      // Create new sheet data with updated values
       const updatedSheetData: SheetData = {
         ...sheetData,
         values: localData
