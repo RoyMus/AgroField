@@ -166,7 +166,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
       let counter = 0;
       for (let j = headersRowIndex; j <= dataRows.length - 3 ; j++)
       {
-        temp = parseFloat(sheetData.values[j][i]);
+        if(!(`${j}-${i}` in modifiedData))
+          temp = parseFloat(sheetData.values[j][i]);
+        else
+          temp = parseFloat(modifiedData[`${j}-${i}`].modifiedValue);
         if (!Number.isNaN(temp))
         {
           counter++;
