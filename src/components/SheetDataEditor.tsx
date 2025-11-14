@@ -166,10 +166,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
       let counter = 0;
       for (let j = headersRowIndex; j <= dataRows.length - 3 ; j++)
       {
-        counter++;
         temp = parseFloat(sheetData.values[j][i]);
         if (!Number.isNaN(temp))
         {
+          counter++;
           sum += temp;
         }
       }
