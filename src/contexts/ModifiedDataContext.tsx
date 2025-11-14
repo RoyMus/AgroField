@@ -51,26 +51,6 @@ export const ModifiedDataProvider: React.FC<ModifiedDataProviderProps> = ({ chil
     }
   }, []);
 
-
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'all_sheet_modifications' && e.newValue) {
-        try {
-          const newAllMods = JSON.parse(e.newValue);
-          setAllSheetModifications(newAllMods);
-        } catch (error) {
-          console.error('Error parsing localStorage data on change', error);
-        }
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
-
   return (
     <ModifiedDataContext.Provider value={{ modifiedData, setModifiedData, clearAllModifications }}>
       {children}

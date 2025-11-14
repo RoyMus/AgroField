@@ -10,7 +10,6 @@ import { set } from "date-fns";
 
 const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet, readSheet, isLoading}) => {
     const { toast } = useToast();
-    const { setModifiedData } = useModifiedData();
     const{
     isTemplate,
     plant,
@@ -45,7 +44,6 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
         if (selectedFile) {
             try {
                 await readSheet(selectedFile.id, sheetName);
-                setModifiedData({});
             } catch (error) {
                 toast({
                     title: "Failed to switch sheet",
