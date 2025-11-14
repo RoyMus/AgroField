@@ -263,6 +263,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
   const handleCreateNewSheet = async (fileName: string) => {
     setIsSaving(true);
     try {
+      // Ensure styles are saved to localStorage before creating the sheet
+      saveStyles();
+      console.log('Styles saved before creating new sheet');
+      
       const result = await createNewSheet(fileName, modifiedData);
       
       if (result.success) {
@@ -272,7 +276,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
         });
         setShowSaveDialog(false);
         
-        // Clear all modifications since they've been saved to a new sheet
+        // Clear all modifications and styles AFTER successful save
         clearAllModifications();
         localStorage.removeItem('all_sheet_styles');
 
@@ -304,6 +308,15 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
   const recordCurrentValue = async () => {
     // Save the current value
     const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
+    
+    // Ensure we have a valid row in dataRows
+    while (dataRows.length <= currentRowIndex) {
+      dataRows.push(new Array(headers.length).fill(""));
+    }
+    while (dataRows[currentRowIndex].length <= currentColumnIndex) {
+      dataRows[currentRowIndex].push("");
+    }
+    
     const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
     
     const newModifiedData = {
