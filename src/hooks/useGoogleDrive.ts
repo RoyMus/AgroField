@@ -258,12 +258,10 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     setSelectedFile(file);
     localStorage.setItem('google_drive_selected_file', JSON.stringify(file));
     
-    // Clear previous sheet data and styles immediately when selecting a new file
-    console.log('Clearing previous sheet data and styles due to file selection');
+    // Clear previous sheet data immediately when selecting a new file
+    console.log('Clearing previous sheet data due to file selection');
     setSheetData(null);
     localStorage.removeItem('google_drive_sheet_data');
-    localStorage.removeItem('all_sheet_styles');
-    localStorage.removeItem('all_sheet_modifications');
   };
 
   const readSheet = async (fileId: string, sheetName?: string) => {
@@ -307,8 +305,6 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     console.log('Clearing sheet data manually');
     setSheetData(null);
     localStorage.removeItem('google_drive_sheet_data');
-    localStorage.removeItem('all_sheet_styles');
-    localStorage.removeItem('all_sheet_modifications');
   };
 
   const logout = () => {
@@ -335,10 +331,9 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       const allModifications = localStorage.getItem('all_sheet_modifications');
       const allSheetModifications = allModifications ? JSON.parse(allModifications) : {};
       
-      // Get all styles for all sheets - get fresh styles from localStorage
+      // Get all styles for all sheets
       const allStylesData = localStorage.getItem('all_sheet_styles');
       const allSheetStyles = allStylesData ? JSON.parse(allStylesData) : {};
-      console.log('Retrieved styles for all sheets:', allSheetStyles);
 
       // Fetch all sheets from the original file
       const { data: originalFileData, error: fetchError } = await supabase.functions.invoke('google-drive-auth', {

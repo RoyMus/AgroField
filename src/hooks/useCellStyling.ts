@@ -26,14 +26,9 @@ export const useCellStyling = (sheetName: string): UseCellStylingReturn => {
         const allStyles = JSON.parse(savedStyles);
         const currentSheetStyles = allStyles[sheetName] || [];
         setCellStyles(currentSheetStyles);
-        console.log(`Loaded ${currentSheetStyles.length} styles for sheet: ${sheetName}`);
       } catch (error) {
         console.error('Failed to parse saved styles:', error);
-        setCellStyles([]);
       }
-    } else {
-      // No saved styles, reset to empty
-      setCellStyles([]);
     }
   }, [sheetName]);
 
