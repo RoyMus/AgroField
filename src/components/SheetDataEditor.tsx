@@ -42,7 +42,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
       break;
     }
   }
-
+  
 
   const headersRowIndex = found_headers_row_index + 1;
   const headers = sheetData.values[headersRowIndex -1] || [];
@@ -172,6 +172,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
           counter++;
           sum += temp;
         }
+      }
+      if (counter == 0)
+      {
+        continue;
       }
       sum /= counter;
       newModifiedData[`${dataRows.length - 1}-${i}`] = {
