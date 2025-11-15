@@ -164,7 +164,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
 
     hasInitialized.current = true;
     setModifiedData(newModifiedData);
-  }, [modifiedData, sheetData, isTemplate, place, plant, grower, faucetConductivity, setModifiedData]);
+  }, [sheetData?.sheetName]);
 
   const calcAverages = () =>
   {
