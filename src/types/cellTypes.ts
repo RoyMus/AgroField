@@ -24,6 +24,7 @@ export interface ModifiedCellData {
   modifiedValue: string;
   rowIndex: number;
   columnIndex: number;
+  format?: CellFormat; // Optional styling for this cell
 }
 
 export interface SheetTab {

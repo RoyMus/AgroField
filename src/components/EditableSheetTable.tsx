@@ -3,11 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Save, Plus, Minus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useCellStyling } from "@/hooks/useCellStyling";
-import { applyCellFormatToStyle, extractStylesFromSheetData } from "@/utils/formatConverters";
+import { applyCellFormatToStyle } from "@/utils/formatConverters";
 import { SheetData, ModifiedCellData } from "@/types/cellTypes";
 import { useModifiedData } from "@/contexts/ModifiedDataContext";
-import { set } from "date-fns";
 
 interface EditableSheetTableProps {
   sheetData: SheetData;
@@ -17,30 +15,15 @@ interface EditableSheetTableProps {
 const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTableProps) => {
   const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
   const [localData, setLocalData] = useState<string[][]>([]);
-  const { modifiedData, setModifiedData } = useModifiedData();
+  const { modifiedData, setModifiedData, updateCellValue, getCellFormat } = useModifiedData();
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
-  
-  const {
-    getCellStyle,
-    insertRow,
-    deleteRow,
-    insertColumn,
-    deleteColumn,
-    loadInitialStyles,
-    clearStyles,
-    saveStyles
-  } = useCellStyling(sheetData.sheetName);
 
   // Initialize local data from sheet data and apply modifications
   useEffect(() => {
     if (sheetData?.values) {
-      // Load initial styles from sheet data if available
-      if (sheetData.formatting) {
-        loadInitialStyles(sheetData.formatting);
-      }
-      
       const baseData = sheetData.values.map(row => [...row]); // Deep copy
+      
       // Apply modifications from localStorage
       Object.values(modifiedData).forEach(modification => {
         const { rowIndex, columnIndex, modifiedValue } = modification;
@@ -60,7 +43,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       
       setLocalData(baseData);
     }
-  }, [sheetData, modifiedData, loadInitialStyles, clearStyles, sheetData.formatting]);
+  }, [sheetData, modifiedData]);
 
   // Handle cell value changes and sync with localStorage
   const handleCellChange = useCallback((rowIndex: number, colIndex: number, value: string) => {
@@ -83,19 +66,8 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     });
 
     const originalValue = (sheetData.values[rowIndex] && sheetData.values[rowIndex][colIndex]) || "";
-    const newModifiedData = { ...modifiedData };
-
-    if (originalValue !== value) {
-      newModifiedData[`${rowIndex}-${colIndex}`] = {
-        originalValue,
-        modifiedValue: value,
-        rowIndex,
-        columnIndex: colIndex
-      };
-    } else {
-      delete newModifiedData[`${rowIndex}-${colIndex}`];
-    }
-  }, [sheetData, modifiedData]);
+    updateCellValue(rowIndex, colIndex, originalValue, value);
+  }, [sheetData, updateCellValue]);
 
   const handleCellFocus = (rowIndex: number, colIndex: number) => {
     setSelectedCell({ rowIndex, colIndex });
@@ -107,13 +79,25 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     const insertIndex = selectedCell ? selectedCell.rowIndex + 1 : localData.length;
     setLocalData(prev => {
       const updated = [...prev];
-      updated.splice(insertIndex, 0, newRow); // insert *after* old row
+      updated.splice(insertIndex, 0, newRow);
       return updated;
     });
-    insertRow(insertIndex); // Update styles
+    
+    // Shift all modifications at or after this row down
+    const newModifiedData = { ...modifiedData };
+    Object.entries(modifiedData).forEach(([key, mod]) => {
+      if (mod.rowIndex >= insertIndex) {
+        delete newModifiedData[key];
+        newModifiedData[`${mod.rowIndex + 1}-${mod.columnIndex}`] = {
+          ...mod,
+          rowIndex: mod.rowIndex + 1
+        };
+      }
+    });
+    setModifiedData(newModifiedData);
   };
 
-  // Remove last row
+  // Remove row
   const removeRow = () => {
     if (localData.length > 1 && selectedCell) {
       const removeIndex = selectedCell.rowIndex;
@@ -122,7 +106,21 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
         updated.splice(removeIndex, 1);
         return updated;
       });
-      deleteRow(removeIndex); // Update styles
+      
+      // Remove modifications at this row and shift down rows after
+      const newModifiedData = { ...modifiedData };
+      Object.entries(modifiedData).forEach(([key, mod]) => {
+        if (mod.rowIndex === removeIndex) {
+          delete newModifiedData[key];
+        } else if (mod.rowIndex > removeIndex) {
+          delete newModifiedData[key];
+          newModifiedData[`${mod.rowIndex - 1}-${mod.columnIndex}`] = {
+            ...mod,
+            rowIndex: mod.rowIndex - 1
+          };
+        }
+      });
+      setModifiedData(newModifiedData);
     }
   };
 
@@ -136,10 +134,22 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       });
       return updated;
     });
-    insertColumn(insertIndex); // Update styles
+    
+    // Shift all modifications at or after this column right
+    const newModifiedData = { ...modifiedData };
+    Object.entries(modifiedData).forEach(([key, mod]) => {
+      if (mod.columnIndex >= insertIndex) {
+        delete newModifiedData[key];
+        newModifiedData[`${mod.rowIndex}-${mod.columnIndex + 1}`] = {
+          ...mod,
+          columnIndex: mod.columnIndex + 1
+        };
+      }
+    });
+    setModifiedData(newModifiedData);
   };
 
-  // Remove last column
+  // Remove column
   const removeColumn = () => {
     if (maxCols > 0 && selectedCell) {
       const removeIndex = selectedCell.colIndex;
@@ -148,50 +158,29 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
         newRow.splice(removeIndex, 1);
         return newRow;
       }));
-      deleteColumn(removeIndex); // Update styles
+      
+      // Remove modifications at this column and shift left columns after
+      const newModifiedData = { ...modifiedData };
+      Object.entries(modifiedData).forEach(([key, mod]) => {
+        if (mod.columnIndex === removeIndex) {
+          delete newModifiedData[key];
+        } else if (mod.columnIndex > removeIndex) {
+          delete newModifiedData[key];
+          newModifiedData[`${mod.rowIndex}-${mod.columnIndex - 1}`] = {
+            ...mod,
+            columnIndex: mod.columnIndex - 1
+          };
+        }
+      });
+      setModifiedData(newModifiedData);
     }
   };
 
   // Save current modifications
   const saveModifications = async () => {
     if (isSaving) return;
-    // Create new modifications object
-  const newModifications: Record<string, ModifiedCellData> = {};
     
-    // Create new sheet data values
-    // Create new sheet data values matching the current dimensions
-  const newSheetValues: string[][] = [];
-  
-  // Get current dimensions
-  const currentRows = localData.length;
-  const currentCols = Math.max(...localData.map(row => row.length), 0);
-  
-  // Initialize newSheetValues with current dimensions
-  for (let r = 0; r < currentRows; r++) {
-    newSheetValues[r] = new Array(currentCols).fill("");
-  }
-  
-  // Copy current values and track modifications
-  for (let r = 0; r < currentRows; r++) {
-    for (let c = 0; c < currentCols; c++) {
-      const currentValue = localData[r][c] || "";
-      const originalValue = (sheetData.values[r] && sheetData.values[r][c]) || "";
-      
-      // Set the value in new sheet data
-      newSheetValues[r][c] = currentValue;
-      
-      // Track modification if value is different from original
-      if (originalValue !== currentValue) {
-        newModifications[`${r}-${c}`] = {
-          originalValue,
-          modifiedValue: currentValue,
-          rowIndex: r,
-          columnIndex: c
-        };
-      }
-    }
-  }
-    const hasChanges = Object.keys(newModifications).length > 0;
+    const hasChanges = Object.keys(modifiedData).length > 0;
 
     if (!hasChanges) {
       toast({
@@ -204,21 +193,17 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     setIsSaving(true);
 
     try {
-      // The context already saved to localStorage.
-      // We just need to save styles and inform the parent.
-      saveStyles();
-
       const updatedSheetData: SheetData = {
         ...sheetData,
         values: localData
       };
-      setModifiedData(newModifications);
+      
       // Sync with other pages
       onSaveProgress(updatedSheetData);
       
       toast({
         title: "Progress Saved",
-        description: `Saved modifications for ${Object.keys(newModifications).length} cells with formatting`,
+        description: `Saved modifications for ${Object.keys(modifiedData).length} cells with formatting`,
       });
     } finally {
       setIsSaving(false);
@@ -318,8 +303,8 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
                     {rowIndex + 1}
                   </td>
                   {Array.from({ length: maxCols }, (_, colIndex) => {
-                    const cellStyle = getCellStyle(rowIndex, colIndex);
-                    const cellCssStyle = cellStyle ? applyCellFormatToStyle(cellStyle) : {};
+                    const cellFormat = getCellFormat(rowIndex, colIndex);
+                    const cellCssStyle = cellFormat ? applyCellFormatToStyle(cellFormat) : {};
                     
                     return (
                       <td key={colIndex} className="border-r border-b p-0">

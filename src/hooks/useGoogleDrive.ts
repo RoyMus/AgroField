@@ -319,7 +319,12 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     localStorage.removeItem('google_drive_selected_file');
     localStorage.removeItem('google_drive_sheet_data');
     localStorage.removeItem('all_sheet_modifications');
-    localStorage.removeItem('all_sheet_styles');
+    // Remove all style initialization flags
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('styles_initialized_')) {
+        localStorage.removeItem(key);
+      }
+    });
     sessionStorage.removeItem('google_auth_code_used');
   };
 
@@ -332,10 +337,6 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       // Get all modifications for all sheets
       const allModifications = localStorage.getItem('all_sheet_modifications');
       const allSheetModifications = allModifications ? JSON.parse(allModifications) : {};
-      
-      // Get all styles for all sheets
-      const allStylesData = localStorage.getItem('all_sheet_styles');
-      const allSheetStyles = allStylesData ? JSON.parse(allStylesData) : {};
 
       // Fetch all sheets from the original file
       const { data: originalFileData, error: fetchError } = await supabase.functions.invoke('google-drive-auth', {
@@ -348,22 +349,46 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       const processedSheets = originalFileData.sheets.map((sheet: any) => {
         const sheetName = sheet.sheetName;
         const modifications = allSheetModifications[sheetName] || {};
-        const styles = allSheetStyles[sheetName] || sheet.formatting || [];
 
         // Apply modifications to the sheet data
         const updatedValues = [...sheet.values];
+        const formatting: Array<{rowIndex: number, columnIndex: number, format: any}> = [];
+        
         Object.entries(modifications).forEach(([cellKey, modification]: [string, any]) => {
           const [rowIndex, columnIndex] = cellKey.split('-').map(Number);
           if (!updatedValues[rowIndex]) {
             updatedValues[rowIndex] = [];
           }
           updatedValues[rowIndex][columnIndex] = modification.modifiedValue;
+          
+          // Add formatting if present
+          if (modification.format) {
+            formatting.push({
+              rowIndex,
+              columnIndex,
+              format: modification.format
+            });
+          }
+        });
+        
+        // Merge with original formatting, prioritizing modifications
+        const originalFormatting = sheet.formatting || [];
+        const mergedFormatting = [...originalFormatting];
+        formatting.forEach(modFormat => {
+          const existingIndex = mergedFormatting.findIndex(
+            f => f.rowIndex === modFormat.rowIndex && f.columnIndex === modFormat.columnIndex
+          );
+          if (existingIndex >= 0) {
+            mergedFormatting[existingIndex] = modFormat;
+          } else {
+            mergedFormatting.push(modFormat);
+          }
         });
 
         return {
           ...sheet,
           values: updatedValues,
-          formatting: styles
+          formatting: mergedFormatting
         };
       });
 
