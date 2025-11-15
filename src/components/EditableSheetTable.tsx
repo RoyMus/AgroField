@@ -212,7 +212,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
         ...sheetData,
         values: localData
       };
-
+      setModifiedData(newModifications);
       // Sync with other pages
       onSaveProgress(updatedSheetData);
       

@@ -402,11 +402,6 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     setSheetData(newData);
     localStorage.setItem('google_drive_sheet_data', JSON.stringify(newData));
   };
-  // Debug logging for sheetData changes
-  useEffect(() => {
-    console.log('Sheet data changed in hook:', sheetData);
-    console.log('Should show editor:', !!sheetData);
-  }, [sheetData]);
 
   return {
     isAuthenticated,
