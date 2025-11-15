@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { ModifiedCellData } from '@/types/cellTypes';
 
 export type ModifiedData = Record<string, ModifiedCellData>;
@@ -28,7 +28,9 @@ export const ModifiedDataProvider: React.FC<ModifiedDataProviderProps> = ({ chil
     }
   });
 
-  const modifiedData = allSheetModifications[sheetName] || {};
+  const modifiedData = useMemo(() => {
+    return allSheetModifications[sheetName] || {};
+  }, [allSheetModifications, sheetName]);
 
   const setModifiedData = useCallback((data: ModifiedData) => {
     setAllSheetModifications(prev => {
