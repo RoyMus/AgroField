@@ -107,9 +107,13 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
     place,
     faucetConductivity,
   } = getData(false, null, null, null, null, null);
-  useEffect(()=>{
+  // Initialize template data once on mount, not on every sheet change
+  useEffect(() => {
     const sheetName = sheetData?.sheetName;
     if (!sheetName) return;
+
+    // Only initialize if modifiedData is empty
+    if (Object.keys(modifiedData).length > 0) return;
 
     const topBarRowIndex = 0;
     const faucetRowIndex = 1;
@@ -117,22 +121,21 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
     const faucetRow = sheetData.values[faucetRowIndex];
     let topBarIndex = 0;
     let faucetIndex = 0;
+    
     for (let i = 0; i < topBarRow.length; i++) {
-      if (topBarRow[i] != "")
-      {
+      if (topBarRow[i] != "") {
         topBarIndex = i;
         break;
       }
     }
     for (let i = 0; i < faucetRow.length; i++) {
-      if (faucetRow[i] != "")
-      {
+      if (faucetRow[i] != "") {
         faucetIndex = i;
         break;
       }
     }
-    const newModifiedData = {
-      ...modifiedData,
+    
+    const newModifiedData: Record<string, any> = {
       [`${faucetRowIndex}-${faucetIndex}`]: {
         originalValue: `${faucetConductivity} - מוליכות ברז`,
         modifiedValue: `${faucetConductivity} - מוליכות ברז`,
@@ -141,18 +144,17 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
       }
     };
         
-    if (isTemplate)
-    {
-        newModifiedData[`${topBarRowIndex}-${topBarIndex}`] = {
-            originalValue: `${place} - ${plant} - ${grower}`,
-            modifiedValue: `${place} - ${plant} - ${grower}`,
-            rowIndex: topBarRowIndex,
-            columnIndex: topBarIndex
-          };
+    if (isTemplate) {
+      newModifiedData[`${topBarRowIndex}-${topBarIndex}`] = {
+        originalValue: `${place} - ${plant} - ${grower}`,
+        modifiedValue: `${place} - ${plant} - ${grower}`,
+        rowIndex: topBarRowIndex,
+        columnIndex: topBarIndex
+      };
     }
 
     setModifiedData(newModifiedData);
-  }, [sheetData?.sheetName]);
+  }, []); // Only run once on mount
 
   const calcAverages = () =>
   {
