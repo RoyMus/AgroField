@@ -215,8 +215,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
 
   useEffect(() => {
     // Only set current cell value when position changes
-    const cellKey = `${currentRowIndex}-${currentColumnIndex}`;
-    const savedModification = modifiedData[cellKey];
     speak(headers[currentColumnIndex]);
     setCurrentValue("");
   }, [currentRowIndex, currentColumnIndex]);
