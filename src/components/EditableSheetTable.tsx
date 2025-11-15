@@ -6,7 +6,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useCellStyling } from "@/hooks/useCellStyling";
 import { applyCellFormatToStyle, extractStylesFromSheetData } from "@/utils/formatConverters";
 import { SheetData, ModifiedCellData } from "@/types/cellTypes";
-import { useModifiedData } from "@/contexts/ModifiedDataContext";
 import { set } from "date-fns";
 
 interface EditableSheetTableProps {

@@ -4,7 +4,6 @@ import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
 import TopBar from "@/components/TopBarr";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
-import { ModifiedDataProvider } from "@/contexts/ModifiedDataContext";
 
 const InteractivePage = () => {
   const navigate = useNavigate();
@@ -46,7 +45,7 @@ const InteractivePage = () => {
           <div className="space-y-6">
             {/* Header With File info */}
             {sheetData && (
-              <ModifiedDataProvider sheetName={sheetData.sheetName}>
+              <>
                 <TopBar 
                   sheetData={sheetData} 
                   handleGoHome={handleBackToHome} 
@@ -64,7 +63,7 @@ const InteractivePage = () => {
                   onSaveProgress={(func) => setSaveProgressFunc(() => func)}
                   onSaveToNewSheet={(func) => setSaveToNewSheetFunc(() => func)}
                 />
-              </ModifiedDataProvider>
+              </>
             )}
           </div>
       </div>

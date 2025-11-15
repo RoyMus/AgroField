@@ -5,22 +5,15 @@ import { ChevronLeft, ChevronRight, SkipForward, Save, Type } from "lucide-react
 import VoiceControls from "./VoiceControls";
 import SimpleDropdown from "./ui/simpleDropdown";
 import { useEffect, useState} from "react";
-
-interface ModifiedCellData {
-  originalValue: string;
-  modifiedValue: string;
-  rowIndex: number;
-  columnIndex: number;
-}
+import { ModifiedCellData } from "@/types/cellTypes";
 
 interface CellEditorProps {
   currentRowIndex: number;
   currentColumnIndex: number;
   rowChangeCounter: number;
-  headers: string[];
-  dataRows: string[][];
+  headers: ModifiedCellData[];
+  dataRows: ModifiedCellData[][];
   currentValue: string;
-  modifiedData: Record<string, ModifiedCellData>;
   isRecording: boolean;
   onInputChange: (value: string) => void;
   onChangeToRow: (rowIndex: number) => void;
@@ -43,7 +36,6 @@ const CellEditor = ({
   headers,
   dataRows,
   currentValue,
-  modifiedData,
   isRecording,
   onInputChange,
   onChangeToRow,
@@ -59,8 +51,7 @@ const CellEditor = ({
   isLastCell,
 }: CellEditorProps) => {
   const getCellKey = (rowIndex: number, columnIndex: number) => `${rowIndex}-${columnIndex}`;
-  const currentCellKey = getCellKey(currentRowIndex, currentColumnIndex);
-  const isCurrentCellModified = modifiedData[currentCellKey] !== undefined;
+  const isCurrentCellModified = dataRows[currentRowIndex][currentColumnIndex].isModified();
   const [optionsHamama, setOptionsHamama] = useState([]);
   const [currentHamama, setCurrentHamama] = useState(null);
   const [optionsMagof, setOptionsMagof] = useState([]);
@@ -71,9 +62,9 @@ const CellEditor = ({
   const [dropDownValueOfGidul, setDropDownGidul] = useState(null);
   
   const handleChangedRow = () => {
-    let curHam = dataRows[currentRowIndex][0].trim();
-    let curMag = dataRows[currentRowIndex][1].trim();
-    let curGid = dataRows[currentRowIndex][3];
+    let curHam = dataRows[currentRowIndex][0].getValue().trim();
+    let curMag = dataRows[currentRowIndex][1].getValue().trim();
+    let curGid = dataRows[currentRowIndex][3].getValue();
     setDropDownHamama(curHam);
     setDropDownMagof(curMag);
     setDropDownGidul(curGid);
@@ -89,14 +80,14 @@ const CellEditor = ({
     
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] != null && dataRows[i][0].trim() == curHam && dataRows[i][1] != null && !optionsMagof.includes(dataRows[i][1].trim()))
-        optionsMagof.push(dataRows[i][1].trim());
+      if (dataRows[i][0] != null && dataRows[i][0].getValue().trim() == curHam && dataRows[i][1] != null && !optionsMagof.includes(dataRows[i][1].getValue().trim()))
+        optionsMagof.push(dataRows[i][1].getValue().trim());
     }
     setOptionsMagof([...optionsMagof]);
     
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] != null && dataRows[i][0].trim() == curHam && dataRows[i][1] != null && dataRows[i][1].trim() == curMag)
+      if (dataRows[i][0] != null && dataRows[i][0].getValue().trim() == curHam && dataRows[i][1] != null && dataRows[i][1].getValue().trim() == curMag)
       {
         optionsGidul.push(dataRows[i][3]);
       }
@@ -110,9 +101,9 @@ const CellEditor = ({
     
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] != null && dataRows[i][0].trim() == selectedValue.trim() && dataRows[i][1] != null && !optionsMagof.includes(dataRows[i][1].trim()))
+      if (dataRows[i][0] != null && dataRows[i][0].getValue().trim() == selectedValue.trim() && dataRows[i][1] != null && !optionsMagof.includes(dataRows[i][1].getValue().trim()))
       {
-        optionsMagof.push(dataRows[i][1].trim());
+        optionsMagof.push(dataRows[i][1].getValue().trim());
       }
     }
     setOptionsMagof([...optionsMagof]);
@@ -126,7 +117,7 @@ const CellEditor = ({
 
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] != null && dataRows[i][0].trim() == dropDownValueOfHamama.trim() && dataRows[i][1] != null && dataRows[i][1].trim() == selectedValue.trim())
+      if (dataRows[i][0] != null && dataRows[i][0].getValue().trim() == dropDownValueOfHamama.trim() && dataRows[i][1] != null && dataRows[i][1].getValue().trim() == selectedValue.trim())
       {
         optionsGidul.push(dataRows[i][3]);
       }
@@ -146,7 +137,7 @@ const CellEditor = ({
   const handleSelectGidul = (selectedValue) => {
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] != null && dataRows[i][0].trim() == dropDownValueOfHamama.trim() && dataRows[i][1] == dropDownValueOfMagof && dataRows[i][3] == selectedValue)
+      if (dataRows[i][0] != null && dataRows[i][0].getValue().trim() == dropDownValueOfHamama.trim() && dataRows[i][1] == dropDownValueOfMagof && dataRows[i][3] == selectedValue)
       {
         onChangeToRow(i);
         break;
@@ -178,9 +169,9 @@ const CellEditor = ({
   useEffect (() => {
     for (let i = 0; i < dataRows.length; i++)
     {
-      if (dataRows[i][0] != null && dataRows[i][0] != "" && dataRows[i][0] != "חממה" && !optionsHamama.includes(dataRows[i][0].trim()))
+      if (dataRows[i][0] != null && dataRows[i][0].getValue() != "" && dataRows[i][0].getValue() != "חממה" && !optionsHamama.includes(dataRows[i][0].getValue().trim()))
       {
-        optionsHamama.push(dataRows[i][0].trim());
+        optionsHamama.push(dataRows[i][0].getValue().trim());
       }
       setOptionsHamama([...optionsHamama]);
     }
@@ -197,7 +188,7 @@ const CellEditor = ({
       <div className="mb-4">
         <div className="flex flex-col space-y-3">
           <h3 className="text-lg font-semibold text-foreground">
-            {headers[currentColumnIndex]}
+            {headers[currentColumnIndex].getValue()}
             {isCurrentCellModified && 
               <span className="ml-2 text-sm text-green-600">(Modified)</span>
             }
@@ -278,7 +269,7 @@ const CellEditor = ({
             onChange={(e) => onInputChange(e.target.value)}
             onInput={(e)=> onInputChange((e.target as HTMLInputElement).value)}
             placeholder={
-              `${currentRowIndex}-${currentColumnIndex}` in modifiedData ? modifiedData[`${currentRowIndex}-${currentColumnIndex}`].modifiedValue : dataRows[currentRowIndex][currentColumnIndex]
+              dataRows[currentRowIndex][currentColumnIndex].getValue()
             }
             className="text-base p-3 h-11"
             autoFocus

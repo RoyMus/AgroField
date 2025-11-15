@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { SheetData,ModifiedCellData } from '@/types/cellTypes';
 
 interface GoogleDriveFile {
   id: string;
@@ -11,21 +12,6 @@ interface SheetTab {
   id: number;
   title: string;
   index: number;
-}
-
-interface SheetData {
-  sheetName: string;
-  values: string[][];
-  metadata: {
-    title: string;
-    sheetCount: number;
-    availableSheets?: SheetTab[];
-  };
-  formatting?: Array<{
-    rowIndex: number;
-    columnIndex: number;
-    format: any;
-  }>;
 }
 
 interface UseGoogleDriveReturn {
@@ -285,12 +271,24 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
         }
 
         console.log('Sheet data received from API:', data);
-        
-        setSheetData(data);
-        localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
+        const newSheetData: SheetData = {
+          sheetName: data.sheetName,
+          metadata: data.metadata,
+          values: null
+        }
+        newSheetData.values = new Array<ModifiedCellData[]>(data.values.length)
+        for(let i=0; i<data.values.length; i++){
+          newSheetData.values[i] = new Array<ModifiedCellData>(data.values[i].length)
+          for(let j=0; j<data.values[i].length; j++)
+            {
+              newSheetData.values[i][j] = new ModifiedCellData(data.values?.[i]?.[j], null, data.formatting?.[i]?.[j]);
+            }
+        }
+        setSheetData(newSheetData);
+        localStorage.setItem('google_drive_sheet_data', JSON.stringify(newSheetData));
         
         console.log('Sheet data set successfully, triggering re-render');
-        return data;
+        return newSheetData;
       });
       
     } catch (err) {

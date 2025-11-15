@@ -19,11 +19,25 @@ export interface CellStyle {
   format: CellFormat;
 }
 
-export interface ModifiedCellData {
+export class ModifiedCellData {
   originalValue: string;
-  modifiedValue: string;
-  rowIndex: number;
-  columnIndex: number;
+  newValue: string | null;
+  formatting: CellFormat;
+
+  constructor(originalValue: string, newValue: string,formatting: CellFormat) {
+    this.originalValue = originalValue;
+    this.newValue = newValue;
+    this.formatting = formatting;
+  }
+
+  isModified():boolean
+  {
+    return this.newValue !== null;
+  }
+  getValue():string
+  {
+    return this.newValue !== null ? this.newValue : this.originalValue;
+  }
 }
 
 export interface SheetTab {
@@ -33,12 +47,11 @@ export interface SheetTab {
 }
 
 export interface SheetData {
-  values: string[][];
+  values: ModifiedCellData[][];
   sheetName: string;
   metadata?: {
     title: string;
     sheetCount: number;
     availableSheets?: SheetTab[];
   };
-  formatting?: CellStyle[];
 }

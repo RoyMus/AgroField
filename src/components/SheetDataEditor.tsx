@@ -8,7 +8,6 @@ import ProgressStats from "./ProgressStats";
 import CellEditor from "./CellEditor";
 import SaveToNewSheetDialog from "./SaveToNewSheetDialog";
 import { SheetData, ModifiedCellData } from "@/types/cellTypes";
-import { useModifiedData } from "@/contexts/ModifiedDataContext";
 
 
 interface SheetDataEditorProps {
@@ -18,9 +17,8 @@ interface SheetDataEditorProps {
 }
 
 const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetDataEditorProps) => {
-  const { modifiedData, setModifiedData, clearAllModifications } = useModifiedData();
   for (let i = 0; i < sheetData.values.length; i++) {
-    if (sheetData.values[i][0] != null && sheetData.values[i][0].trim() != "")
+    if (sheetData.values[i][0] != null && sheetData.values[i][0].getValue().trim() != "")
     {
       var found_headers_row_index = i;
       break;
@@ -30,7 +28,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
     var found_comment_index = true;
     for (let j = 0; j < sheetData.values[i].length; j++)
     {
-      if (sheetData.values[i][j] != null && sheetData.values[i][j].trim() != "")
+      if (sheetData.values[i][j] != null && sheetData.values[i][j].getValue().trim() != "")
       {
         found_comment_index = false;
         break;
@@ -47,34 +45,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
   const headersRowIndex = found_headers_row_index + 1;
   const headers = sheetData.values[headersRowIndex -1] || [];
   const [rowChangeCounter, setRowChangeCounter] = useState(0);
-  const {
-    loadInitialStyles,
-    clearStyles,
-    setCellStyleFormat,
-    saveStyles
-  } = useCellStyling(sheetData?.sheetName);
 
-  // Load initial styles when component mounts
-  useEffect(() => {
-    const cellStyles = localStorage.getItem('sheet_cell_styles');
-    if (cellStyles) 
-    {
-      return;
-    }
-    if (sheetData.formatting && sheetData.formatting.length > 0) {
-      console.log('SheetDataEditor: Loading formatting with', sheetData.formatting.length, 'styles');
-      loadInitialStyles(sheetData.formatting);
-      saveStyles();
-
-    } else {
-      console.log('SheetDataEditor: No formatting available, clearing styles');
-      clearStyles();
-    }
-  }, [sheetData, loadInitialStyles, clearStyles]);
-  
   var AlreadySetFirst = false;
   for (let i = 0; i < headers.length; i++) {
-    if (headers[i] == "")
+    if (headers[i].getValue() == "")
     {
       if (!AlreadySetFirst)
       {
@@ -118,12 +92,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
     const sheetName = sheetData?.sheetName;
     if (!sheetName) return;
 
-    // Only initialize if modifiedData is empty
-    if (Object.keys(modifiedData).length > 0) {
-      hasInitialized.current = true;
-      return;
-    }
-
     const topBarRowIndex = 0;
     const faucetRowIndex = 1;
     const topBarRow = sheetData.values[topBarRowIndex];
@@ -132,45 +100,27 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
     let faucetIndex = 0;
     
     for (let i = 0; i < topBarRow.length; i++) {
-      if (topBarRow[i] != "") {
+      if (topBarRow[i].getValue() != "") {
         topBarIndex = i;
         break;
       }
     }
     for (let i = 0; i < faucetRow.length; i++) {
-      if (faucetRow[i] != "") {
+      if (faucetRow[i].getValue() != "") {
         faucetIndex = i;
         break;
       }
     }
-    
-    const newModifiedData: Record<string, any> = {
-      [`${faucetRowIndex}-${faucetIndex}`]: {
-        originalValue: `${faucetConductivity} - מוליכות ברז`,
-        modifiedValue: `${faucetConductivity} - מוליכות ברז`,
-        rowIndex: faucetRowIndex,
-        columnIndex: faucetIndex
-      }
-    };
-        
+    sheetData.values[faucetRowIndex][faucetIndex].originalValue = `${faucetConductivity} - מוליכות ברז`;
     if (isTemplate) {
-      newModifiedData[`${topBarRowIndex}-${topBarIndex}`] = {
-        originalValue: `${place} - ${plant} - ${grower}`,
-        modifiedValue: `${place} - ${plant} - ${grower}`,
-        rowIndex: topBarRowIndex,
-        columnIndex: topBarIndex
-      };
+      sheetData.values[topBarRowIndex][topBarIndex].originalValue = `${place} - ${plant} - ${grower}`;
     }
 
     hasInitialized.current = true;
-    setModifiedData(newModifiedData);
   }, [sheetData?.sheetName]);
 
   const calcAverages = () =>
   {
-    const newModifiedData = {
-      ...modifiedData
-    };
     for (let i = minColIndex; i <= maxColIndex; i++)
     {
       let sum = 0;
@@ -178,10 +128,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
       let counter = 0;
       for (let j = headersRowIndex; j <= dataRows.length - 3 ; j++)
       {
-        if(!(`${j}-${i}` in modifiedData))
-          temp = parseFloat(sheetData.values[j][i]);
-        else
-          temp = parseFloat(modifiedData[`${j}-${i}`].modifiedValue);
+        temp = parseFloat(sheetData.values[j][i].getValue());
         if (!Number.isNaN(temp))
         {
           counter++;
@@ -193,31 +140,22 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
         continue;
       }
       sum /= counter;
-      newModifiedData[`${dataRows.length - 1}-${i}`] = {
-        originalValue: `${sum}`,
-        modifiedValue: `${sum}`,
-        rowIndex: dataRows.length - 1,
-        columnIndex: i
-      };
-      const wantedResult = sheetData.values[dataRows.length - 2][i]?.split('-');
+      sheetData.values[dataRows.length - 1][i].newValue = `${sum}`;
+      const wantedResult = sheetData.values[dataRows.length - 2][i]?.getValue().split('-');
       let isBetween = false;
       if(wantedResult && wantedResult.length > 1)
         isBetween = sum > parseFloat(wantedResult[0]) && sum < parseFloat(wantedResult[1]);
       else if (wantedResult && wantedResult.length === 1)
         isBetween = sum < parseFloat(wantedResult[0]);
-      setCellStyleFormat(dataRows.length - 1,i,{
-      backgroundColor:  isBetween ? '#00ff15ff' : '#ff0000ff',
-    });
+      sheetData.values[dataRows.length - 1][i].formatting = {
+        backgroundColor:  isBetween ? '#00ff15ff' : '#ff0000ff',
+      };
     }
-    saveStyles();
-    setModifiedData(newModifiedData);
   };
 
   useEffect(() => {
     // Only set current cell value when position changes
-    const cellKey = `${currentRowIndex}-${currentColumnIndex}`;
-    const savedModification = modifiedData[cellKey];
-    speak(headers[currentColumnIndex]);
+    speak(headers[currentColumnIndex].getValue());
     setCurrentValue("");
   }, [currentRowIndex, currentColumnIndex]);
 
@@ -322,20 +260,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
 
   const recordCurrentValue = async () => {
     // Save the current value
-    const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
-    const originalValue = dataRows[currentRowIndex][currentColumnIndex] || "";
-    
-    const newModifiedData = {
-      ...modifiedData,
-      [cellKey]: {
-        originalValue,
-        modifiedValue: currentValue,
-        rowIndex: currentRowIndex,
-        columnIndex: currentColumnIndex
-      }
-    };
-    setModifiedData(newModifiedData);
-    
+    sheetData.values[currentRowIndex][currentColumnIndex].newValue = currentValue;
     toast({
       title: "Value Recorded",
       description: `Recorded value for ${headers[currentColumnIndex]}`,
@@ -426,11 +351,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
   const resetCurrentCell = () => {
     setCurrentValue("");
     // Remove from modified data if it exists
-    const cellKey = getCellKey(currentRowIndex, currentColumnIndex);
-    const newModifiedData = { ...modifiedData };
-    dataRows[currentRowIndex][currentColumnIndex] = newModifiedData[cellKey]?.originalValue || "";
-    delete newModifiedData[cellKey];
-    setModifiedData(newModifiedData);
+    sheetData.values[currentRowIndex][currentColumnIndex].newValue = "";
   };
 
   useEffect(() => {
@@ -475,7 +396,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
         headers={headers}
         dataRows={dataRows}
         currentValue={currentValue}
-        modifiedData={modifiedData}
         isRecording={isRecording}
         onInputChange={handleInputChange}
         onChangeToRow={handleChangeToNewRow}
@@ -497,7 +417,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
         onOpenChange={setShowSaveDialog}
         onConfirm={handleCreateNewSheet}
         onCancel={() => setShowSaveDialog(false)}
-        modifiedCount={Object.keys(modifiedData).length}
         previousFileName={`${sheetData.metadata.title} ${formattedDate}`}
         isLoading={isSaving}
       />

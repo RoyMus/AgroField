@@ -16,7 +16,6 @@ interface SaveToNewSheetDialogProps {
   onOpenChange: (open: boolean) => void;
   onConfirm: (fileName: string) => void;
   onCancel: () => void;
-  modifiedCount: number;
   previousFileName: string;
   isLoading?: boolean;
 }
@@ -26,7 +25,6 @@ const SaveToNewSheetDialog = ({
   onOpenChange, 
   onConfirm, 
   onCancel, 
-  modifiedCount,
   previousFileName,
   isLoading = false
 }: SaveToNewSheetDialogProps) => {
@@ -49,8 +47,7 @@ const SaveToNewSheetDialog = ({
         <DialogHeader>
           <DialogTitle>Save to New Google Sheet</DialogTitle>
           <DialogDescription>
-            Create a new Google Sheet with your {modifiedCount} modified changes. 
-            The new sheet will have the same permissions as the original.
+            צור מסמך חדש עם השינויים שלך
           </DialogDescription>
         </DialogHeader>
         
