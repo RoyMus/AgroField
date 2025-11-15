@@ -111,8 +111,21 @@ serve(async (req)=>{
       
       // Apply formatting from our editor if available
       if (sheet.formatting && Array.isArray(sheet.formatting)) {
+        // Get actual sheet dimensions to validate formatting bounds
+        const sheetRowCount = sheet.values.length;
+        const sheetColCount = Math.max(...sheet.values.map((row: any[]) => row.length));
+        
+        console.log(`Sheet ${sheet.sheetName} dimensions: ${sheetRowCount} rows x ${sheetColCount} cols`);
+        
         sheet.formatting.forEach((style: any)=>{
           const { rowIndex, columnIndex, format } = style;
+          
+          // Validate that the cell is within sheet bounds
+          if (rowIndex >= sheetRowCount || columnIndex >= sheetColCount) {
+            console.warn(`Skipping style for cell (${rowIndex}, ${columnIndex}) - exceeds sheet bounds (${sheetRowCount}, ${sheetColCount})`);
+            return;
+          }
+          
           const googleFormat: any = {};
           
           if (format.backgroundColor) {
