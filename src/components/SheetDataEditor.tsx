@@ -3,6 +3,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { getData } from "@/hooks/getData";
+import { useCellStyling } from "@/hooks/useCellStyling";
 import ProgressStats from "./ProgressStats";
 import CellEditor from "./CellEditor";
 import SaveToNewSheetDialog from "./SaveToNewSheetDialog";
@@ -17,7 +18,7 @@ interface SheetDataEditorProps {
 }
 
 const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetDataEditorProps) => {
-  const { modifiedData, setModifiedData, clearAllModifications, updateCellFormat } = useModifiedData();
+  const { modifiedData, setModifiedData, clearAllModifications } = useModifiedData();
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && sheetData.values[i][0].trim() != "")
     {
@@ -46,25 +47,30 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
   const headersRowIndex = found_headers_row_index + 1;
   const headers = sheetData.values[headersRowIndex -1] || [];
   const [rowChangeCounter, setRowChangeCounter] = useState(0);
+  const {
+    loadInitialStyles,
+    clearStyles,
+    setCellStyleFormat,
+    saveStyles
+  } = useCellStyling(sheetData?.sheetName);
 
-  // Load initial formatting from sheet data into modifiedData
+  // Load initial styles when component mounts
   useEffect(() => {
-    const hasInitializedStyles = localStorage.getItem('styles_initialized_' + sheetData?.sheetName);
-    if (hasInitializedStyles || !sheetData.formatting || sheetData.formatting.length === 0) {
+    const cellStyles = localStorage.getItem('sheet_cell_styles');
+    if (cellStyles) 
+    {
       return;
     }
-    
-    // Import formatting from sheet data into modifiedData
-    console.log('SheetDataEditor: Loading formatting with', sheetData.formatting.length, 'styles');
-    sheetData.formatting.forEach(cellStyle => {
-      const { rowIndex, columnIndex, format } = cellStyle;
-      if (format) {
-        updateCellFormat(rowIndex, columnIndex, format);
-      }
-    });
-    
-    localStorage.setItem('styles_initialized_' + sheetData?.sheetName, 'true');
-  }, [sheetData?.sheetName]);
+    if (sheetData.formatting && sheetData.formatting.length > 0) {
+      console.log('SheetDataEditor: Loading formatting with', sheetData.formatting.length, 'styles');
+      loadInitialStyles(sheetData.formatting);
+      saveStyles();
+
+    } else {
+      console.log('SheetDataEditor: No formatting available, clearing styles');
+      clearStyles();
+    }
+  }, [sheetData, loadInitialStyles, clearStyles]);
   
   var AlreadySetFirst = false;
   for (let i = 0; i < headers.length; i++) {
@@ -199,16 +205,18 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
         isBetween = sum > parseFloat(wantedResult[0]) && sum < parseFloat(wantedResult[1]);
       else if (wantedResult && wantedResult.length === 1)
         isBetween = sum < parseFloat(wantedResult[0]);
-      
-      updateCellFormat(dataRows.length - 1, i, {
-        backgroundColor: isBetween ? '#00ff15ff' : '#ff0000ff',
-      });
+      setCellStyleFormat(dataRows.length - 1,i,{
+      backgroundColor:  isBetween ? '#00ff15ff' : '#ff0000ff',
+    });
     }
+    saveStyles();
     setModifiedData(newModifiedData);
   };
 
   useEffect(() => {
     // Only set current cell value when position changes
+    const cellKey = `${currentRowIndex}-${currentColumnIndex}`;
+    const savedModification = modifiedData[cellKey];
     speak(headers[currentColumnIndex]);
     setCurrentValue("");
   }, [currentRowIndex, currentColumnIndex]);
@@ -285,7 +293,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
         
         // Clear all modifications since they've been saved to a new sheet
         clearAllModifications();
-        localStorage.removeItem('styles_initialized_' + sheetData?.sheetName);
+        localStorage.removeItem('all_sheet_styles');
 
         // Optionally open the new sheet
         if (result.url) {
