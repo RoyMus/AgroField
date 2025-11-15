@@ -290,11 +290,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
           description: `Created new Google Sheet: ${fileName}`,
         });
         setShowSaveDialog(false);
-        
-        // Clear all modifications since they've been saved to a new sheet
-        clearAllModifications();
-        localStorage.removeItem('all_sheet_styles');
-
         // Optionally open the new sheet
         if (result.url) {
           window.open(result.url, '_blank');
