@@ -107,13 +107,22 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
     place,
     faucetConductivity,
   } = getData(false, null, null, null, null, null);
-  // Initialize template data once on mount, not on every sheet change
+  
+  // Track if we've initialized to prevent infinite loops
+  const hasInitialized = useRef(false);
+  
+  // Initialize template data once on mount
   useEffect(() => {
+    if (hasInitialized.current) return;
+    
     const sheetName = sheetData?.sheetName;
     if (!sheetName) return;
 
     // Only initialize if modifiedData is empty
-    if (Object.keys(modifiedData).length > 0) return;
+    if (Object.keys(modifiedData).length > 0) {
+      hasInitialized.current = true;
+      return;
+    }
 
     const topBarRowIndex = 0;
     const faucetRowIndex = 1;
@@ -153,8 +162,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
       };
     }
 
+    hasInitialized.current = true;
     setModifiedData(newModifiedData);
-  }, []); // Only run once on mount
+  }, [modifiedData, sheetData, isTemplate, place, plant, grower, faucetConductivity, setModifiedData]);
 
   const calcAverages = () =>
   {
