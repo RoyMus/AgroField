@@ -7,10 +7,11 @@ import { ModifiedSheet, ModifiedCell, getValue, CellFormat } from "@/types/cellT
 
 interface EditableSheetTableProps {
   sheetData: ModifiedSheet;
-  onSaveProgress: (newData: ModifiedCell[][]) => void;
+  onSaveProgress: (newData: ModifiedSheet) => void;
+  fileId?: string;
 }
 
-const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTableProps) => {
+const EditableSheetTable = ({ sheetData, onSaveProgress, fileId }: EditableSheetTableProps) => {
   const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
   const [localData, setLocalData] = useState<ModifiedCell[][]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -105,7 +106,9 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       }
     );
     try {
-      onSaveProgress(localData);
+      // Update sheetData with current localData and save entire sheet
+      const updatedSheetData = { ...sheetData, values: localData };
+      onSaveProgress(updatedSheetData);
     } 
     finally {
       setIsSaving(false);

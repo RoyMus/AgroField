@@ -34,6 +34,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   const [error, setError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
+  const [allSheets, setAllSheets] = useState<Map<string, ModifiedSheet>>(new Map());
 
   useEffect(() => {
     // Check URL for authorization code
@@ -243,6 +244,22 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     console.log('Clearing previous sheet data due to file selection');
     setSheetData(null);
     localStorage.removeItem('google_drive_sheet_data');
+    
+    // Load all cached sheets for this file
+    const cachedAllSheets = localStorage.getItem(`all_sheets_${file.id}`);
+    if (cachedAllSheets) {
+      try {
+        const sheetsData = JSON.parse(cachedAllSheets);
+        const sheetsMap = new Map<string, ModifiedSheet>(Object.entries(sheetsData) as [string, ModifiedSheet][]);
+        setAllSheets(sheetsMap);
+        console.log('Loaded cached sheets for file:', file.name, sheetsMap.size, 'sheets');
+      } catch (err) {
+        console.error('Error loading cached sheets:', err);
+        setAllSheets(new Map());
+      }
+    } else {
+      setAllSheets(new Map());
+    }
   };
 
   const readSheet = async (fileId: string, sheetName?: string) => {
@@ -250,6 +267,26 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       console.log('Starting readSheet for fileId:', fileId, 'sheetName:', sheetName);
       setIsLoading(true);
       setError(null);
+      
+      // Check if this sheet is already cached in localStorage
+      const cacheKey = `sheet_data_${fileId}_${sheetName}`;
+      const cachedSheet = localStorage.getItem(cacheKey);
+      
+      if (cachedSheet) {
+        try {
+          const parsedSheet = JSON.parse(cachedSheet);
+          console.log('Loaded sheet from cache:', sheetName);
+          setSheetData(parsedSheet);
+          // Also update in allSheets map
+          setAllSheets(prev => new Map(prev).set(`${fileId}:${sheetName}`, parsedSheet));
+          localStorage.setItem('google_drive_sheet_data', cachedSheet);
+          setIsLoading(false);
+          return;
+        } catch (err) {
+          console.error('Error parsing cached sheet:', err);
+          localStorage.removeItem(cacheKey);
+        }
+      }
       
       if (!accessToken) {
         throw new Error('No access token available. Please authenticate first.');
@@ -287,6 +324,10 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
 
         setSheetData(newSheetData);
         localStorage.setItem('google_drive_sheet_data', JSON.stringify(newSheetData));
+        // Cache the entire sheet data
+        localStorage.setItem(cacheKey, JSON.stringify(newSheetData));
+        // Track in allSheets map
+        setAllSheets(prev => new Map(prev).set(`${fileId}:${sheetName}`, newSheetData));
         
         console.log('Sheet data set successfully, triggering re-render');
         return newSheetData;
@@ -405,6 +446,26 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   const handleSaveProgress = (newData: ModifiedSheet) => {
     setSheetData(newData);
     localStorage.setItem('google_drive_sheet_data', JSON.stringify(newData));
+    // Cache the sheet data by sheet name and file ID
+    if (selectedFile) {
+      const cacheKey = `sheet_data_${selectedFile.id}_${newData.sheetName}`;
+      localStorage.setItem(cacheKey, JSON.stringify(newData));
+      
+      // Update allSheets map and save all sheets to localStorage
+      const updatedAllSheets = new Map(allSheets);
+      updatedAllSheets.set(`${selectedFile.id}:${newData.sheetName}`, newData);
+      setAllSheets(updatedAllSheets);
+      
+      // Save all sheets to a combined localStorage entry for persistence
+      const allSheetsData: Record<string, ModifiedSheet> = {};
+      updatedAllSheets.forEach((sheet, key) => {
+        allSheetsData[key] = sheet;
+      });
+      localStorage.setItem(`all_sheets_${selectedFile.id}`, JSON.stringify(allSheetsData));
+      
+      console.log('Cached sheet data for:', newData.sheetName);
+      console.log('All sheets saved:', Object.keys(allSheetsData));
+    }
   };
 
   return {

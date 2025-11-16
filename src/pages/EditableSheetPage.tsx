@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import EditableSheetTable from "@/components/EditableSheetTable";
 import SheetSelector from "@/components/SheetSelector";
 import { useCallback } from "react";
-import { ModifiedCell } from "@/types/cellTypes";
+import { ModifiedSheet } from "@/types/cellTypes";
 
 const EditableSheetPage = () => {
   const navigate = useNavigate();
@@ -16,18 +16,21 @@ const EditableSheetPage = () => {
   };
 
   const handleSheetChange = useCallback(async (sheetName: string) => {
-    if (selectedFile) {
+    if (selectedFile && sheetData) {
       try {
+        // Auto-save current sheet before switching
+        console.log('Auto-saving before sheet switch:', sheetData.sheetName);
+        await handleSaveProgress(sheetData);
+        
+        // Now load the new sheet
         await readSheet(selectedFile.id, sheetName);
-        // Don't clear modifications - we're tracking all sheets now
       } catch (error) {
         console.error('Error switching sheet:', error);
       }
     }
-  }, [selectedFile, readSheet]);
+  }, [selectedFile, sheetData, readSheet, handleSaveProgress]);
 
-  async function handleLocalDataSave(localData:ModifiedCell[][]) {
-    sheetData.values = [...localData];
+  async function handleLocalDataSave(sheetData: ModifiedSheet) {
     await handleSaveProgress(sheetData);
   }
   if (!sheetData || !selectedFile) {
@@ -85,7 +88,7 @@ const EditableSheetPage = () => {
             </div>
           </div>
           {/* Editable Table */}
-            <EditableSheetTable sheetData={sheetData} onSaveProgress={handleLocalDataSave} />
+            <EditableSheetTable sheetData={sheetData} onSaveProgress={handleLocalDataSave} fileId={selectedFile.id} />
         </div>
       </div>
     </div>

@@ -41,8 +41,13 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
     }, []);
 
     const handleSheetChange = async (sheetName) => {
-        if (selectedFile) {
+        if (selectedFile && sheetData) {
             try {
+                // Auto-save current sheet before switching
+                console.log('Auto-saving before sheet switch:', sheetData.sheetName);
+                onSaveProgress(sheetData);
+                
+                // Now load the new sheet
                 await readSheet(selectedFile.id, sheetName);
             } catch (error) {
                 toast({
