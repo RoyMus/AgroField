@@ -1,19 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Save, Plus, Minus } from "lucide-react";
+import { Save, Plus, Minus, Copy, Clipboard } from "lucide-react";
 import { toast, useToast } from "@/hooks/use-toast";
-import { ModifiedSheet, ModifiedCell, getValue } from "@/types/cellTypes";
+import { ModifiedSheet, ModifiedCell, getValue, CellFormat } from "@/types/cellTypes";
 
 interface EditableSheetTableProps {
   sheetData: ModifiedSheet;
-  onSaveProgress: (data: ModifiedCell[][]) => void;
+  onSaveProgress: (newData: ModifiedSheet) => void;
 }
 
 const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTableProps) => {
   const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
   const [localData, setLocalData] = useState<ModifiedCell[][]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [copiedFormat, setCopiedFormat] = useState<CellFormat | null>(null);
   
   // Initialize local data from sheet data and apply modifications
   useEffect(() => {
@@ -104,11 +105,42 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       }
     );
     try {
-      onSaveProgress(localData);
+      onSaveProgress({ ...sheetData, values: localData });
     } 
     finally {
       setIsSaving(false);
     }
+  };
+
+  // Copy format from selected cell
+  const copyFormat = () => {
+    if (!selectedCell) {
+      toast({ title: "בחר תא", description: "בחר תא קודם להעתקת הפורמט" });
+      return;
+    }
+    const format = localData[selectedCell.rowIndex]?.[selectedCell.colIndex]?.formatting;
+    if (format) {
+      setCopiedFormat(format);
+      toast({ title: "הפורמט הועתק", description: "הפורמט של התא הועתק בהצלחה" });
+    }
+  };
+
+  // Paste format to selected cell
+  const pasteFormat = () => {
+    if (!selectedCell) {
+      toast({ title: "בחר תא", description: "בחר תא קודם להדבקת הפורמט" });
+      return;
+    }
+    if (!copiedFormat) {
+      toast({ title: "אין פורמט", description: "העתק פורמט מתא אחר קודם" });
+      return;
+    }
+    setLocalData(prev => {
+      const newData = prev.map(row => [...row]);
+      newData[selectedCell.rowIndex][selectedCell.colIndex].formatting = { ...copiedFormat };
+      return newData;
+    });
+    toast({ title: "הפורמט הודבק", description: "הפורמט הודבק בהצלחה" });
   };
 
   // Calculate maximum columns needed
@@ -181,6 +213,28 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
           >
             <Save className="w-4 h-4 mr-1" />
             <span>שמור התקדמות</span>
+          </Button>
+          <Button
+            onClick={copyFormat}
+            variant="outline"
+            size="sm"
+            disabled={!selectedCell}
+            className="h-10 text-sm"
+            title="העתק פורמט מהתא הנבחר"
+          >
+            <Copy className="w-4 h-4 mr-1" />
+            <span className="sm:inline">העתק פורמט</span>
+          </Button>
+          <Button
+            onClick={pasteFormat}
+            variant="outline"
+            size="sm"
+            disabled={!selectedCell || !copiedFormat}
+            className="h-10 text-sm"
+            title="הדבק פורמט לתא הנבחר"
+          >
+            <Clipboard className="w-4 h-4 mr-1" />
+            <span className="sm:inline">הדבק פורמט</span>
           </Button>
         </div>
       </div>
