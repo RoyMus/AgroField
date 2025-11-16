@@ -264,8 +264,25 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
           console.error('Error from edge function:', error);
           throw error;
         }
-
         console.log('Sheet data received from API:', data);
+
+        var maxLength = 0;
+        for (let i = 0; i < data.values.length; i++) 
+        {
+          if (data.values[i].length > maxLength)
+          {
+            maxLength = Math.max(maxLength, data.values[i].length);
+          }
+        }
+
+        for (let i = 0; i < data.values.length; i++) 
+        {
+          for (let j = data.values[i].length; j < maxLength; j++)
+          {
+            data.values[i][j] = "";
+          }
+        }
+
         const newSheetData: ModifiedSheet = createModifiedSheet(data);
 
         setSheetData(newSheetData);
