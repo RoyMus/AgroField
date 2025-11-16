@@ -114,6 +114,17 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
   // Calculate maximum columns needed
   const maxCols = Math.max(...localData.map(row => row.length), 0);
 
+  // Helper to convert borders object to CSS string
+  const getBorderStyle = (borders?: { top?: { style: string; color: string; width: number }; bottom?: { style: string; color: string; width: number }; left?: { style: string; color: string; width: number }; right?: { style: string; color: string; width: number } }) => {
+    if (!borders) return {};
+    const borderCss: Record<string, string> = {};
+    if (borders.top) borderCss.borderTop = `${borders.top.width}px ${borders.top.style} ${borders.top.color}`;
+    if (borders.bottom) borderCss.borderBottom = `${borders.bottom.width}px ${borders.bottom.style} ${borders.bottom.color}`;
+    if (borders.left) borderCss.borderLeft = `${borders.left.width}px ${borders.left.style} ${borders.left.color}`;
+    if (borders.right) borderCss.borderRight = `${borders.right.width}px ${borders.right.style} ${borders.right.color}`;
+    return borderCss;
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
       {/* Toolbar - Mobile Optimized */}
@@ -201,6 +212,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
                   </td>
                   {Array.from({ length: maxCols }, (_, colIndex) => {
                     const cellCssStyle = localData?.[rowIndex]?.[colIndex]?.formatting
+                    const borderStyles = getBorderStyle(cellCssStyle?.borders)
                     
                     return (
                       <td key={colIndex} className="border-r border-b p-0">
@@ -208,12 +220,20 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
                           value={ row[colIndex] ? getValue(row[colIndex]) : "" }
                           onFocus={() => handleCellFocus(rowIndex, colIndex)}
                           onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
-                          className={`border-0 rounded-none focus:ring-2 focus:ring-blue-500 focus:ring-inset h-8 text-sm ${
+                          className={`rounded-none focus:ring-2 focus:ring-blue-500 focus:ring-inset h-8 text-sm ${
                             selectedCell?.rowIndex === rowIndex && selectedCell?.colIndex === colIndex
                               ? "ring-2 ring-blue-500"
                               : ""
                           }`}
-                          style={cellCssStyle}
+                          style={{
+                            backgroundColor: cellCssStyle?.backgroundColor,
+                            color: cellCssStyle?.textColor,
+                            fontWeight: cellCssStyle?.fontWeight,
+                            fontStyle: cellCssStyle?.fontStyle,
+                            textAlign: cellCssStyle?.textAlign,
+                            fontSize: cellCssStyle?.fontSize ? `${cellCssStyle.fontSize}px` : undefined,
+                            ...borderStyles
+                          }}
                           placeholder=""
                         />
                       </td>
