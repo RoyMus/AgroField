@@ -217,8 +217,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
                     {rowIndex + 1}
                   </td>
                   {Array.from({ length: maxCols }, (_, colIndex) => {
-                    const cellStyle = getCellStyle(rowIndex, colIndex);
-                    const cellCssStyle = cellStyle ? applyCellFormatToStyle(cellStyle) : {};
+                    const cellCssStyle = sheetData.values?.[rowIndex]?.[colIndex]?.formatting
                     
                     return (
                       <td key={colIndex} className="border-r border-b p-0">
