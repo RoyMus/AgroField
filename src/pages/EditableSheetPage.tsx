@@ -9,7 +9,7 @@ import { ModifiedCell } from "@/types/cellTypes";
 
 const EditableSheetPage = () => {
   const navigate = useNavigate();
-  const { sheetData, selectedFile, handleSaveProgress, readSheet, isLoading } = useGoogleDrive();
+  const { sheetData, selectedFile, handleSaveProgress, loadSheetByName, isLoading } = useGoogleDrive();
 
   const handleBackToInteractive = () => {
     navigate(-1); // Go back to previous page
@@ -17,14 +17,9 @@ const EditableSheetPage = () => {
 
   const handleSheetChange = useCallback(async (sheetName: string) => {
     if (selectedFile) {
-      try {
-        await readSheet(selectedFile.id, sheetName);
-        // Don't clear modifications - we're tracking all sheets now
-      } catch (error) {
-        console.error('Error switching sheet:', error);
-      }
+      await loadSheetByName(sheetName);
     }
-  }, [selectedFile, readSheet]);
+  }, [selectedFile]);
 
   async function handleLocalDataSave(localData:ModifiedCell[][]) {
     sheetData.values = [...localData];

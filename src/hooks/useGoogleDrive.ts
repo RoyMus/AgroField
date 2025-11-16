@@ -23,6 +23,7 @@ interface UseGoogleDriveReturn {
   clearSheetData: () => void;
   createNewSheet: (fileName: string,sheetData: ModifiedSheet) => Promise<{ success: boolean; url?: string; error?: string }>;
   handleSaveProgress: (newData: ModifiedSheet) => void;
+  loadSheetByName: (sheetName: string) => Promise<void>;
 }
 
 export const useGoogleDrive = (): UseGoogleDriveReturn => {
@@ -73,14 +74,15 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     if (savedSheetData) {
       try {
         const parsedSheetData = JSON.parse(savedSheetData);
-        console.log('Setting saved sheet data:', parsedSheetData);
-        setSheetData(parsedSheetData);
+        const values = Object.values(parsedSheetData);
+        if(values.length > 0) {
+          setSheetData(values[0] as ModifiedSheet);
+        }
       } catch (err) {
         console.error('Error parsing saved sheet data:', err);
         localStorage.removeItem('google_drive_sheet_data');
       }
     }
-    
     // Set authentication state and tokens if available
     if (savedToken) {
       setAccessToken(savedToken);
@@ -123,7 +125,15 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       setIsLoading(false);
     }
   };
-
+  const loadSheetByName = async (sheetName: string) => {
+    const processedSheets = localStorage.getItem('google_drive_sheet_data');
+    if (!processedSheets) {
+      setError('No sheet data to load');
+      return;
+    }
+    const parsedSheets = JSON.parse(processedSheets);
+    setSheetData(parsedSheets[sheetName]);
+  }
   const authenticate = async () => {
     try {
       setIsLoading(true);
@@ -255,44 +265,41 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
         throw new Error('No access token available. Please authenticate first.');
       }
       
-      await makeApiCall(async (tkn) => {
-        const { data, error } = await supabase.functions.invoke('google-drive-auth', {
-          body: { action: 'readSheet', accessToken: tkn, fileId, sheetName }
+      await makeApiCall(async (token: string) => {
+         const { data: originalFileData, error: fetchError} = await supabase.functions.invoke('google-drive-auth', {
+        body: { action: 'readAllSheets', accessToken: token, fileId: selectedFile.id }
         });
 
-        if (error) {
-          console.error('Error from edge function:', error);
-          throw error;
-        }
-        console.log('Sheet data received from API:', data);
+        if (fetchError) throw fetchError;
 
-        var maxLength = 0;
-        for (let i = 0; i < data.values.length; i++) 
-        {
-          if (data.values[i].length > maxLength)
-          {
-            maxLength = Math.max(maxLength, data.values[i].length);
+        const processedSheets: Record<string, ModifiedSheet> = {};
+
+        originalFileData.sheets.forEach((sheet: any) => {
+          // Normalize row lengths
+          let maxLength = 0;
+
+          for (let i = 0; i < sheet.values.length; i++) {
+            maxLength = Math.max(maxLength, sheet.values[i].length);
           }
-        }
 
-        for (let i = 0; i < data.values.length; i++) 
-        {
-          for (let j = data.values[i].length; j < maxLength; j++)
-          {
-            data.values[i][j] = "";
+          for (let i = 0; i < sheet.values.length; i++) {
+            for (let j = sheet.values[i].length; j < maxLength; j++) {
+              sheet.values[i][j] = "";
+            }
           }
-        }
 
-        const newSheetData: ModifiedSheet = createModifiedSheet(data);
+          // Create your ModifiedSheet
+          const newSheetData: ModifiedSheet = createModifiedSheet(sheet);
+          // Add to dictionary
+          processedSheets[sheet.sheetName] = newSheetData;
+        });
 
-        setSheetData(newSheetData);
-        localStorage.setItem('google_drive_sheet_data', JSON.stringify(newSheetData));
-        
-        console.log('Sheet data set successfully, triggering re-render');
-        return newSheetData;
-      });
+        setSheetData(processedSheets[sheetName]);
+        localStorage.setItem('google_drive_sheet_data', JSON.stringify(processedSheets));
       
-    } catch (err) {
+    });
+  }
+     catch (err) {
       console.error('Error in readSheet:', err);
       setError(err instanceof Error ? err.message : 'Failed to read sheet');
     } finally {
@@ -326,56 +333,40 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     if (!accessToken || !selectedFile) {
       return { success: false, error: 'Missing authentication or file data' };
     }
-
-    try {
-      // Fetch all sheets from the original file
-      const { data: originalFileData, error: fetchError } = await supabase.functions.invoke('google-drive-auth', {
-        body: { action: 'readAllSheets', accessToken, fileId: selectedFile.id }
-      });
-
-      if (fetchError) throw fetchError;
-
-      // Process each sheet with its modifications
-      const processedSheets = originalFileData.sheets.map((sheet: any) => {
-        if(sheet.sheetName === sheetData.sheetName){
-          const values = sheetData.values.map((row: any[]) =>
-            row.map(cell => getValue(cell))
-          );
-          const formatting: { rowIndex: number; columnIndex: number; format: any }[] = [];
-          sheetData.values.forEach((row, rowIndex) => {
-            row.forEach((cell, columnIndex) => {
-              if (cell && cell.formatting && Object.keys(cell.formatting).length > 0) {
-                formatting.push({
-                  rowIndex,
-                  columnIndex,
-                  format: cell.formatting,
-                });
-              }
-            });
+    const processedSheets = localStorage.getItem('google_drive_sheet_data');
+      if (!processedSheets) {
+        return { success: false, error: 'No sheet data to save' };
+      }
+    const parsedSheets = JSON.parse(processedSheets);
+    const sheets = Object.entries(parsedSheets).map(([key, sheet]: [string, ModifiedSheet]) => {
+      const values = sheet.values.map((row: any[]) =>
+          row.map(cell => getValue(cell))
+        );
+        const formatting: { rowIndex: number; columnIndex: number; format: any }[] = [];
+        sheet.values.forEach((row, rowIndex) => {
+          row.forEach((cell, columnIndex) => {
+            if (cell && cell.formatting && Object.keys(cell.formatting).length > 0) {
+              formatting.push({
+                rowIndex,
+                columnIndex,
+                format: cell.formatting,
+              });
+            }
           });
-
-          return {
-            ...sheet,
-            values: values,
-            formatting: formatting
-          };
-        }
-        else
-        {
-          return {
-            ...sheet,
-            sheetName: sheet.sheetName,
-            formatting: sheet.formatting,
-            values: sheet.values
-          }
-        }
+        });
+        return {
+          ...sheet,
+          values: values,
+          formatting: formatting
+        };
       });
-
+    try
+    {
       const { data, error } = await supabase.functions.invoke('create-google-sheet', {
         body: {
           accessToken,
           fileName,
-          sheets: processedSheets,
+          sheets: sheets,
           originalFileId: selectedFile.id
         }
       });
@@ -404,7 +395,13 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
 
   const handleSaveProgress = (newData: ModifiedSheet) => {
     setSheetData(newData);
-    localStorage.setItem('google_drive_sheet_data', JSON.stringify(newData));
+    const processedSheets = localStorage.getItem('google_drive_sheet_data');
+    if (!processedSheets) {
+      return;
+    }
+    const parsedSheets = JSON.parse(processedSheets);
+    parsedSheets[newData.sheetName] = newData;
+    localStorage.setItem('google_drive_sheet_data', JSON.stringify(parsedSheets));
   };
 
   return {
@@ -420,6 +417,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     logout,
     clearSheetData,
     createNewSheet,
-    handleSaveProgress
+    handleSaveProgress,
+    loadSheetByName,
   };
 };

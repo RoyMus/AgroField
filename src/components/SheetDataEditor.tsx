@@ -15,9 +15,10 @@ interface SheetDataEditorProps {
   onSaveProgress?: (saveFunc: () => void) => void;
   onSaveToNewSheet?: (saveFunc: () => void) => void;
   handleSaveProgress: () => void;
+  selectedFile: string;
 }
 
-const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSaveProgress }: SheetDataEditorProps) => {
+const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSaveProgress, selectedFile }: SheetDataEditorProps) => {
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && getValue(sheetData.values[i][0]).trim() != "")
     {
@@ -422,7 +423,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         onOpenChange={setShowSaveDialog}
         onConfirm={handleCreateNewSheet}
         onCancel={() => setShowSaveDialog(false)}
-        previousFileName={`${sheetData.metadata.title} ${formattedDate}`}
+        previousFileName={`${selectedFile} ${formattedDate}`}
         isLoading={isSaving}
       />
     </div>

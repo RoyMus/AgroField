@@ -7,7 +7,7 @@ import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 
 const InteractivePage = () => {
   const navigate = useNavigate();
-  const { sheetData, selectedFile, clearSheetData, readSheet, isLoading,handleSaveProgress} = useGoogleDrive();
+  const { sheetData, selectedFile, clearSheetData, loadSheetByName, isLoading, handleSaveProgress} = useGoogleDrive();
   const [saveProgressFunc, setSaveProgressFunc] = useState<(() => void) | null>(null);
   const [saveToNewSheetFunc, setSaveToNewSheetFunc] = useState<(() => void) | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -53,7 +53,7 @@ const InteractivePage = () => {
                   onOpenEditor={handleEditSheet}
                   onSaveProgress={saveProgressFunc}
                   onSaveToNewSheet={saveToNewSheetFunc}
-                  readSheet={readSheet}
+                  loadSheetByName={loadSheetByName}
                   isLoading={isLoading}
                 />
                 
@@ -63,6 +63,7 @@ const InteractivePage = () => {
                   onSaveProgress={(func) => setSaveProgressFunc(() => func)}
                   onSaveToNewSheet={(func) => setSaveToNewSheetFunc(() => func)}
                   handleSaveProgress={() => handleSaveProgress(sheetData)}
+                  selectedFile={selectedFile?.name}
                 />
               </>
             )}

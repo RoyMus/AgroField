@@ -402,7 +402,16 @@ serve(async (req)=>{
             sheetId: sheet.properties.sheetId,
             values: data.values || [[]],
             formatting,
-            properties: sheet.properties
+            properties: sheet.properties,
+            metadata: {
+              title: metadata.properties.title,
+              sheetCount: metadata.sheets.length,
+              availableSheets: metadata.sheets.map((sheet: any) => ({
+                id: sheet.properties.sheetId,
+                title: sheet.properties.title,
+                index: sheet.properties.index
+              }))
+            }
           };
         }));
 

@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { set } from "date-fns";
 import { getValue } from "@/types/cellTypes";
 
-const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet, readSheet, isLoading}) => {
+const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet, loadSheetByName, isLoading}) => {
     const { toast } = useToast();
     const{
     isTemplate,
@@ -42,15 +42,7 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
 
     const handleSheetChange = async (sheetName) => {
         if (selectedFile) {
-            try {
-                await readSheet(selectedFile.id, sheetName);
-            } catch (error) {
-                toast({
-                    title: "Failed to switch sheet",
-                    description: "Could not load the selected sheet",
-                    variant: "destructive"
-                });
-            }
+            await loadSheetByName(sheetName);
         }
     };
     

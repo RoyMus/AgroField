@@ -114,7 +114,6 @@ const GoogleDriveFilePicker = () => {
           title: "הקובץ נטען בהצלחה",
           description: "הקובץ נטען בהצלחה וכעת יהיה ניתן לערוך אותו",
         });
-        localStorage.removeItem('all_sheet_modifications'); // Clear modifications on fresh load
         navigate("/page/workspace"); // Navigate to workspace after loading
       } catch (err) {
         console.error('Error reading sheet:', err);
