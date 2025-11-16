@@ -16,9 +16,10 @@ interface SheetDataEditorProps {
   sheetData: ModifiedSheet;
   onSaveProgress?: (saveFunc: () => void) => void;
   onSaveToNewSheet?: (saveFunc: () => void) => void;
+  handleSaveProgress: () => void;
 }
 
-const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetDataEditorProps) => {
+const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSaveProgress }: SheetDataEditorProps) => {
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && getValue(sheetData.values[i][0]).trim() != "")
     {
@@ -223,7 +224,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
   const handleCreateNewSheet = async (fileName: string) => {
     setIsSaving(true);
     try {
-      const result = await createNewSheet(fileName);
+      const result = await createNewSheet(fileName,sheetData);
       
       if (result.success) {
         toast({
@@ -257,9 +258,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
   const recordCurrentValue = async () => {
     // Save the current value
     sheetData.values[currentRowIndex][currentColumnIndex].modified = currentValue;
+    handleSaveProgress();
     toast({
       title: "Value Recorded",
-      description: `Recorded value for ${headers[currentColumnIndex]}`,
+      description: `Recorded value for ${getValue(headers[currentColumnIndex])}`,
     });
     
     moveToNextCell();
@@ -360,6 +362,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
     setCurrentValue("");
     // Remove from modified data if it exists
     sheetData.values[currentRowIndex][currentColumnIndex].modified = null;
+    handleSaveProgress();
   };
 
   useEffect(() => {

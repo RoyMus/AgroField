@@ -8,7 +8,7 @@ import { ModifiedDataProvider } from "@/contexts/ModifiedDataContext";
 
 const InteractivePage = () => {
   const navigate = useNavigate();
-  const { sheetData, selectedFile, clearSheetData, readSheet, isLoading} = useGoogleDrive();
+  const { sheetData, selectedFile, clearSheetData, readSheet, isLoading,handleSaveProgress} = useGoogleDrive();
   const [saveProgressFunc, setSaveProgressFunc] = useState<(() => void) | null>(null);
   const [saveToNewSheetFunc, setSaveToNewSheetFunc] = useState<(() => void) | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -63,6 +63,7 @@ const InteractivePage = () => {
                   sheetData={sheetData}
                   onSaveProgress={(func) => setSaveProgressFunc(() => func)}
                   onSaveToNewSheet={(func) => setSaveToNewSheetFunc(() => func)}
+                  handleSaveProgress={() => handleSaveProgress(sheetData)}
                 />
               </ModifiedDataProvider>
             )}
