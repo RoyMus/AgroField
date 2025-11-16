@@ -208,10 +208,6 @@ const CellEditor = ({
               <SimpleDropdown options={optionsGidul} value={dropDownValueOfGidul} onSelect={handleSelectGidul} />
             </div>
           </div>
-          
-          <p className="text-sm text-muted-foreground">
-            Cell {currentRowIndex * headers.length + currentColumnIndex + 1} of {dataRows.length * headers.length}
-          </p>
         </div>
         
         {/* Top Action Buttons - Always visible */}
