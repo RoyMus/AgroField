@@ -3,7 +3,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { getData } from "@/hooks/getData";
-import { useCellStyling } from "@/hooks/useCellStyling";
 import ProgressStats from "./ProgressStats";
 import CellEditor from "./CellEditor";
 import SaveToNewSheetDialog from "./SaveToNewSheetDialog";

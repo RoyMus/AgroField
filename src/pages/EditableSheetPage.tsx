@@ -28,7 +28,7 @@ const EditableSheetPage = () => {
   }, [selectedFile, readSheet]);
 
   async function handleLocalDataSave(localData:ModifiedCell[][]) {
-    sheetData.values = localData;
+    sheetData.values = [...localData];
     await handleSaveProgress(sheetData);
   }
   if (!sheetData || !selectedFile) {
