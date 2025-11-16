@@ -124,6 +124,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     }
 
     hasInitialized.current = true;
+    handleSaveProgress();
   }, [sheetData?.sheetName]);
 
   const calcAverages = () =>
