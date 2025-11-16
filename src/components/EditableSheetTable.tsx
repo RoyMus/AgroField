@@ -7,7 +7,7 @@ import { ModifiedSheet, ModifiedCell, getValue, CellFormat } from "@/types/cellT
 
 interface EditableSheetTableProps {
   sheetData: ModifiedSheet;
-  onSaveProgress: (newData: ModifiedSheet) => void;
+  onSaveProgress: (newData: ModifiedCell[][]) => void;
 }
 
 const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTableProps) => {
@@ -105,7 +105,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       }
     );
     try {
-      onSaveProgress({ ...sheetData, values: localData });
+      onSaveProgress(localData);
     } 
     finally {
       setIsSaving(false);
