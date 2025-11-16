@@ -79,18 +79,6 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
                     </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    {onSaveProgress && (
-                        <Button
-                            onClick={onSaveProgress}
-                            variant="outline"
-                            size="sm"
-                            className="h-9 text-sm"
-                            dir="rtl"
-                        >
-                            <Save className="mr-1 h-4 w-4" />
-                            <span>שמור התקדמות</span>
-                        </Button>
-                    )}
                     {onSaveToNewSheet && (
                         <Button
                             onClick={onSaveToNewSheet}
