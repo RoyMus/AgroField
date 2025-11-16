@@ -49,7 +49,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
   const [rowChangeCounter, setRowChangeCounter] = useState(0);
   const {
     loadInitialStyles,
-    clearStyles,
     setCellStyleFormat,
     saveStyles
   } = useCellStyling(sheetData?.sheetName);
@@ -66,11 +65,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
       loadInitialStyles(sheetData.formatting);
       saveStyles();
 
-    } else {
-      console.log('SheetDataEditor: No formatting available, clearing styles');
-      clearStyles();
     }
-  }, [sheetData, loadInitialStyles, clearStyles]);
+  }, [sheetData]);
   
   var AlreadySetFirst = false;
   for (let i = 0; i < headers.length; i++) {

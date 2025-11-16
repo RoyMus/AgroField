@@ -161,9 +161,7 @@ export const useCellStyling = (sheetName: string): UseCellStylingReturn => {
 
   const clearStyles = useCallback(() => {
     setCellStyles([]);
-    const allStyles = JSON.parse(localStorage.getItem('all_sheet_styles') || '{}');
-    delete allStyles[sheetName];
-    localStorage.setItem('all_sheet_styles', JSON.stringify(allStyles));
+    localStorage.removeItem('all_sheet_styles');
   }, [sheetName]);
   
   const saveStyles = useCallback(() => {

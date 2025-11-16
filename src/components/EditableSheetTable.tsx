@@ -28,7 +28,6 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     insertColumn,
     deleteColumn,
     loadInitialStyles,
-    clearStyles,
     saveStyles
   } = useCellStyling(sheetData.sheetName);
 
@@ -60,7 +59,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       
       setLocalData(baseData);
     }
-  }, [sheetData, modifiedData, loadInitialStyles, clearStyles, sheetData.formatting]);
+  }, [sheetData, modifiedData, loadInitialStyles, sheetData.formatting]);
 
   // Handle cell value changes and sync with localStorage
   const handleCellChange = useCallback((rowIndex: number, colIndex: number, value: string) => {
