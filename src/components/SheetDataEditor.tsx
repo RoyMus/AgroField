@@ -9,6 +9,7 @@ import CellEditor from "./CellEditor";
 import SaveToNewSheetDialog from "./SaveToNewSheetDialog";
 import { SheetData, ModifiedCellData } from "@/types/cellTypes";
 import { useModifiedData } from "@/contexts/ModifiedDataContext";
+import { set } from "date-fns";
 
 
 interface SheetDataEditorProps {
@@ -96,6 +97,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
   const { isRecording, startRecording, stopRecording, error: recordingError, onWordRecognized } = useVoiceRecording();
   const { createNewSheet, readSheet, selectedFile, isLoading } = useGoogleDrive();
   const dataRows = sheetData.values.slice(0, commentIndex);
+  var isSpeakingState = false;
   const{
     isTemplate,
     plant,
@@ -383,12 +385,18 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
         utterance.onstart = () =>
           { 
             if(window.speechSynthesis.speaking)
+            {
               stopRecording();
+              isSpeakingState = true;
+            }
           }
         utterance.onend = () =>
         {
-            if(!window.speechSynthesis.speaking)
+            if(isSpeakingState)
+            {
               startRecording();
+              isSpeakingState = false;
+            }
         }
       }
     }
