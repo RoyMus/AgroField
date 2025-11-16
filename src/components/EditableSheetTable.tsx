@@ -65,14 +65,13 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
 
   // Add new row
   const addRow = () => {
-    const newRow = new Array(maxCols).fill("");
+    const newRow = new Array(maxCols).fill({ original: "", modified: null, formatting: {} });
     const insertIndex = selectedCell ? selectedCell.rowIndex + 1 : localData.length;
     setLocalData(prev => {
       const updated = [...prev];
-      updated.splice(insertIndex, 0, newRow); // insert *after* old row
+      updated.splice(insertIndex, 0, newRow);
       return updated;
     });
-    insertRow(insertIndex); // Update styles
   };
 
   // Remove last row
@@ -84,7 +83,6 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
         updated.splice(removeIndex, 1);
         return updated;
       });
-      deleteRow(removeIndex); // Update styles
     }
   };
 
@@ -98,7 +96,6 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       });
       return updated;
     });
-    insertColumn(insertIndex); // Update styles
   };
 
   // Remove last column
@@ -110,7 +107,6 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
         newRow.splice(removeIndex, 1);
         return newRow;
       }));
-      deleteColumn(removeIndex); // Update styles
     }
   };
 
@@ -217,7 +213,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
                     {rowIndex + 1}
                   </td>
                   {Array.from({ length: maxCols }, (_, colIndex) => {
-                    const cellCssStyle = sheetData.values?.[rowIndex]?.[colIndex]?.formatting
+                    const cellCssStyle = localData?.[rowIndex]?.[colIndex]?.formatting
                     
                     return (
                       <td key={colIndex} className="border-r border-b p-0">
