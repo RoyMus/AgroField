@@ -22,13 +22,13 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     "אפס": 0,
     "אחת": 1, "אחד": 1,
     "שתיים": 2, "שניים": 2,
-    "שלוש": 3,
-    "ארבע": 4,
-    "חמש": 5,
-    "שש": 6,
-    "שבע": 7,
+    "שלוש": 3, "שלושה": 3,
+    "ארבע": 4, "ארבעה": 4,
+    "חמש": 5, "חמישה": 5,
+    "שש": 6, "שישה" : 6,
+    "שבע": 7, "שבעה": 7,
     "שמונה": 8,
-    "תשע": 9,
+    "תשע": 9, "תשעה": 9,
   };
   const tryTranslate = (word: string): string => {
     const normalizedWord = word.trim().toLowerCase();

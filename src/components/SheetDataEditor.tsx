@@ -174,7 +174,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
 
   const handleInputChange = (value: string) => {
     console.log('Recognized word:', value);
-    if (value.includes("דלג") || value.includes("הבא")|| value.includes("אבא")) {
+    if (value.includes("דלג") || value.includes("הבא")|| value.includes("אבא") || value.includes("דלק") || value.includes("דלת")) {
       skipCurrentValue();
       setCurrentValue("");
     }
@@ -305,14 +305,20 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet }: SheetD
       {
         return;
       }
-      console.log('Speaking:', text);
+     
+      window.speechSynthesis.speak(utterance);
       if (isRecording) {
         utterance.onstart = () =>
-          stopRecording();
+          { 
+            if(window.speechSynthesis.speaking)
+              stopRecording();
+          }
         utterance.onend = () =>
-          startRecording();
+        {
+            if(!window.speechSynthesis.speaking)
+              startRecording();
+        }
       }
-      window.speechSynthesis.speak(utterance);
     }
   };
 
