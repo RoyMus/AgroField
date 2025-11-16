@@ -218,7 +218,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const handleCreateNewSheet = async (fileName: string) => {
     setIsSaving(true);
     try {
-      const result = await createNewSheet(fileName,sheetData);
+      const result = await createNewSheet(fileName);
       
       if (result.success) {
         toast({

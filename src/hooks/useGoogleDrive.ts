@@ -21,7 +21,7 @@ interface UseGoogleDriveReturn {
   readSheet: (fileId: string, sheetName?: string) => Promise<void>;
   logout: () => void;
   clearSheetData: () => void;
-  createNewSheet: (fileName: string,sheetData: ModifiedSheet) => Promise<{ success: boolean; url?: string; error?: string }>;
+  createNewSheet: (fileName: string) => Promise<{ success: boolean; url?: string; error?: string }>;
   handleSaveProgress: (newData: ModifiedSheet) => void;
   loadSheetByName: (sheetName: string) => Promise<void>;
 }
@@ -329,7 +329,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     sessionStorage.removeItem('google_auth_code_used');
   };
 
-  const createNewSheet = async (fileName: string, sheetData: ModifiedSheet): Promise<{ success: boolean; url?: string; error?: string }> => {
+  const createNewSheet = async (fileName: string): Promise<{ success: boolean; url?: string; error?: string }> => {
     if (!accessToken || !selectedFile) {
       return { success: false, error: 'Missing authentication or file data' };
     }
