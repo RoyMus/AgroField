@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ModifiedSheet,createModifiedSheet } from '@/types/cellTypes';
+import { ModifiedSheet,createModifiedSheet, getValue } from '@/types/cellTypes';
+import { format } from 'path';
 
 interface GoogleDriveFile {
   id: string;
@@ -20,7 +21,7 @@ interface UseGoogleDriveReturn {
   readSheet: (fileId: string, sheetName?: string) => Promise<void>;
   logout: () => void;
   clearSheetData: () => void;
-  createNewSheet: (fileName: string) => Promise<{ success: boolean; url?: string; error?: string }>;
+  createNewSheet: (fileName: string,sheetData: ModifiedSheet) => Promise<{ success: boolean; url?: string; error?: string }>;
   handleSaveProgress: (newData: ModifiedSheet) => void;
 }
 
@@ -304,20 +305,12 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     sessionStorage.removeItem('google_auth_code_used');
   };
 
-  const createNewSheet = async (fileName: string): Promise<{ success: boolean; url?: string; error?: string }> => {
+  const createNewSheet = async (fileName: string, sheetData: ModifiedSheet): Promise<{ success: boolean; url?: string; error?: string }> => {
     if (!accessToken || !selectedFile) {
       return { success: false, error: 'Missing authentication or file data' };
     }
 
     try {
-      // Get all modifications for all sheets
-      const allModifications = localStorage.getItem('all_sheet_modifications');
-      const allSheetModifications = allModifications ? JSON.parse(allModifications) : {};
-      
-      // Get all styles for all sheets
-      const allStylesData = localStorage.getItem('all_sheet_styles');
-      const allSheetStyles = allStylesData ? JSON.parse(allStylesData) : {};
-
       // Fetch all sheets from the original file
       const { data: originalFileData, error: fetchError } = await supabase.functions.invoke('google-drive-auth', {
         body: { action: 'readAllSheets', accessToken, fileId: selectedFile.id }
@@ -327,25 +320,26 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
 
       // Process each sheet with its modifications
       const processedSheets = originalFileData.sheets.map((sheet: any) => {
-        const sheetName = sheet.sheetName;
-        const modifications = allSheetModifications[sheetName] || {};
-        const styles = allSheetStyles[sheetName] || sheet.formatting || [];
+        if(sheet.sheetName === sheetData.sheetName){
+          const values = sheetData.values.map((row: any[]) =>
+            row.map(cell => getValue(cell))
+          );
 
-        // Apply modifications to the sheet data
-        const updatedValues = [...sheet.values];
-        Object.entries(modifications).forEach(([cellKey, modification]: [string, any]) => {
-          const [rowIndex, columnIndex] = cellKey.split('-').map(Number);
-          if (!updatedValues[rowIndex]) {
-            updatedValues[rowIndex] = [];
+          return {
+            ...sheet,
+            values: values,
+            formatting: sheet.formatting
+          };
+        }
+        else
+        {
+          return {
+            ...sheet,
+            sheetName: sheet.sheetName,
+            formatting: sheet.formatting,
+            values: sheet.values
           }
-          updatedValues[rowIndex][columnIndex] = modification.modifiedValue;
-        });
-
-        return {
-          ...sheet,
-          values: updatedValues,
-          formatting: styles
-        };
+        }
       });
 
       const { data, error } = await supabase.functions.invoke('create-google-sheet', {
