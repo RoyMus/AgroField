@@ -3,10 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Save, Plus, Minus } from "lucide-react";
 import { toast, useToast } from "@/hooks/use-toast";
-import { useCellStyling } from "@/hooks/useCellStyling";
-import { applyCellFormatToStyle, extractStylesFromSheetData } from "@/utils/formatConverters";
 import { ModifiedSheet, ModifiedCell, getValue } from "@/types/cellTypes";
-import { set } from "date-fns";
 
 interface EditableSheetTableProps {
   sheetData: ModifiedSheet;
@@ -24,7 +21,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       const baseData = sheetData.values.map(row => [...row]); // Deep copy
       setLocalData(baseData);
     }
-  }, []);
+  }, [sheetData.sheetName]);
   // Handle cell value changes and sync with localStorage
   const handleCellChange = useCallback((rowIndex: number, colIndex: number, value: string) => {
     // Update local data

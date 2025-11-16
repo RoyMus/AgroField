@@ -341,11 +341,23 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
           const values = sheetData.values.map((row: any[]) =>
             row.map(cell => getValue(cell))
           );
+          const formatting: { rowIndex: number; columnIndex: number; format: any }[] = [];
+          sheetData.values.forEach((row, rowIndex) => {
+            row.forEach((cell, columnIndex) => {
+              if (cell && cell.formatting && Object.keys(cell.formatting).length > 0) {
+                formatting.push({
+                  rowIndex,
+                  columnIndex,
+                  format: cell.formatting,
+                });
+              }
+            });
+          });
 
           return {
             ...sheet,
             values: values,
-            formatting: sheet.formatting
+            formatting: formatting
           };
         }
         else
