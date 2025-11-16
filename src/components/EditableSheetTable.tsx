@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Save, Plus, Minus } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast, useToast } from "@/hooks/use-toast";
 import { useCellStyling } from "@/hooks/useCellStyling";
 import { applyCellFormatToStyle, extractStylesFromSheetData } from "@/utils/formatConverters";
 import { ModifiedSheet, ModifiedCell, getValue } from "@/types/cellTypes";
@@ -10,14 +10,13 @@ import { set } from "date-fns";
 
 interface EditableSheetTableProps {
   sheetData: ModifiedSheet;
-  onSaveProgress: (newData: ModifiedSheet) => void;
+  onSaveProgress: () => void;
 }
 
 const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTableProps) => {
   const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
   const [localData, setLocalData] = useState<ModifiedCell[][]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const { toast } = useToast();
   
   const {
     getCellStyle,
@@ -51,8 +50,6 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       while (newData[rowIndex].length <= colIndex) {
         newData[rowIndex].push({ original: "", modified: null,formatting: {} });
       }
-      
-      newData[rowIndex][colIndex].original = value;
       return newData;
     });
 
@@ -113,10 +110,16 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
   // Save current modifications
   const saveModifications = async () => {
     if (isSaving) return;
-  setIsSaving(true);
-
+    setIsSaving(true);
+    toast(
+      {
+        title: "השינויים נשמרו בהצלחה!",
+        description: "ההתקדמות שלך נשמרה בהצלחה",
+      }
+    );
     try {
       // The context already saved to localStorage.
+      onSaveProgress();
       saveStyles();
     } 
     finally {
