@@ -48,6 +48,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const headersRowIndex = found_headers_row_index + 1;
   const headers = sheetData.values[headersRowIndex -1] || [];
   const [rowChangeCounter, setRowChangeCounter] = useState(0);
+  const [updateCounter, setUpdateCounter] = useState(0);
   
   var AlreadySetFirst = false;
   for (let i = 0; i < headers.length; i++) {
@@ -356,6 +357,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     // Remove from modified data if it exists
     sheetData.values[currentRowIndex][currentColumnIndex].modified = null;
     handleSaveProgress();
+    setUpdateCounter(prev => prev + 1);
   };
 
   useEffect(() => {
