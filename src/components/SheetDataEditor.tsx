@@ -48,11 +48,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const headersRowIndex = found_headers_row_index + 1;
   const headers = sheetData.values[headersRowIndex -1] || [];
   const [rowChangeCounter, setRowChangeCounter] = useState(0);
-  const {
-    loadInitialStyles,
-    setCellStyleFormat,
-    saveStyles
-  } = useCellStyling(sheetData?.sheetName);
   
   var AlreadySetFirst = false;
   for (let i = 0; i < headers.length; i++) {
@@ -158,11 +153,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         isBetween = sum > parseFloat(wantedResult[0]) && sum < parseFloat(wantedResult[1]);
       else if (wantedResult && wantedResult.length === 1)
         isBetween = sum < parseFloat(wantedResult[0]);
-      setCellStyleFormat(dataRows.length - 1,i,{
-      backgroundColor:  isBetween ? '#00ff15ff' : '#ff0000ff',
-    });
+      sheetData.values[dataRows.length - 1][i].formatting.backgroundColor = isBetween ? '#00ff15ff' : '#ff0000ff';
     }
-    saveStyles();
   };
 
   useEffect(() => {
@@ -217,6 +209,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
   const handleSaveToNewSheet = useCallback(() => {
     calcAverages();
+    handleSaveProgress();
     setShowSaveDialog(true);
     
   }, [toast]);
