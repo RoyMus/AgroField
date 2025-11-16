@@ -10,7 +10,7 @@ import { set } from "date-fns";
 
 interface EditableSheetTableProps {
   sheetData: ModifiedSheet;
-  onSaveProgress: () => void;
+  onSaveProgress: (data: ModifiedCell[][]) => void;
 }
 
 const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTableProps) => {
@@ -18,16 +18,6 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
   const [localData, setLocalData] = useState<ModifiedCell[][]>([]);
   const [isSaving, setIsSaving] = useState(false);
   
-  const {
-    getCellStyle,
-    insertRow,
-    deleteRow,
-    insertColumn,
-    deleteColumn,
-    loadInitialStyles,
-    saveStyles
-  } = useCellStyling(sheetData.sheetName);
-
   // Initialize local data from sheet data and apply modifications
   useEffect(() => {
     if (sheetData?.values) {
@@ -50,10 +40,9 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       while (newData[rowIndex].length <= colIndex) {
         newData[rowIndex].push({ original: "", modified: null,formatting: {} });
       }
+      newData[rowIndex][colIndex].modified = value;
       return newData;
     });
-
-    sheetData.values[rowIndex][colIndex].modified = value;
   }, [sheetData]);
 
   const handleCellFocus = (rowIndex: number, colIndex: number) => {
@@ -118,9 +107,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       }
     );
     try {
-      // The context already saved to localStorage.
-      onSaveProgress();
-      saveStyles();
+      onSaveProgress(localData);
     } 
     finally {
       setIsSaving(false);

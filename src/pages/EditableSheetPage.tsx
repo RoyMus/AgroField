@@ -6,6 +6,7 @@ import { ModifiedDataProvider } from "@/contexts/ModifiedDataContext";
 import EditableSheetTable from "@/components/EditableSheetTable";
 import SheetSelector from "@/components/SheetSelector";
 import { useCallback } from "react";
+import { ModifiedCell } from "@/types/cellTypes";
 
 const EditableSheetPage = () => {
   const navigate = useNavigate();
@@ -26,6 +27,10 @@ const EditableSheetPage = () => {
     }
   }, [selectedFile, readSheet]);
 
+  async function handleLocalDataSave(localData:ModifiedCell[][]) {
+    sheetData.values = localData;
+    await handleSaveProgress(sheetData);
+  }
   if (!sheetData || !selectedFile) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
@@ -81,7 +86,7 @@ const EditableSheetPage = () => {
             </div>
           </div>
           {/* Editable Table */}
-            <EditableSheetTable sheetData={sheetData} onSaveProgress={()=>handleSaveProgress(sheetData)} />
+            <EditableSheetTable sheetData={sheetData} onSaveProgress={handleLocalDataSave} />
         </div>
       </div>
     </div>
