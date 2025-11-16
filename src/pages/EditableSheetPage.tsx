@@ -81,9 +81,7 @@ const EditableSheetPage = () => {
             </div>
           </div>
           {/* Editable Table */}
-          <ModifiedDataProvider sheetName={sheetData.sheetName}>
             <EditableSheetTable sheetData={sheetData} onSaveProgress={handleSaveProgress} />
-          </ModifiedDataProvider>
         </div>
       </div>
     </div>

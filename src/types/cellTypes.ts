@@ -19,12 +19,6 @@ export interface CellStyle {
   format: CellFormat;
 }
 
-export interface ModifiedCellData {
-  originalValue: string;
-  modifiedValue: string;
-  rowIndex: number;
-  columnIndex: number;
-}
 
 export interface SheetTab {
   id: number;
@@ -41,4 +35,45 @@ export interface SheetData {
     availableSheets?: SheetTab[];
   };
   formatting?: CellStyle[];
+}
+
+export interface ModifiedCell {
+  original: string;
+  modified: string | null;
+  formatting: CellFormat;
+}
+
+export interface ModifiedSheet {
+  sheetName: string;
+  metadata?: {
+    title: string;
+    sheetCount: number;
+    availableSheets?: SheetTab[];
+  };
+  values: ModifiedCell[][];
+}
+
+export function getValue(cell: ModifiedCell): string {
+  return cell.modified ?? cell.original;
+}
+
+export function isModified(cell: ModifiedCell): boolean {
+  return cell.modified !== null;
+}
+
+export function createModifiedSheet(sheetData: SheetData): ModifiedSheet {
+  return {
+    sheetName: sheetData.sheetName,
+    metadata: sheetData.metadata,
+    values: sheetData.values.map((row, rIdx) =>
+      row.map((value, cIdx) => ({
+        original: value,
+        modified: null,
+        formatting:
+          sheetData.formatting?.find(
+            s => s.rowIndex === rIdx && s.columnIndex === cIdx
+          )?.format || {}
+      }))
+    )
+  };
 }

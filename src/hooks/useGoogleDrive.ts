@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { ModifiedSheet,createModifiedSheet } from '@/types/cellTypes';
 
 interface GoogleDriveFile {
   id: string;
@@ -7,41 +8,20 @@ interface GoogleDriveFile {
   modifiedTime: string;
 }
 
-interface SheetTab {
-  id: number;
-  title: string;
-  index: number;
-}
-
-interface SheetData {
-  sheetName: string;
-  values: string[][];
-  metadata: {
-    title: string;
-    sheetCount: number;
-    availableSheets?: SheetTab[];
-  };
-  formatting?: Array<{
-    rowIndex: number;
-    columnIndex: number;
-    format: any;
-  }>;
-}
-
 interface UseGoogleDriveReturn {
   isAuthenticated: boolean;
   isLoading: boolean;
   files: GoogleDriveFile[];
   selectedFile: GoogleDriveFile | null;
-  sheetData: SheetData | null;
+  sheetData: ModifiedSheet | null;
   error: string | null;
   authenticate: () => Promise<void>;
   selectFile: (file: GoogleDriveFile) => void;
   readSheet: (fileId: string, sheetName?: string) => Promise<void>;
   logout: () => void;
   clearSheetData: () => void;
-  createNewSheet: (fileName: string, modifiedData: Record<string, any>) => Promise<{ success: boolean; url?: string; error?: string }>;
-  handleSaveProgress: (newData: SheetData) => void;
+  createNewSheet: (fileName: string) => Promise<{ success: boolean; url?: string; error?: string }>;
+  handleSaveProgress: (newData: ModifiedSheet) => void;
 }
 
 export const useGoogleDrive = (): UseGoogleDriveReturn => {
@@ -49,7 +29,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   const [isLoading, setIsLoading] = useState(false);
   const [files, setFiles] = useState<GoogleDriveFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<GoogleDriveFile | null>(null);
-  const [sheetData, setSheetData] = useState<SheetData | null>(null);
+  const [sheetData, setSheetData] = useState<ModifiedSheet | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
@@ -285,12 +265,13 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
         }
 
         console.log('Sheet data received from API:', data);
-        
-        setSheetData(data);
-        localStorage.setItem('google_drive_sheet_data', JSON.stringify(data));
+        const newSheetData: ModifiedSheet = createModifiedSheet(data);
+
+        setSheetData(newSheetData);
+        localStorage.setItem('google_drive_sheet_data', JSON.stringify(newSheetData));
         
         console.log('Sheet data set successfully, triggering re-render');
-        return data;
+        return newSheetData;
       });
       
     } catch (err) {
@@ -323,7 +304,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     sessionStorage.removeItem('google_auth_code_used');
   };
 
-  const createNewSheet = async (fileName: string, modifiedData: Record<string, any>): Promise<{ success: boolean; url?: string; error?: string }> => {
+  const createNewSheet = async (fileName: string): Promise<{ success: boolean; url?: string; error?: string }> => {
     if (!accessToken || !selectedFile) {
       return { success: false, error: 'Missing authentication or file data' };
     }
@@ -398,7 +379,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     }
   }, [isAuthenticated, accessToken]);
 
-  const handleSaveProgress = (newData: SheetData) => {
+  const handleSaveProgress = (newData: ModifiedSheet) => {
     setSheetData(newData);
     localStorage.setItem('google_drive_sheet_data', JSON.stringify(newData));
   };

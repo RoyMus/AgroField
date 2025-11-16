@@ -5,19 +5,17 @@ import { Save, Plus, Minus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCellStyling } from "@/hooks/useCellStyling";
 import { applyCellFormatToStyle, extractStylesFromSheetData } from "@/utils/formatConverters";
-import { SheetData, ModifiedCellData } from "@/types/cellTypes";
-import { useModifiedData } from "@/contexts/ModifiedDataContext";
+import { ModifiedSheet, ModifiedCell, getValue } from "@/types/cellTypes";
 import { set } from "date-fns";
 
 interface EditableSheetTableProps {
-  sheetData: SheetData;
-  onSaveProgress: (newData: SheetData) => void;
+  sheetData: ModifiedSheet;
+  onSaveProgress: (newData: ModifiedSheet) => void;
 }
 
 const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTableProps) => {
   const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
-  const [localData, setLocalData] = useState<string[][]>([]);
-  const { modifiedData, setModifiedData } = useModifiedData();
+  const [localData, setLocalData] = useState<ModifiedCell[][]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   
@@ -34,33 +32,10 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
   // Initialize local data from sheet data and apply modifications
   useEffect(() => {
     if (sheetData?.values) {
-      // Load initial styles from sheet data if available
-      if (sheetData.formatting) {
-        loadInitialStyles(sheetData.formatting);
-      }
-      
       const baseData = sheetData.values.map(row => [...row]); // Deep copy
-      // Apply modifications from localStorage
-      Object.values(modifiedData).forEach(modification => {
-        const { rowIndex, columnIndex, modifiedValue } = modification;
-        
-        // Extend rows if needed
-        while (baseData.length <= rowIndex) {
-          baseData.push([]);
-        }
-        
-        // Extend columns if needed
-        while (baseData[rowIndex].length <= columnIndex) {
-          baseData[rowIndex].push("");
-        }
-        
-        baseData[rowIndex][columnIndex] = modifiedValue;
-      });
-      
       setLocalData(baseData);
     }
-  }, [sheetData, modifiedData, loadInitialStyles, sheetData.formatting]);
-
+  }, []);
   // Handle cell value changes and sync with localStorage
   const handleCellChange = useCallback((rowIndex: number, colIndex: number, value: string) => {
     // Update local data
@@ -74,27 +49,15 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       
       // Extend columns if needed
       while (newData[rowIndex].length <= colIndex) {
-        newData[rowIndex].push("");
+        newData[rowIndex].push({ original: "", modified: null,formatting: {} });
       }
       
-      newData[rowIndex][colIndex] = value;
+      newData[rowIndex][colIndex].original = value;
       return newData;
     });
 
-    const originalValue = (sheetData.values[rowIndex] && sheetData.values[rowIndex][colIndex]) || "";
-    const newModifiedData = { ...modifiedData };
-
-    if (originalValue !== value) {
-      newModifiedData[`${rowIndex}-${colIndex}`] = {
-        originalValue,
-        modifiedValue: value,
-        rowIndex,
-        columnIndex: colIndex
-      };
-    } else {
-      delete newModifiedData[`${rowIndex}-${colIndex}`];
-    }
-  }, [sheetData, modifiedData]);
+    sheetData.values[rowIndex][colIndex].modified = value;
+  }, [sheetData]);
 
   const handleCellFocus = (rowIndex: number, colIndex: number) => {
     setSelectedCell({ rowIndex, colIndex });
@@ -131,7 +94,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     setLocalData(prev => {
       const updated = [...prev];
       updated.forEach(row => {
-        row.splice(insertIndex, 0, "");
+        row.splice(insertIndex, 0, { original: "", modified: null, formatting: {} });
       });
       return updated;
     });
@@ -154,79 +117,19 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
   // Save current modifications
   const saveModifications = async () => {
     if (isSaving) return;
-    // Create new modifications object
-  const newModifications: Record<string, ModifiedCellData> = {};
-    
-    // Create new sheet data values
-    // Create new sheet data values matching the current dimensions
-  const newSheetValues: string[][] = [];
-  
-  // Get current dimensions
-  const currentRows = localData.length;
-  const currentCols = Math.max(...localData.map(row => row.length), 0);
-  
-  // Initialize newSheetValues with current dimensions
-  for (let r = 0; r < currentRows; r++) {
-    newSheetValues[r] = new Array(currentCols).fill("");
-  }
-  
-  // Copy current values and track modifications
-  for (let r = 0; r < currentRows; r++) {
-    for (let c = 0; c < currentCols; c++) {
-      const currentValue = localData[r][c] || "";
-      const originalValue = (sheetData.values[r] && sheetData.values[r][c]) || "";
-      
-      // Set the value in new sheet data
-      newSheetValues[r][c] = currentValue;
-      
-      // Track modification if value is different from original
-      if (originalValue !== currentValue) {
-        newModifications[`${r}-${c}`] = {
-          originalValue,
-          modifiedValue: currentValue,
-          rowIndex: r,
-          columnIndex: c
-        };
-      }
-    }
-  }
-    const hasChanges = Object.keys(newModifications).length > 0;
-
-    if (!hasChanges) {
-      toast({
-        title: "No changes to save",
-        description: "There are no modifications to save.",
-      });
-      return;
-    }
-    
-    setIsSaving(true);
+  setIsSaving(true);
 
     try {
       // The context already saved to localStorage.
-      // We just need to save styles and inform the parent.
       saveStyles();
-
-      const updatedSheetData: SheetData = {
-        ...sheetData,
-        values: localData
-      };
-      setModifiedData(newModifications);
-      // Sync with other pages
-      onSaveProgress(updatedSheetData);
-      
-      toast({
-        title: "Progress Saved",
-        description: `Saved modifications for ${Object.keys(newModifications).length} cells with formatting`,
-      });
-    } finally {
+    } 
+    finally {
       setIsSaving(false);
     }
   };
 
   // Calculate maximum columns needed
   const maxCols = Math.max(...localData.map(row => row.length), 0);
-  const hasChanges = Object.keys(modifiedData).length > 0;
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
@@ -276,14 +179,11 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
         
         {/* Save Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:space-x-2">
-          <span className="text-sm text-gray-600 text-center sm:text-left">
-            {Object.keys(modifiedData).length} cells modified
-          </span>
           <Button
             onClick={saveModifications}
             variant="outline"
             className="h-10 text-sm"
-            disabled={!hasChanges || isSaving}
+            disabled={isSaving}
           >
             <Save className="w-4 h-4 mr-1" />
             <span>שמור התקדמות</span>
@@ -323,7 +223,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
                     return (
                       <td key={colIndex} className="border-r border-b p-0">
                         <Input
-                          value={row[colIndex] || ""}
+                          value={ row[colIndex] ? getValue(row[colIndex]) : "" }
                           onFocus={() => handleCellFocus(rowIndex, colIndex)}
                           onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
                           className={`border-0 rounded-none focus:ring-2 focus:ring-blue-500 focus:ring-inset h-8 text-sm ${
@@ -342,16 +242,6 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
             </tbody>
           </table>
         </div>
-      </div>
-
-      {/* Info */}
-      <div className="mt-4 text-sm text-gray-600">
-        <p>
-          <strong>Rows:</strong> {localData.length} | <strong>Columns:</strong> {maxCols} | <strong>Modified Cells:</strong> {Object.keys(modifiedData).length}
-        </p>
-        <p className="mt-1">
-          שינויים מסונכרנים עם תצוגת הגיליון ומאוחסנים מקומית. השתמש ב-"שמור לגיליון חדש" בתצוגה כדי ליצור גיליון Google עם השינויים שלך.
-        </p>
       </div>
     </div>
   );

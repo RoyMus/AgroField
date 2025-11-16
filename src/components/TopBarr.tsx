@@ -7,6 +7,7 @@ import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { useToast } from "@/hooks/use-toast";
 import { useModifiedData } from "@/contexts/ModifiedDataContext";
 import { set } from "date-fns";
+import { getValue } from "@/types/cellTypes";
 
 const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet, readSheet, isLoading}) => {
     const { toast } = useToast();
@@ -24,7 +25,7 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
         const topBarRow = sheetData.values[topBarRowIndex];
         let topBarIndex = 0;
         for (let i = 0; i < topBarRow.length; i++) {
-            if (topBarRow[i] != "")
+            if (getValue(topBarRow[i]).trim() != "")
             {
                 topBarIndex = i;
                 break;
@@ -36,7 +37,7 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
         }
         else
         {
-            setTopBar(sheetData.values[topBarRowIndex][topBarIndex]);
+            setTopBar(getValue(sheetData.values[topBarRowIndex][topBarIndex]));
         }
     }, []);
 
