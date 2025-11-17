@@ -5,10 +5,10 @@ import { Edit, Save } from "lucide-react";
 import SheetSelector from "./SheetSelector";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { useToast } from "@/hooks/use-toast";
-import { useModifiedData } from "@/contexts/ModifiedDataContext";
 import { set } from "date-fns";
+import { getValue } from "@/types/cellTypes";
 
-const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet, readSheet, isLoading}) => {
+const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet, loadSheetByName, isLoading}) => {
     const { toast } = useToast();
     const{
     isTemplate,
@@ -24,7 +24,7 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
         const topBarRow = sheetData.values[topBarRowIndex];
         let topBarIndex = 0;
         for (let i = 0; i < topBarRow.length; i++) {
-            if (topBarRow[i] != "")
+            if (getValue(topBarRow[i]).trim() != "")
             {
                 topBarIndex = i;
                 break;
@@ -36,21 +36,13 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
         }
         else
         {
-            setTopBar(sheetData.values[topBarRowIndex][topBarIndex]);
+            setTopBar(getValue(sheetData.values[topBarRowIndex][topBarIndex]));
         }
     }, []);
 
     const handleSheetChange = async (sheetName) => {
         if (selectedFile) {
-            try {
-                await readSheet(selectedFile.id, sheetName);
-            } catch (error) {
-                toast({
-                    title: "Failed to switch sheet",
-                    description: "Could not load the selected sheet",
-                    variant: "destructive"
-                });
-            }
+            await loadSheetByName(sheetName);
         }
     };
     
@@ -78,18 +70,6 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
                     </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    {onSaveProgress && (
-                        <Button
-                            onClick={onSaveProgress}
-                            variant="outline"
-                            size="sm"
-                            className="h-9 text-sm"
-                            dir="rtl"
-                        >
-                            <Save className="mr-1 h-4 w-4" />
-                            <span>שמור התקדמות</span>
-                        </Button>
-                    )}
                     {onSaveToNewSheet && (
                         <Button
                             onClick={onSaveToNewSheet}

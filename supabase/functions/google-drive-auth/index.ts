@@ -347,30 +347,40 @@ serve(async (req)=>{
             sheetData.rowData.forEach((row: any, rowIndex: number) => {
               if (row.values) {
                 row.values.forEach((cell: any, colIndex: number) => {
-                  if (cell.userEnteredFormat || cell.effectiveFormat) {
+                 if (cell.userEnteredFormat || cell.effectiveFormat) {
                     const format = cell.effectiveFormat || cell.userEnteredFormat;
-                    const convertedFormat: any = {};
-                    
-                    // Helper to convert RGB
-                    const normalizedRgbToHex = (red: number, green: number, blue: number) => {
-                      const toHex = (val: number) => {
+                    // Helper function to convert normalized RGB to hex
+                    const normalizedRgbToHex = (red: number, green: number, blue: number)=>{
+                      const toHex = (val: number)=>{
                         const hex = Math.round(Math.max(0, Math.min(255, val * 255))).toString(16);
                         return hex.length === 1 ? '0' + hex : hex;
                       };
                       return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
                     };
-                    
+                    // Convert Google Sheets format to our format with proper color handling
+                    const convertedFormat: any = {};
+                    // Handle background color - only if explicitly set and not white
                     if (format.backgroundColor) {
-                      const { red = 0, green = 0, blue = 0 } = format.backgroundColor;
-                      if (!(red >= 0.99 && green >= 0.99 && blue >= 0.99)) {
-                        convertedFormat.backgroundColor = normalizedRgbToHex(red, green, blue);
+                      const { red, green, blue } = format.backgroundColor;
+                      // Google Sheets may omit channels; default missing channels to 0
+                      const r = red ?? 0;
+                      const g = green ?? 0;
+                      const b = blue ?? 0;
+                      // Don't add white backgrounds as they're default
+                      if (!(r >= 0.99 && g >= 0.99 && b >= 0.99)) {
+                        convertedFormat.backgroundColor = normalizedRgbToHex(r, g, b);
                       }
                     }
                     if (format.textFormat) {
+                      // Handle text color - only if explicitly set and not black
                       if (format.textFormat.foregroundColor) {
-                        const { red = 0, green = 0, blue = 0 } = format.textFormat.foregroundColor;
-                        if (!(red <= 0.01 && green <= 0.01 && blue <= 0.01)) {
-                          convertedFormat.textColor = normalizedRgbToHex(red, green, blue);
+                        const { red, green, blue } = format.textFormat.foregroundColor;
+                        const r = red ?? 0;
+                        const g = green ?? 0;
+                        const b = blue ?? 0;
+                        // Don't add black text as it's default
+                        if (!(r <= 0.01 && g <= 0.01 && b <= 0.01)) {
+                          convertedFormat.textColor = normalizedRgbToHex(r, g, b);
                         }
                       }
                       if (format.textFormat.bold) convertedFormat.fontWeight = 'bold';
@@ -379,11 +389,37 @@ serve(async (req)=>{
                     }
                     if (format.horizontalAlignment) {
                       const alignment = format.horizontalAlignment.toLowerCase();
-                      if (['left', 'center', 'right'].includes(alignment)) {
+                      if ([
+                        'left',
+                        'center',
+                        'right'
+                      ].includes(alignment)) {
                         convertedFormat.textAlign = alignment;
                       }
                     }
-                    
+                    if (format.borders) {
+                      convertedFormat.borders = {};
+                      [
+                        'top',
+                        'bottom',
+                        'left',
+                        'right'
+                      ].forEach((side)=>{
+                        const border = format.borders[side];
+                        if (border && border.style !== 'NONE') {
+                          let color = '#000000';
+                          if (border.color) {
+                            const { red = 0, green = 0, blue = 0 } = border.color;
+                            color = normalizedRgbToHex(red, green, blue);
+                          }
+                          convertedFormat.borders[side] = {
+                            style: border.style.toLowerCase(),
+                            color,
+                            width: border.width || 1
+                          };
+                        }
+                      });
+                    }
                     if (Object.keys(convertedFormat).length > 0) {
                       formatting.push({
                         rowIndex,
@@ -402,7 +438,16 @@ serve(async (req)=>{
             sheetId: sheet.properties.sheetId,
             values: data.values || [[]],
             formatting,
-            properties: sheet.properties
+            properties: sheet.properties,
+            metadata: {
+              title: metadata.properties.title,
+              sheetCount: metadata.sheets.length,
+              availableSheets: metadata.sheets.map((sheet: any) => ({
+                id: sheet.properties.sheetId,
+                title: sheet.properties.title,
+                index: sheet.properties.index
+              }))
+            }
           };
         }));
 

@@ -8,7 +8,6 @@ import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { useToast } from "@/hooks/use-toast";
 import SaveProgressDialog from "./SaveProgressDialog";
 import { useNavigate } from "react-router-dom";
-import { useCellStyling } from "@/hooks/useCellStyling";
 
 
 const GoogleDriveFilePicker = () => {
@@ -26,10 +25,6 @@ const GoogleDriveFilePicker = () => {
     readSheet,
     logout 
   } = useGoogleDrive();
-  const
-  {
-    clearStyles
-  } = useCellStyling(sheetData?.sheetName);
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [isReadingSheet, setIsReadingSheet] = useState(false);
@@ -119,8 +114,6 @@ const GoogleDriveFilePicker = () => {
           title: "הקובץ נטען בהצלחה",
           description: "הקובץ נטען בהצלחה וכעת יהיה ניתן לערוך אותו",
         });
-        localStorage.removeItem('all_sheet_modifications'); // Clear modifications on fresh load
-        clearStyles(); // Clear cell styles on fresh load
         navigate("/page/workspace"); // Navigate to workspace after loading
       } catch (err) {
         console.error('Error reading sheet:', err);

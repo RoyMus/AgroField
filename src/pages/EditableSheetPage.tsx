@@ -2,14 +2,14 @@ import { useNavigate } from "react-router-dom";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { ModifiedDataProvider } from "@/contexts/ModifiedDataContext";
 import EditableSheetTable from "@/components/EditableSheetTable";
 import SheetSelector from "@/components/SheetSelector";
 import { useCallback } from "react";
+import { ModifiedCell } from "@/types/cellTypes";
 
 const EditableSheetPage = () => {
   const navigate = useNavigate();
-  const { sheetData, selectedFile, handleSaveProgress, readSheet, isLoading } = useGoogleDrive();
+  const { sheetData, selectedFile, handleSaveProgress, loadSheetByName, isLoading } = useGoogleDrive();
 
   const handleBackToInteractive = () => {
     navigate(-1); // Go back to previous page
@@ -17,15 +17,14 @@ const EditableSheetPage = () => {
 
   const handleSheetChange = useCallback(async (sheetName: string) => {
     if (selectedFile) {
-      try {
-        await readSheet(selectedFile.id, sheetName);
-        // Don't clear modifications - we're tracking all sheets now
-      } catch (error) {
-        console.error('Error switching sheet:', error);
-      }
+      await loadSheetByName(sheetName);
     }
-  }, [selectedFile, readSheet]);
+  }, [selectedFile]);
 
+  async function handleLocalDataSave(localData:ModifiedCell[][]) {
+    sheetData.values = [...localData];
+    await handleSaveProgress(sheetData);
+  }
   if (!sheetData || !selectedFile) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
@@ -81,9 +80,7 @@ const EditableSheetPage = () => {
             </div>
           </div>
           {/* Editable Table */}
-          <ModifiedDataProvider sheetName={sheetData.sheetName}>
-            <EditableSheetTable sheetData={sheetData} onSaveProgress={handleSaveProgress} />
-          </ModifiedDataProvider>
+            <EditableSheetTable sheetData={sheetData} onSaveProgress={handleLocalDataSave} />
         </div>
       </div>
     </div>

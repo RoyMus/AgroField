@@ -4,11 +4,10 @@ import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
 import TopBar from "@/components/TopBarr";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
-import { ModifiedDataProvider } from "@/contexts/ModifiedDataContext";
 
 const InteractivePage = () => {
   const navigate = useNavigate();
-  const { sheetData, selectedFile, clearSheetData, readSheet, isLoading} = useGoogleDrive();
+  const { sheetData, selectedFile, clearSheetData, loadSheetByName, isLoading, handleSaveProgress} = useGoogleDrive();
   const [saveProgressFunc, setSaveProgressFunc] = useState<(() => void) | null>(null);
   const [saveToNewSheetFunc, setSaveToNewSheetFunc] = useState<(() => void) | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -46,7 +45,7 @@ const InteractivePage = () => {
           <div className="space-y-6">
             {/* Header With File info */}
             {sheetData && (
-              <ModifiedDataProvider sheetName={sheetData.sheetName}>
+              <>
                 <TopBar 
                   sheetData={sheetData} 
                   handleGoHome={handleBackToHome} 
@@ -54,7 +53,7 @@ const InteractivePage = () => {
                   onOpenEditor={handleEditSheet}
                   onSaveProgress={saveProgressFunc}
                   onSaveToNewSheet={saveToNewSheetFunc}
-                  readSheet={readSheet}
+                  loadSheetByName={loadSheetByName}
                   isLoading={isLoading}
                 />
                 
@@ -63,8 +62,10 @@ const InteractivePage = () => {
                   sheetData={sheetData}
                   onSaveProgress={(func) => setSaveProgressFunc(() => func)}
                   onSaveToNewSheet={(func) => setSaveToNewSheetFunc(() => func)}
+                  handleSaveProgress={() => handleSaveProgress(sheetData)}
+                  selectedFile={selectedFile?.name}
                 />
-              </ModifiedDataProvider>
+              </>
             )}
           </div>
       </div>
