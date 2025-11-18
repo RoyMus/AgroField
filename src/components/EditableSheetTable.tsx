@@ -49,7 +49,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
 
   // Add new row
   const addRow = () => {
-    const newRow = new Array(maxCols).fill({ original: "", modified: null, formatting: {} });
+    const newRow = Array.from({ length: maxCols }, () => ({ original: "", modified: null, formatting: {} }));
     const insertIndex = selectedCell ? selectedCell.rowIndex + 1 : localData.length;
     setLocalData(prev => {
       const updated = [...prev];
