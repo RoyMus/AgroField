@@ -98,12 +98,6 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
   const saveModifications = async () => {
     if (isSaving) return;
     setIsSaving(true);
-    toast(
-      {
-        title: "השינויים נשמרו בהצלחה!",
-        description: "ההתקדמות שלך נשמרה בהצלחה",
-      }
-    );
     try {
       onSaveProgress(localData);
     } 
@@ -127,20 +121,11 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
 
   // Paste format to selected cell
   const pasteFormat = () => {
-    if (!selectedCell) {
-      toast({ title: "בחר תא", description: "בחר תא קודם להדבקת הפורמט" });
-      return;
-    }
-    if (!copiedFormat) {
-      toast({ title: "אין פורמט", description: "העתק פורמט מתא אחר קודם" });
-      return;
-    }
     setLocalData(prev => {
       const newData = prev.map(row => [...row]);
       newData[selectedCell.rowIndex][selectedCell.colIndex].formatting = { ...copiedFormat };
       return newData;
     });
-    toast({ title: "הפורמט הודבק", description: "הפורמט הודבק בהצלחה" });
   };
 
   // Calculate maximum columns needed
@@ -207,8 +192,10 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:space-x-2">
           <Button
             onClick={saveModifications}
-            variant="outline"
-            className="h-10 text-sm"
+            variant="default"
+            size="sm"
+            className="bg-green-600 hover:bg-green-700 h-9 text-sm"
+            dir="rtl"
             disabled={isSaving}
           >
             <Save className="w-4 h-4 mr-1" />

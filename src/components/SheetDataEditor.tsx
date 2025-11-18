@@ -360,16 +360,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     setUpdateCounter(prev => prev + 1);
   };
 
-  useEffect(() => {
-    if (recordingError) {
-      toast({
-        title: "Recording Error",
-        description: recordingError,
-        variant: "destructive",
-      });
-    }
-  }, [recordingError, toast]);
-
   if (dataRows.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">

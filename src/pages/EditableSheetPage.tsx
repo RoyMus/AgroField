@@ -51,17 +51,17 @@ const EditableSheetPage = () => {
             <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
               <Button 
                 onClick={handleBackToInteractive}
-                variant="outline" 
+                variant="destructive" 
                 size="sm"
                 className="h-10 w-full sm:w-auto"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                <span>Back to Preview</span>
+                <span>בטל שינויים</span>
               </Button>
               <div className="flex-1">
                 <div className="flex items-center gap-4 mb-2">
                   <h1 className="text-lg sm:text-xl font-semibold text-gray-800 truncate">
-                    Edit Sheet: {selectedFile.name}
+                    ערוך גיליון: {selectedFile.name}
                   </h1>
                   {sheetData.metadata?.availableSheets && (
                     <SheetSelector
@@ -73,9 +73,6 @@ const EditableSheetPage = () => {
                     />
                   )}
                 </div>
-                <p className="text-sm text-gray-600">
-                  Make changes locally without affecting the original sheet
-                </p>
               </div>
             </div>
           </div>

@@ -110,10 +110,6 @@ const GoogleDriveFilePicker = () => {
         console.log('Starting to read sheet for file:', selectedFile.id, 'sheet:', sheetName);
         await readSheet(selectedFile.id, sheetName);
         console.log('Sheet read completed successfully');
-        toast({
-          title: "הקובץ נטען בהצלחה",
-          description: "הקובץ נטען בהצלחה וכעת יהיה ניתן לערוך אותו",
-        });
         navigate("/page/workspace"); // Navigate to workspace after loading
       } catch (err) {
         console.error('Error reading sheet:', err);
