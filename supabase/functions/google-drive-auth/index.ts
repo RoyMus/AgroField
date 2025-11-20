@@ -146,8 +146,7 @@ serve(async (req)=>{
       }
       
       const selectedSheetName = targetSheet.properties.title;
-      const selectedSheetIndex = metadata.sheets.findIndex((sheet: any) => sheet.properties.title === selectedSheetName);
-      console.log('Reading data from sheet:', selectedSheetName, 'at index:', selectedSheetIndex);
+      console.log('Reading data from sheet:', selectedSheetName);
       // Get the data from the selected sheet
       const dataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(selectedSheetName)}`, {
         headers: {
@@ -160,8 +159,8 @@ serve(async (req)=>{
         throw new Error(`Failed to fetch sheet data: ${errorData.error?.message}`);
       }
       const sheetData = await dataResponse.json();
-      // Get formatting data with grid data
-      const formattingResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}?includeGridData=true`, {
+      // Get formatting data for the selected sheet only
+      const formattingResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}?ranges=${encodeURIComponent(selectedSheetName)}&fields=sheets(data(rowData(values(effectiveFormat,userEnteredFormat))))`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -170,7 +169,7 @@ serve(async (req)=>{
       if (formattingResponse.ok) {
         try {
           const formatData = await formattingResponse.json();
-          const sourceFormatting = formatData.sheets?.[selectedSheetIndex]?.data?.[0];
+          const sourceFormatting = formatData.sheets?.[0]?.data?.[0];
           // Extract cell formatting using utility function
           const cellStyles: any[] = [];
           if (sourceFormatting?.rowData) {
@@ -313,21 +312,21 @@ serve(async (req)=>{
       }
 
       try {
-        // Get spreadsheet metadata
+        // Get spreadsheet metadata (only sheet properties)
         const metadataResponse = await fetch(
-          `https://sheets.googleapis.com/v4/spreadsheets/${fileId}?includeGridData=true`,
+          `https://sheets.googleapis.com/v4/spreadsheets/${fileId}?fields=properties.title,sheets.properties`,
           {
             headers: { 'Authorization': `Bearer ${accessToken}` }
           }
         );
 
         if (!metadataResponse.ok) {
-          throw new Error(`Failed to fetch spreadsheet: ${metadataResponse.statusText}`);
+          throw new Error(`Failed to fetch spreadsheet metadata: ${metadataResponse.statusText}`);
         }
 
         const metadata = await metadataResponse.json();
         
-        const sheets = await Promise.all(metadata.sheets.map(async (sheet: any, sheetIndex: number) => {
+        const sheets = await Promise.all(metadata.sheets.map(async (sheet: any) => {
           const sheetName = sheet.properties.title;
           
           // Fetch values for this sheet
@@ -337,11 +336,19 @@ serve(async (req)=>{
               headers: { 'Authorization': `Bearer ${accessToken}` }
             }
           );
-
           const data = await dataResponse.json();
+
+          // Fetch formatting for this sheet
+          const formattingResponse = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${fileId}?ranges=${encodeURIComponent(sheetName)}&fields=sheets(data(rowData(values(effectiveFormat,userEnteredFormat))))`,
+            {
+              headers: { 'Authorization': `Bearer ${accessToken}` }
+            }
+          );
+          const formattingData = await formattingResponse.json();
           
           // Extract formatting
-          const sheetData = sheet.data?.[0];
+          const sheetData = formattingData.sheets?.[0]?.data?.[0];
           let formatting: any[] = [];
           if (sheetData?.rowData) {
             sheetData.rowData.forEach((row: any, rowIndex: number) => {
@@ -442,10 +449,10 @@ serve(async (req)=>{
             metadata: {
               title: metadata.properties.title,
               sheetCount: metadata.sheets.length,
-              availableSheets: metadata.sheets.map((sheet: any) => ({
-                id: sheet.properties.sheetId,
-                title: sheet.properties.title,
-                index: sheet.properties.index
+              availableSheets: metadata.sheets.map((s: any) => ({
+                id: s.properties.sheetId,
+                title: s.properties.title,
+                index: s.properties.index
               }))
             }
           };
