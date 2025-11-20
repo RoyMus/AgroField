@@ -116,7 +116,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       }
     }
     
-    sheetData.values[faucetRowIndex][faucetIndex].modified = `${faucetConductivity} - מוליכות ברז`;
+    sheetData.values[faucetRowIndex][faucetIndex + 1].modified = `${faucetConductivity}`;
         
     if (isTemplate) {
       sheetData.values[topBarRowIndex][topBarIndex].modified = `${place} - ${plant} - ${grower}`;
