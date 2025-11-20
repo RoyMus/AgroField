@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, SkipForward, Save, Type } from "lucide-react";
+import { ChevronLeft, ChevronRight, SkipForward, Save, Type, UnfoldVertical } from "lucide-react";
 import VoiceControls from "./VoiceControls";
 import SimpleDropdown from "./ui/simpleDropdown";
 import { useEffect, useState} from "react";
@@ -50,6 +50,8 @@ const CellEditor = ({
   isFirstCell,
   isLastCell,
 }: CellEditorProps) => {
+  try
+  {
   const isCurrentCellModified = isModified(dataRows[currentRowIndex][currentColumnIndex]);
   const [optionsHamama, setOptionsHamama] = useState([]);
   const [currentHamama, setCurrentHamama] = useState(null);
@@ -282,6 +284,7 @@ const CellEditor = ({
       </div>
     </div>
   );
+}catch (error) {}
 };
 
 export default CellEditor;
