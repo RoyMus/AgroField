@@ -147,7 +147,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         continue;
       }
       sum /= counter;
-      sheetData.values[dataRows.length - 1][i].modified = `${sum}`;
+      sheetData.values[dataRows.length - 1][i].modified = `${sum.toFixed(2)}`;
       const wantedResult = getValue(sheetData.values[dataRows.length - 2][i])?.split('-');
       let isBetween = false;
       if(wantedResult && wantedResult.length > 1)
