@@ -189,6 +189,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       }
     }
     else {
+      speak(value);
       setCurrentValue(value);
     }
     
