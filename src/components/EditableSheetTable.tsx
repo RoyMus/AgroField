@@ -8,9 +8,10 @@ import { ModifiedSheet, ModifiedCell, getValue, CellFormat } from "@/types/cellT
 interface EditableSheetTableProps {
   sheetData: ModifiedSheet;
   onSaveProgress: (newData: ModifiedCell[][]) => void;
+  onSaveAndGoBack?: () => void;
 }
 
-const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTableProps) => {
+const EditableSheetTable = ({ sheetData, onSaveProgress, onSaveAndGoBack }: EditableSheetTableProps) => {
   const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
   const [localData, setLocalData] = useState<ModifiedCell[][]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -100,6 +101,10 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     setIsSaving(true);
     try {
       onSaveProgress(localData);
+      // If onSaveAndGoBack callback is provided, call it after saving
+      if (onSaveAndGoBack) {
+        onSaveAndGoBack();
+      }
     } 
     finally {
       setIsSaving(false);
@@ -199,7 +204,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
             disabled={isSaving}
           >
             <Save className="w-4 h-4 mr-1" />
-            <span>שמור התקדמות</span>
+            <span>שמור שינויים</span>
           </Button>
           <Button
             onClick={copyFormat}

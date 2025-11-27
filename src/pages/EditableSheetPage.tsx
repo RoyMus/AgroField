@@ -77,7 +77,7 @@ const EditableSheetPage = () => {
             </div>
           </div>
           {/* Editable Table */}
-            <EditableSheetTable sheetData={sheetData} onSaveProgress={handleLocalDataSave} />
+            <EditableSheetTable sheetData={sheetData} onSaveProgress={handleLocalDataSave} onSaveAndGoBack={handleBackToInteractive} />
         </div>
       </div>
     </div>
