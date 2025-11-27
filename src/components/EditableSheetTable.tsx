@@ -199,7 +199,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
             disabled={isSaving}
           >
             <Save className="w-4 h-4 mr-1" />
-            <span>שמור התקדמות</span>
+            <span>שמור שינויים</span>
           </Button>
           <Button
             onClick={copyFormat}

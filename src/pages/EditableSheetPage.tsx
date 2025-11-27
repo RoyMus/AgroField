@@ -51,12 +51,11 @@ const EditableSheetPage = () => {
             <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
               <Button 
                 onClick={handleBackToInteractive}
-                variant="destructive" 
                 size="sm"
-                className="h-10 w-full sm:w-auto"
+                className="h-10 w-full sm:w-auto bg-blue-500 text-white hover:bg-blue-600 rounded"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                <span>בטל שינויים</span>
+                <span>חזור לדף הבית</span>
               </Button>
               <div className="flex-1">
                 <div className="flex items-center gap-4 mb-2">
