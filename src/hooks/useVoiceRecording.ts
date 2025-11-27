@@ -1,5 +1,5 @@
 
-import { useState, useRef,useCallback } from 'react';
+import { useState, useRef,useCallback, useEffect } from 'react';
 
 interface UseVoiceRecordingReturn {
   isRecording: boolean;
@@ -32,50 +32,8 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     "תשע": "9", "תשעה": "9",
   };
 
-  const translateWord = (word: string): string => {
-    const trimmed = word.trim();
-    return hebrewToNumberMap[trimmed] ?? trimmed;
-  };
-
-  const processTranscript = (transcript: string): void => {
-    if (!wordCallbackRef.current || !transcript.trim()) return;
-
-    // Clean the transcript - keep only Hebrew letters, numbers, and dots
-    const cleaned = transcript.replace(/[^\u0590-\u05FF0-9.\s]/g, '').trim();
-    if (!cleaned) return;
-
-    // Check if it looks like a decimal number (e.g., "אחת נקודה שתיים")
-    const decimalMatch = cleaned.match(/^(.+?)[\s.]+נקודה?[\s.]+(.+)$|^(.+?)[\s.]*\.[\s.]*(.+)$/);
-    if (decimalMatch) {
-      const firstPart = (decimalMatch[1] || decimalMatch[3])?.trim();
-      const secondPart = (decimalMatch[2] || decimalMatch[4])?.trim();
-
-      if (firstPart && secondPart) {
-        const firstNum = translateWord(firstPart);
-        const secondNum = translateWord(secondPart);
-
-        // Only treat as decimal if both parts are numbers
-        if (/^\d+$/.test(firstNum) && /^\d+$/.test(secondNum)) {
-          wordCallbackRef.current(`${firstNum}.${secondNum}`);
-          return;
-        }
-      }
-    }
-
-    // Process as individual words
-    const words = cleaned.split(/\s+/).filter(w => w && w !== 'נקודה');
-    words.forEach(word => {
-      const translated = translateWord(word);
-      if (translated && wordCallbackRef.current) {
-        wordCallbackRef.current(translated);
-      }
-    });
-  };
-
-  const startRecording = async () => {
-    try {
-      setError(null);
-      
+  useEffect(() => {
+        
       // Check if Speech Recognition is supported
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       
@@ -124,8 +82,52 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       };
       
       recognitionRef.current = recognition;
-      recognition.start();
-      
+  },[])
+
+  const translateWord = (word: string): string => {
+    const trimmed = word.trim();
+    return hebrewToNumberMap[trimmed] ?? trimmed;
+  };
+
+  const processTranscript = (transcript: string): void => {
+    if (!wordCallbackRef.current || !transcript.trim()) return;
+
+    // Clean the transcript - keep only Hebrew letters, numbers, and dots
+    const cleaned = transcript.replace(/[^\u0590-\u05FF0-9.\s]/g, '').trim();
+    if (!cleaned) return;
+
+    // Check if it looks like a decimal number (e.g., "אחת נקודה שתיים")
+    const decimalMatch = cleaned.match(/^(.+?)[\s.]+נקודה?[\s.]+(.+)$|^(.+?)[\s.]*\.[\s.]*(.+)$/);
+    if (decimalMatch) {
+      const firstPart = (decimalMatch[1] || decimalMatch[3])?.trim();
+      const secondPart = (decimalMatch[2] || decimalMatch[4])?.trim();
+
+      if (firstPart && secondPart) {
+        const firstNum = translateWord(firstPart);
+        const secondNum = translateWord(secondPart);
+
+        // Only treat as decimal if both parts are numbers
+        if (/^\d+$/.test(firstNum) && /^\d+$/.test(secondNum)) {
+          wordCallbackRef.current(`${firstNum}.${secondNum}`);
+          return;
+        }
+      }
+    }
+
+    // Process as individual words
+    const words = cleaned.split(/\s+/).filter(w => w && w !== 'נקודה');
+    words.forEach(word => {
+      const translated = translateWord(word);
+      if (translated && wordCallbackRef.current) {
+        wordCallbackRef.current(translated);
+      }
+    });
+  };
+
+  const startRecording = async () => {
+    try {
+      setError(null);
+      recognitionRef.current.start();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start speech recognition');
       console.error('Error starting speech recognition:', err);

@@ -143,7 +143,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
+    <div className="bg-white rounded-lg shadow-sm p-6" dir="rtl">
       {/* Toolbar - Mobile Optimized */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 space-y-4 lg:space-y-0">
         {/* Row/Column Actions */}
