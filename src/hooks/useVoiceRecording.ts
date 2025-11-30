@@ -1,5 +1,9 @@
 
 import { useState, useRef,useCallback, useEffect } from 'react';
+import PlaySound from './playSound';
+import startSound from '../voices/startSound.mp3';
+
+
 
 interface UseVoiceRecordingReturn {
   isRecording: boolean;
@@ -128,6 +132,8 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     try {
       setError(null);
       recognitionRef.current.start();
+      PlaySound(startSound);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start speech recognition');
       console.error('Error starting speech recognition:', err);
