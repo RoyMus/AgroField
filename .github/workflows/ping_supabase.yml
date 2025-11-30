@@ -1,19 +1,19 @@
-name: Ping Supabase Edge Function to Prevent Pausing
+name: Ping Supabase Edge Function
 
 on:
   schedule:
-    - cron: '0 9 * * 1,4' # Runs at 9:00 AM every Monday and Thursday
+    - cron: '0 9 * * 1,4' # Every Monday and Thursday at 9:00 AM UTC
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase Edge Function
+      - name: Ping Edge Function
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          FUNCTION_URL="$SUPABASE_URL/functions/v1/your_function_name"
+          FUNCTION_URL="$SUPABASE_URL/functions/v1/create-google-sheet"
 
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer $SUPABASE_KEY" \
