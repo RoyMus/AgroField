@@ -45,16 +45,15 @@ const SaveToNewSheetDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Save to New Google Sheet</DialogTitle>
+          <DialogTitle>שמור לקובץ חדש</DialogTitle>
           <DialogDescription>
-            Create a new Google Sheet with your modified changes. 
-            The new sheet will have the same permissions as the original.
+            צור קובץ חדש באותו המיקום עם אותן הרשאות
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="fileName">File Name</Label>
+            <Label htmlFor="fileName">שם הקובץ</Label>
             <Input
               id="fileName"
               placeholder={previousFileName}
@@ -67,13 +66,13 @@ const SaveToNewSheetDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleCancel} disabled={isLoading}>
-            Cancel
+            ביטול
           </Button>
           <Button 
             onClick={handleConfirm} 
             disabled={!fileName.trim() || isLoading}
           >
-            {isLoading ? "Creating..." : "Create New Sheet"}
+            {isLoading ? "יוצר..." : "צור קובץ חדש"}
           </Button>
         </DialogFooter>
       </DialogContent>

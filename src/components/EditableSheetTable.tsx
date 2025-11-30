@@ -102,6 +102,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       onSaveProgress(localData);
     } 
     finally {
+      toast({title: "נשמר בהצלחה", description: "השינויים נשמרו בהצלחה"})
       setIsSaving(false);
     }
   };

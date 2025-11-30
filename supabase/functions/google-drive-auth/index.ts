@@ -22,7 +22,7 @@ serve(async (req)=>{
     }
     if (action === 'getAuthUrl') {
       const redirectUri = `${req.headers.get('origin')}/`;
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + `client_id=${CLIENT_ID}&` + `redirect_uri=${encodeURIComponent(redirectUri)}&` + `response_type=code&` + `scope=${encodeURIComponent('https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets')}&` + `access_type=offline&` + `prompt=consent`;
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + `client_id=${CLIENT_ID}&` + `redirect_uri=${encodeURIComponent(redirectUri)}&` + `response_type=code&` + `scope=${encodeURIComponent('https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets')}&` + `access_type=offline&` + `prompt=consent`;
       console.log('Generated auth URL for redirect URI:', redirectUri);
       return new Response(JSON.stringify({
         authUrl

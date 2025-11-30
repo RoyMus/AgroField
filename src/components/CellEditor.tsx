@@ -191,7 +191,7 @@ const CellEditor = ({
             <h3 className="text-lg font-semibold text-foreground">
               {getValue(headers[currentColumnIndex])}
               {isCurrentCellModified && 
-                <span className="ml-2 text-sm text-green-600">(Modified)</span>
+                <span className="ml-2 text-sm text-green-600"> (ערוך)</span>
               }
             </h3>
             

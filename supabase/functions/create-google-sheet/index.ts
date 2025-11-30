@@ -22,7 +22,17 @@ serve(async (req)=>{
         }
       });
     }
-    
+        // Step 1: Get parent folder(s) of the original file (if provided)
+    let parentIds: string[] = [];
+    if (originalFileId) {
+      const fileResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${originalFileId}?fields=parents`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      if (fileResponse.ok) {
+        const fileData = await fileResponse.json();
+        parentIds = fileData.parents || [];
+      }
+    }
     // Create a new spreadsheet with multiple sheets
     const createResponse = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
       method: 'POST',
@@ -58,9 +68,23 @@ serve(async (req)=>{
         }
       });
     }
-    
     const newSpreadsheet = await createResponse.json();
     const newSpreadsheetId = newSpreadsheet.spreadsheetId;
+      // Move file
+    const moveRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${newSpreadsheetId}?addParents=${parentIds.join(",")}&fields=id,parents`,
+      {
+        method: "PATCH",
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+      }
+    );
+    if (!moveRes.ok) {
+      const errorData = await moveRes.text();
+      console.error('Failed to move spreadsheet:', errorData);
+    }
     const sheetIds = newSpreadsheet.sheets.map((s: any) => s.properties.sheetId);
 
     // Update each sheet with its data
