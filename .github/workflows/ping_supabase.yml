@@ -17,6 +17,7 @@ jobs:
           FUNCTION_URL="$SUPABASE_URL/functions/v1/create-google-sheet"
 
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X OPTIONS
             -H "Authorization: Bearer $SUPABASE_KEY" \
             "$FUNCTION_URL")
 
