@@ -8,7 +8,7 @@ on:
 jobs:
   ping:
     runs-on: ubuntu-latest
-    environment: production
+    environment: Production
     steps:
       - name: Ping Edge Function
         env:
