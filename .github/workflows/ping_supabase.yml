@@ -20,7 +20,8 @@ jobs:
             -X OPTIONS
             -H "Authorization: Bearer $SUPABASE_KEY" \
             "$FUNCTION_URL")
-
+          echo "$SUPABASE_URL"
+          echo "$FUNCTION_URL"
           if [ "$RESPONSE" -eq 200 ]; then
             echo "Supabase Edge Function ping successful."
           else
