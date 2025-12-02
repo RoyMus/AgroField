@@ -8,6 +8,7 @@ on:
 jobs:
   ping:
     runs-on: ubuntu-latest
+    environment: Production
     steps:
       - name: Ping Edge Function
         env:
@@ -17,9 +18,11 @@ jobs:
           FUNCTION_URL="$SUPABASE_URL/functions/v1/create-google-sheet"
 
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X OPTIONS
             -H "Authorization: Bearer $SUPABASE_KEY" \
             "$FUNCTION_URL")
-
+          echo "$SUPABASE_URL"
+          echo "$FUNCTION_URL"
           if [ "$RESPONSE" -eq 200 ]; then
             echo "Supabase Edge Function ping successful."
           else
