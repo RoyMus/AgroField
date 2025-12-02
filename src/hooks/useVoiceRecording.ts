@@ -131,8 +131,8 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   const startRecording = async () => {
     try {
       setError(null);
-      recognitionRef.current.start();
       PlaySound(startSound);
+      recognitionRef.current.start();
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start speech recognition');
