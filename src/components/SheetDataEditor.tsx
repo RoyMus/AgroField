@@ -293,6 +293,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
   const speak = async (text) => {
     if ("speechSynthesis" in window) {
+      // Cancel any previous queued speech
+      window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       // Try to find a Hebrew voice
       const hebrewVoice = voices.find((v) => v.lang.startsWith("he"));
