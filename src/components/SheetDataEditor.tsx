@@ -165,10 +165,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   }, [currentRowIndex, currentColumnIndex]);
 
   onWordRecognized((word: string) => {
-      handleInputChange(word,true);
+      handleInputChange(word);
   });
 
-  const handleInputChange = (value: string,fromVoice?: boolean) => {
+  const handleInputChange = (value: string) => {
     console.log('Recognized word:', value);
     if (value.includes("דלג") || value.includes("הבא")|| value.includes("אבא") || value.includes("דלק") || value.includes("דלת")) {
       skipCurrentValue();
@@ -189,10 +189,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       }
     }
     else {
-      if(fromVoice)
-      {
-        speak(value);
-      }
       setCurrentValue(value);
     }
     
