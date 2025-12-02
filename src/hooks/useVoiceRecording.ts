@@ -62,8 +62,10 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
-          finalTranscript += transcript;
-          
+          if(event.results[i].isFinal)
+          {
+            finalTranscript += transcript;
+          }
         }
         
         if (finalTranscript) {
