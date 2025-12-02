@@ -131,6 +131,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   const startRecording = async () => {
     try {
       setError(null);
+      PlaySound(startSound);
       recognitionRef.current.start();
 
     } catch (err) {
