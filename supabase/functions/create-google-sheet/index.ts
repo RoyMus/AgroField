@@ -54,7 +54,8 @@ serve(async (req)=>{
           properties: {
             title: sheet.sheetName || `Sheet${index + 1}`,
             sheetId: index,
-            index: index
+            index: index,
+            rightToLeft: true,
           }
         }))
       })
@@ -99,7 +100,7 @@ serve(async (req)=>{
       const sheetName = sheet.sheetName || `Sheet${i + 1}`;
       
       const updateResponse = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${newSpreadsheetId}/values/${encodeURIComponent(sheetName)}?valueInputOption=RAW`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${newSpreadsheetId}/values/${encodeURIComponent(sheetName)}?valueInputOption=USER_ENTERED`,
         {
           method: 'PUT',
           headers: {

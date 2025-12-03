@@ -148,7 +148,7 @@ serve(async (req)=>{
       const selectedSheetName = targetSheet.properties.title;
       console.log('Reading data from sheet:', selectedSheetName);
       // Get the data from the selected sheet
-      const dataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(selectedSheetName)}`, {
+      const dataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(selectedSheetName)}?valueRenderOption=FORMULA`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -331,7 +331,7 @@ serve(async (req)=>{
           
           // Fetch values for this sheet
           const dataResponse = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(sheetName)}`,
+            `https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(sheetName)}?valueRenderOption=FORMULA`,
             {
               headers: { 'Authorization': `Bearer ${accessToken}` }
             }
