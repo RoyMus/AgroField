@@ -22,7 +22,7 @@ const App = () => (
           <Route path="/page/:pageName" element={<InteractivePage />} />
           <Route path="/edit-sheet" element={<EditableSheetPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
+          <Route path="*" element={<Index />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
