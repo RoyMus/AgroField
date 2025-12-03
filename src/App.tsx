@@ -7,7 +7,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import InteractivePage from "./pages/InteractivePage";
 import EditableSheetPage from "./pages/EditableSheetPage";
-import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
