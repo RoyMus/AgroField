@@ -68,7 +68,7 @@ const SaveToNewSheetDialog = ({
           <Button variant="outline" onClick={handleCancel} disabled={isLoading}>
             ביטול
           </Button>
-          <Button 
+          <Button dir="rtl"
             onClick={handleConfirm} 
             disabled={!fileName.trim() || isLoading}
           >

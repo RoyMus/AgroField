@@ -228,7 +228,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         setShowSaveDialog(false);
         // Optionally open the new sheet
         if (result.url) {
-          window.open(result.url, '_blank');
+          window.location.href = result.url;
         }
       } else {
         toast({
