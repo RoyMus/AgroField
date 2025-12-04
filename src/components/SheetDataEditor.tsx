@@ -334,24 +334,50 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   };
 
   const moveToNextCell = () => {
-    if (currentColumnIndex < maxColIndex) {
-      setCurrentColumnIndex(currentColumnIndex + 1);
-    } else if (currentRowIndex < dataRows.length - 3) {
-      setCurrentRowIndex(currentRowIndex + 1);
-      setCurrentColumnIndex(minColIndex);
+    let nextRow = currentRowIndex;
+    let nextCol = currentColumnIndex;
+
+    do {
+      if (nextCol < maxColIndex) {
+        nextCol++;
+      } else if (nextRow < dataRows.length - 3) {
+        nextRow++;
+        nextCol = minColIndex;
+      } else {
+        // End of editable area
+        return;
+      }
+    } while (sheetData.values[nextRow]?.[nextCol]?.original?.startsWith('='));
+
+    if (currentRowIndex !== nextRow) {
       setRowChangeCounter(rowChangeCounter + 1);
     }
+    setCurrentRowIndex(nextRow);
+    setCurrentColumnIndex(nextCol);
     setCurrentCount(currentCount + 1);
   };
 
   const moveToPreviousCell = () => {
-    if (currentColumnIndex > minColIndex) {
-      setCurrentColumnIndex(currentColumnIndex - 1);
-    } else if (currentRowIndex > headersRowIndex) {
-      setCurrentRowIndex(currentRowIndex - 1);
-      setCurrentColumnIndex(maxColIndex);
+    let prevRow = currentRowIndex;
+    let prevCol = currentColumnIndex;
+
+    do {
+      if (prevCol > minColIndex) {
+        prevCol--;
+      } else if (prevRow > headersRowIndex) {
+        prevRow--;
+        prevCol = maxColIndex;
+      } else {
+        // Start of editable area
+        return;
+      }
+    } while (sheetData.values[prevRow]?.[prevCol]?.original?.startsWith('='));
+
+    if (currentRowIndex !== prevRow) {
       setRowChangeCounter(rowChangeCounter + 1);
     }
+    setCurrentRowIndex(prevRow);
+    setCurrentColumnIndex(prevCol);
   };
 
   const resetCurrentCell = () => {
