@@ -53,8 +53,10 @@ export interface ModifiedSheet {
   values: ModifiedCell[][];
 }
 
-export function getValue(cell: ModifiedCell): string {
-  return cell.modified ?? cell.original;
+export function getValue(cell: ModifiedCell | null | undefined): string {
+  if (!cell) return String('');
+  const value = cell.modified ?? cell.original ?? '';
+  return String(value);
 }
 
 export function isModified(cell: ModifiedCell): boolean {
