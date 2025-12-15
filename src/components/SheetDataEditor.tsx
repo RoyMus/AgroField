@@ -165,13 +165,13 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   }, [currentRowIndex, currentColumnIndex]);
 
   onWordRecognized((word: string) => {
-      handleInputChange(word);
+      handleInputChange(word,true);
   });
 
   const handleInputChange = (value: string,from_voice?: boolean) => {
     if(from_voice)
       speak(value);
-    
+
     console.log('Recognized word:', value);
     if (value.includes("דלג") || value.includes("הבא")|| value.includes("אבא") || value.includes("דלק") || value.includes("דלת")) {
       skipCurrentValue();
