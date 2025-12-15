@@ -69,7 +69,7 @@ export function createModifiedSheet(sheetData: SheetData): ModifiedSheet {
     metadata: sheetData.metadata,
     values: sheetData.values.map((row, rIdx) =>
       row.map((value, cIdx) => ({
-        original: value,
+        original: String(value),
         modified: null,
         formatting:
           sheetData.formatting?.find(
