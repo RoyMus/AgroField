@@ -115,8 +115,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         break;
       }
     }
-    
-    sheetData.values[faucetRowIndex][faucetIndex + 1].modified = `${faucetConductivity}`;
+    if(faucetConductivity != "")
+    {
+      sheetData.values[faucetRowIndex][faucetIndex + 1].modified = `${faucetConductivity}`;
+    }
         
     if (isTemplate) {
       sheetData.values[topBarRowIndex][topBarIndex].modified = `${place} - ${plant} - ${grower}`;
