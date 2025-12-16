@@ -171,9 +171,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   });
 
   const handleInputChange = (value: string,from_voice?: boolean) => {
-    if(from_voice)
-      speak(value);
-
     console.log('Recognized word:', value);
     if (value.includes("דלג") || value.includes("הבא")|| value.includes("אבא") || value.includes("דלק") || value.includes("דלת")) {
       skipCurrentValue();
@@ -189,12 +186,19 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     }
     else if (value.includes("שמור")) {
       if(currentValue) {
-        recordCurrentValue();
+        recordCurrentValue(currentValue);
         setCurrentValue("");
       }
     }
     else {
       setCurrentValue(value);
+      if(from_voice)
+      {
+        speak(value, () => {
+          recordCurrentValue(value);
+          setCurrentValue("");
+        });
+      }
     }
     
   };
@@ -254,9 +258,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     }
   };
 
-  const recordCurrentValue = async () => {
+  const recordCurrentValue = async (value) => {
     // Save the current value
-    sheetData.values[currentRowIndex][currentColumnIndex].modified = currentValue;
+    sheetData.values[currentRowIndex][currentColumnIndex].modified = value;
     handleSaveProgress();
     toast({
       title: "Value Recorded",
@@ -296,41 +300,41 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     loadVoices();
   }, []);
 
-  const speak = async (text) => {
-    if ("speechSynthesis" in window) {
-      // Cancel any previous queued speech
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      // Try to find a Hebrew voice
-      const hebrewVoice = voices.find((v) => v.lang.startsWith("he"));
-      if (hebrewVoice) {
-        utterance.voice = hebrewVoice;
-      }
-      else
-      {
-        return;
-      }
-     
-      window.speechSynthesis.speak(utterance);
-      if (isRecording) {
-        utterance.onstart = () =>
-          { 
-            if(window.speechSynthesis.speaking)
-            {
-              stopRecording();
-              isSpeakingState = true;
-            }
-          }
-        utterance.onend = () =>
-        {
-            if(isSpeakingState)
-            {
-              startRecording();
-              isSpeakingState = false;
-            }
-        }
-      }
+  const speak = async (text, onEndCallback?) => {
+    if (!("speechSynthesis" in window)) {
+      if (onEndCallback) onEndCallback();
+      return;
     }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+
+    // Try to find a Hebrew voice
+    const hebrewVoice = voices.find((v) => v.lang.startsWith("he"));
+    if (!hebrewVoice) {
+      if (onEndCallback) onEndCallback();
+      return;
+    }
+    utterance.voice = hebrewVoice;
+
+    utterance.onstart = () => {
+      if (isRecording) {
+        stopRecording();
+        isSpeakingState = true;
+      }
+    };
+
+    utterance.onend = () => {
+      if (isSpeakingState) {
+        startRecording();
+        isSpeakingState = false;
+      }
+      if (onEndCallback) {
+        onEndCallback();
+      }
+    };
+
+    window.speechSynthesis.speak(utterance);
   };
 
 
@@ -435,7 +439,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         onSaveToNewSheet={handleSaveToNewSheet}
         onMovePrevious={moveToPreviousCell}
         onSkipCurrent={skipCurrentValue}
-        onRecordValue={recordCurrentValue}
+        onRecordValue={() => recordCurrentValue(currentValue)}
         isFirstCell={isFirstCell}
         isLastCell={isLastCell}
       />
