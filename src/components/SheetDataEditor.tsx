@@ -162,8 +162,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
   useEffect(() => {
     // Only set current cell value when position changes
-    speak(getValue(headers[currentColumnIndex]));
-    setCurrentValue("");
+    speak(getValue(headers[currentColumnIndex]), () => {
+      setCurrentValue("");
+    });
   }, [currentRowIndex, currentColumnIndex]);
 
   onWordRecognized((word: string) => {
@@ -194,9 +195,13 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       setCurrentValue(value);
       if(from_voice)
       {
+        const rowIndex = currentRowIndex;
+        const colIndex = currentColumnIndex;
         speak(value, () => {
-          recordCurrentValue(value);
-          setCurrentValue("");
+          if (currentRowIndex === rowIndex && currentColumnIndex === colIndex) {
+            recordCurrentValue(value);
+            setCurrentValue("");
+          }
         });
       }
     }
