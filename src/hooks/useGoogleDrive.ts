@@ -180,6 +180,15 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   };
 
   const makeApiCall = async (apiCall: (token: string) => Promise<any>, retryOnError = true): Promise<any> => {
+    const execute = async (token: string) => {
+      const result = await apiCall(token);
+      // If the apiCall returns a supabase-like error object, throw it to be caught by the catch block.
+      if (result && result.error) {
+        throw result.error;
+      }
+      return result;
+    };
+
     try {
       if (!accessToken) {
         console.error('makeApiCall: No access token available');
@@ -187,21 +196,17 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       }
 
       console.log('makeApiCall: Attempting API call with token');
-      return await apiCall(accessToken);
-      
+      return await execute(accessToken);
     } catch (err: any) {
       // If we get a 401 or 403, try refreshing the token
-      if (retryOnError && refreshToken && 
-          (err.message?.includes('401') || 
-           err.message?.includes('403') || 
-           err.message?.includes('Invalid Credentials'))) {
+      if (retryOnError && refreshToken) {
         
         console.log('makeApiCall: Token expired, attempting refresh');
         const newToken = await refreshAccessToken();
         
         if (newToken) {
           console.log('makeApiCall: Retrying with new token');
-          return await apiCall(newToken);
+          return await execute(newToken);
         } else {
           console.error('makeApiCall: Token refresh failed');
           throw new Error('Failed to refresh authentication. Please log in again.');
