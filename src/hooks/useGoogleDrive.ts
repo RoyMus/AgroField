@@ -224,16 +224,18 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       setIsLoading(true);
       setError(null);
       
-      const { data, error } = await supabase.functions.invoke('google-drive-auth', {
-        body: { 
-          action: 'listFiles', 
-          accessToken: accessToken 
-        }
+      await makeApiCall(async (token: string) => {
+        const { data, error } = await supabase.functions.invoke('google-drive-auth', {
+          body: { 
+            action: 'listFiles', 
+            accessToken: token
+          }
+        });
+
+        if (error) throw error;
+
+        setFiles(data.files || []);
       });
-
-      if (error) throw error;
-
-      setFiles(data.files || []);
       
     } catch (err) {
       console.error('Failed to load files:', err);
@@ -330,13 +332,13 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   };
 
   const createNewSheet = async (fileName: string): Promise<{ success: boolean; url?: string; error?: string }> => {
-    if (!accessToken || !selectedFile) {
-      return { success: false, error: 'Missing authentication or file data' };
+    if (!selectedFile) {
+      return { success: false, error: 'Missing file data' };
     }
     const processedSheets = localStorage.getItem('google_drive_sheet_data');
-      if (!processedSheets) {
-        return { success: false, error: 'No sheet data to save' };
-      }
+    if (!processedSheets) {
+      return { success: false, error: 'No sheet data to save' };
+    }
     const parsedSheets = JSON.parse(processedSheets);
     const sheets = Object.entries(parsedSheets).map(([key, sheet]: [string, ModifiedSheet]) => {
       const values = sheet.values.map((row: any[]) =>
@@ -362,13 +364,15 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       });
     try
     {
-      const { data, error } = await supabase.functions.invoke('create-google-sheet', {
-        body: {
-          accessToken,
-          fileName,
-          sheets: sheets,
-          originalFileId: selectedFile.id
-        }
+      const { data, error } = await makeApiCall(async (token: string) => {
+        return await supabase.functions.invoke('create-google-sheet', {
+          body: {
+            accessToken: token,
+            fileName,
+            sheets: sheets,
+            originalFileId: selectedFile.id
+          }
+        });
       });
 
       if (error) {
