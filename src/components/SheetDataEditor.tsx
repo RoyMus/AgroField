@@ -162,7 +162,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
   useEffect(() => {
     // Only set current cell value when position changes
-    speak(getValue(headers[currentColumnIndex]), () => {
+    speak(getValue(headers[currentColumnIndex]),true, () => {
       setCurrentValue("");
     });
   }, [currentRowIndex, currentColumnIndex]);
@@ -197,7 +197,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       {
         const rowIndex = currentRowIndex;
         const colIndex = currentColumnIndex;
-        speak(value, () => {
+        speak(value, false, () => {
           if (currentRowIndex === rowIndex && currentColumnIndex === colIndex) {
             recordCurrentValue(value);
             setCurrentValue("");
@@ -305,7 +305,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     loadVoices();
   }, []);
 
-  const speak = async (text, onEndCallback?) => {
+  const speak = async (text, activateMic: boolean, onEndCallback?) => {
     if (!("speechSynthesis" in window)) {
       if (onEndCallback) onEndCallback();
       return;
@@ -323,17 +323,18 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     utterance.voice = hebrewVoice;
 
     utterance.onstart = () => {
-      if (isRecording) {
+      if (isRecording || activateMic) {
         stopRecording();
         isSpeakingState = true;
       }
     };
 
     utterance.onend = () => {
-      if (isSpeakingState) {
+      if (isSpeakingState && activateMic) {
         startRecording();
-        isSpeakingState = false;
       }
+      isSpeakingState = false;
+
       if (onEndCallback) {
         onEndCallback();
       }
