@@ -13,6 +13,7 @@ interface CellEditorProps {
   rowChangeCounter: number;
   headers: ModifiedCell[];
   dataRows: ModifiedCell[][];
+  headersRowIndex: number;
   currentValue: string;
   isRecording: boolean;
   onInputChange: (value: string) => void;
@@ -35,6 +36,7 @@ const CellEditor = ({
   rowChangeCounter,
   headers,
   dataRows,
+  headersRowIndex,
   currentValue,
   isRecording,
   onInputChange,
@@ -79,14 +81,14 @@ const CellEditor = ({
         optionsGidul.pop();
 
       
-      for (let i = 0; i < dataRows.length; i++)
+      for (let i = headersRowIndex; i < dataRows.length; i++)
       {
         if (dataRows[i][0] != null && getValue(dataRows[i][0]).trim() == curHam && dataRows[i][1] != null && !optionsMagof.includes(getValue(dataRows[i][1]).trim()))
           optionsMagof.push(getValue(dataRows[i][1]).trim());
       }
       setOptionsMagof([...optionsMagof]);
-      
-      for (let i = 0; i < dataRows.length; i++)
+
+      for (let i = headersRowIndex; i < dataRows.length; i++)
       {
         if (dataRows[i][0] != null && getValue(dataRows[i][0]).trim() == curHam && dataRows[i][1] != null && getValue(dataRows[i][1]).trim() == curMag)
         {
@@ -99,8 +101,8 @@ const CellEditor = ({
     const handleSelectHamama = (selectedValue) => {
       while (optionsMagof.length != 0)
         optionsMagof.pop();
-      
-      for (let i = 0; i < dataRows.length; i++)
+
+      for (let i = headersRowIndex; i < dataRows.length; i++)
       {
         if (dataRows[i][0] != null && getValue(dataRows[i][0]).trim() == selectedValue.trim() && dataRows[i][1] != null && !optionsMagof.includes(getValue(dataRows[i][1]).trim()))
         {
@@ -116,7 +118,7 @@ const CellEditor = ({
       while (optionsGidul.length != 0)
         optionsGidul.pop();
 
-      for (let i = 0; i < dataRows.length; i++)
+      for (let i = headersRowIndex; i < dataRows.length; i++)
       {
         if (dataRows[i][0] != null && getValue(dataRows[i][0]).trim() == dropDownValueOfHamama.trim() && dataRows[i][1] != null && getValue(dataRows[i][1]).trim() == selectedValue.trim())
         {
@@ -136,7 +138,7 @@ const CellEditor = ({
     };
 
     const handleSelectGidul = (selectedValue) => {
-      for (let i = 0; i < dataRows.length; i++)
+      for (let i = headersRowIndex; i < dataRows.length; i++)
       {
         if (dataRows[i][0] != null && getValue(dataRows[i][0]).trim() == dropDownValueOfHamama.trim() && getValue(dataRows[i][1]).trim() == dropDownValueOfMagof.trim() && getValue(dataRows[i][3]).trim() == selectedValue)
         {
@@ -168,16 +170,30 @@ const CellEditor = ({
     }, [currentMagof]);
 
     useEffect (() => {
-      for (let i = 0; i < dataRows.length; i++)
+      // Reset all dropdown states when dataRows change
+      setOptionsHamama([]);
+      setCurrentHamama(null);
+      setOptionsMagof([]);
+      setCurrentMagof(null);
+      setOptionsGidul([]);
+      setDropDownHamama(null);
+      setDropDownMagof(null);
+      setDropDownGidul(null);
+
+      // Recalculate hamama options
+      const newOptionsHamama = [];
+      for (let i = headersRowIndex; i < dataRows.length; i++)
       {
-        if (dataRows[i][0] != null && getValue(dataRows[i][0]) != "" && getValue(dataRows[i][0]) != "חממה" && !optionsHamama.includes(getValue(dataRows[i][0]).trim()))
+        if (dataRows[i][0] != null && getValue(dataRows[i][0]) != "" && !newOptionsHamama.includes(getValue(dataRows[i][0]).trim()))
         {
-          optionsHamama.push(getValue(dataRows[i][0]).trim());
+          newOptionsHamama.push(getValue(dataRows[i][0]).trim());
         }
-        setOptionsHamama([...optionsHamama]);
       }
-      handleSelectHamama(optionsHamama[0]);
-    }, []);
+      setOptionsHamama(newOptionsHamama);
+
+      // Update dropdowns based on current row
+      handleChangedRow();
+    }, [dataRows]);
     
     useEffect (() => {
       handleChangedRow();

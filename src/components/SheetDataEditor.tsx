@@ -434,6 +434,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         rowChangeCounter={rowChangeCounter}
         headers={headers}
         dataRows={dataRows}
+        headersRowIndex={headersRowIndex}
         currentValue={currentValue}
         isRecording={isRecording}
         onInputChange={handleInputChange}
