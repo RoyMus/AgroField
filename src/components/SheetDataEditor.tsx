@@ -89,12 +89,16 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   // Track if we've initialized to prevent infinite loops
   const hasInitialized = useRef(false);
   
-  // Initialize template data once on mount
+  // Initialize template data and reset position when sheet changes
   useEffect(() => {
-    if (hasInitialized.current) return;
-    
     const sheetName = sheetData?.sheetName;
     if (!sheetName) return;
+
+    // Reset position to initial state when sheet changes
+    setCurrentRowIndex(headersRowIndex);
+    setCurrentColumnIndex(minColIndex);
+
+    if (hasInitialized.current) return;
 
     const topBarRowIndex = 0;
     const faucetRowIndex = 1;
