@@ -61,6 +61,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       else
       {
         var lastindex = i - 1;
+        break;
       }
     }
   }
