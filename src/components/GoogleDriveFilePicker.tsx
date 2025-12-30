@@ -22,7 +22,7 @@ const GoogleDriveFilePicker = () => {
     error,
     authenticate, 
     selectFile, 
-    readSheet,
+    loadAndCopySheet,
     logout 
   } = useGoogleDrive();
   const { toast } = useToast();
@@ -107,12 +107,12 @@ const GoogleDriveFilePicker = () => {
     if (selectedFile) {
       try {
         setIsReadingSheet(true);
-        console.log('Starting to read sheet for file:', selectedFile.id, 'sheet:', sheetName);
-        await readSheet(selectedFile.id, sheetName);
-        console.log('Sheet read completed successfully');
+        console.log('Starting to load and copy sheet for file:', selectedFile.id, 'sheet:', sheetName);
+        await loadAndCopySheet(sheetName);
+        console.log('Sheet load and copy completed successfully');
         navigate("/page/workspace"); // Navigate to workspace after loading
       } catch (err) {
-        console.error('Error reading sheet:', err);
+        console.error('Error loading and copying sheet:', err);
         toast({
           title: "שגיאה בטעינת הקובץ",
           description: "טעינת הקובץ נכשלה, אנא נסה שוב",

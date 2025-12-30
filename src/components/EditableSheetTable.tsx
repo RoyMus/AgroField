@@ -36,7 +36,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       
       // Extend columns if needed
       while (newData[rowIndex].length <= colIndex) {
-        newData[rowIndex].push({ original: "", modified: null,formatting: {} });
+        newData[rowIndex].push({ original: "", modified: null,formatting: {} , saved:false});
       }
       newData[rowIndex][colIndex].modified = value;
       return newData;
@@ -49,7 +49,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
 
   // Add new row
   const addRow = () => {
-    const newRow = Array.from({ length: maxCols }, () => ({ original: "", modified: null, formatting: {} }));
+    const newRow = Array.from({ length: maxCols }, () => ({ original: "", modified: null, formatting: {}, saved:false }));
     const insertIndex = selectedCell ? selectedCell.rowIndex + 1 : localData.length;
     setLocalData(prev => {
       const updated = [...prev];
@@ -76,7 +76,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     setLocalData(prev => {
       const updated = [...prev];
       updated.forEach(row => {
-        row.splice(insertIndex, 0, { original: "", modified: null, formatting: {} });
+        row.splice(insertIndex, 0, { original: "", modified: null, formatting: {}, saved:false });
       });
       return updated;
     });

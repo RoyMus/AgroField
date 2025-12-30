@@ -23,7 +23,7 @@ const EditableSheetPage = () => {
 
   async function handleLocalDataSave(localData:ModifiedCell[][]) {
     sheetData.values = [...localData];
-    await handleSaveProgress(sheetData);
+    await handleSaveProgress(sheetData,true);
   }
   if (!sheetData || !selectedFile) {
     return (

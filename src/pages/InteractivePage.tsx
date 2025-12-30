@@ -38,18 +38,7 @@ const InteractivePage = () => {
   const handleEditSheet = () => {
     navigate("/edit-sheet");
   };
-  const cleanFileName = (name: string): string => {
-    const dateRegex =
-      /\b(?:\d{1,2}[-./]\d{1,2}[-./]\d{2,4}|\d{2,4}[-./]\d{1,2}[-./]\d{1,2})\b/g;
-  
-    const cleaned = name
-      .replace(dateRegex, " ")
-      .trim()
-      .replace(/\s\s+/g, " "); // collapse extra spaces
-  
-    return cleaned;
-  };
-  
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
       <div className="container mx-auto px-6 py-8">
@@ -73,8 +62,8 @@ const InteractivePage = () => {
                   sheetData={sheetData}
                   onSaveProgress={(func) => setSaveProgressFunc(() => func)}
                   onSaveToNewSheet={(func) => setSaveToNewSheetFunc(() => func)}
-                  handleSaveProgress={() => handleSaveProgress(sheetData)}
-                  selectedFile={cleanFileName(selectedFile?.name || '')}
+                  handleSaveProgress={() => handleSaveProgress(sheetData,false)}
+                  copiedFileId={selectedFile?.id}
                 />
               </>
             )}

@@ -3,6 +3,20 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 };
+
+function toA1(row: number, col: number) {
+  let column = col;
+  let letter = '';
+
+  while (column > 0) {
+    const rem = (column - 1) % 26;
+    letter = String.fromCharCode(65 + rem) + letter;
+    column = Math.floor((column - 1) / 26);
+  }
+
+  return `${letter}${row}`;
+}
+
 serve(async (req)=>{
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -13,7 +27,7 @@ serve(async (req)=>{
   try {
     // Read the request body once and store it
     const requestBody = await req.json();
-    const { action, code, accessToken, fileId, sheetName } = requestBody;
+    const { action, code, accessToken, fileId, sheetName, newFileName, rangeUpdates, refreshAll, refreshedSheetData } = requestBody;
     console.log('Request action:', action);
     const CLIENT_ID = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID');
     const CLIENT_SECRET = Deno.env.get('GOOGLE_DRIVE_CLIENT_SECRET');
@@ -91,6 +105,141 @@ serve(async (req)=>{
         }
       });
     }
+
+    if (action === 'copyFile') {
+      console.log('Copying file:', fileId, 'to new file:', newFileName);
+
+      if (!accessToken) {
+        throw new Error('Access token is required for copyFile action');
+      }
+
+      const copyResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/copy`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newFileName }),
+      });
+
+      const copyData = await copyResponse.json();
+      if (!copyResponse.ok) {
+        console.error('Failed to copy file:', copyData);
+        throw new Error(`Failed to copy file: ${JSON.stringify(copyData.error)}`);
+      }
+
+      console.log('Successfully copied file:', copyData.id);
+      try {
+        const permissionsResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+        if (permissionsResponse.ok) {
+          const permissions = await permissionsResponse.json();
+          // Copy each permission to the new file (skip owner permission)
+          for (const permission of permissions.permissions || []){
+            if (permission.role !== 'owner') {
+              await fetch(`https://www.googleapis.com/drive/v3/files/${copyData.id}/permissions`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  role: permission.role,
+                  type: permission.type,
+                  ...permission.emailAddress && {
+                    emailAddress: permission.emailAddress
+                  },
+                  ...permission.domain && {
+                    domain: permission.domain
+                  }
+                })
+              });
+            }
+          }
+        }
+      } catch (permissionError) {
+        console.error('Failed to copy permissions:', permissionError);
+      }
+      return new Response(JSON.stringify({ copiedFile: copyData }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (action === 'updateSheet') {
+      console.log('Updating sheet:', fileId, 'sheet:', sheetName);
+
+      if (!accessToken) {
+        throw new Error('Access token is required for updateSheet action');
+      }
+
+      // 1. Get spreadsheet metadata to check dimensions
+      const metadataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}?fields=sheets(properties(sheetId,title,gridProperties))`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      if (!metadataResponse.ok) {
+        const errorData = await metadataResponse.json();
+        console.error('Failed to fetch sheet metadata:', errorData);
+        throw new Error(`Failed to fetch sheet metadata: ${errorData.error?.message}`);
+      }
+      const spreadsheetData = await metadataResponse.json();
+      const sheet = spreadsheetData.sheets.find((s: any) => s.properties.title === sheetName);
+
+      if (!sheet) {
+        throw new Error(`Sheet "${sheetName}" not found`);
+      }
+      let updateResponse = null;
+      if(refreshAll){
+        updateResponse = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(sheetName)}?valueInputOption=USER_ENTERED`,
+          {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              values: refreshedSheetData
+            }),
+          }
+        );
+      } else {
+      // 4. Proceed with updating the values
+        updateResponse = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values:batchUpdate`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              valueInputOption: 'USER_ENTERED',
+              data: rangeUpdates.map((u: any) => ({
+                range: `'${sheetName}'!${toA1(u.row, u.column)}`,
+                values: [[u.value]],
+              })),
+            }),
+          }
+        );
+      }
+
+      const updateData = await updateResponse.json();
+      if (!updateResponse.ok) {
+        console.error('Failed to update sheet:', updateData);
+        throw new Error(`Failed to update sheet: ${JSON.stringify(updateData.error)}`);
+      }
+
+      console.log('Successfully updated sheet.');
+      return new Response(JSON.stringify({ success: true, updatedRange: updateData.updatedRange }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
     if (action === 'listFiles') {
       console.log('Listing Google Drive files');
       

@@ -41,6 +41,7 @@ export interface ModifiedCell {
   original: string;
   modified: string | null;
   formatting: CellFormat;
+  saved: boolean;
 }
 
 export interface ModifiedSheet {
@@ -71,6 +72,7 @@ export function createModifiedSheet(sheetData: SheetData): ModifiedSheet {
       row.map((value, cIdx) => ({
         original: String(value),
         modified: null,
+        saved : true,
         formatting:
           sheetData.formatting?.find(
             s => s.rowIndex === rIdx && s.columnIndex === cIdx

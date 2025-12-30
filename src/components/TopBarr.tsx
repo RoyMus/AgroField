@@ -71,7 +71,7 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     {onSaveToNewSheet && (
-                        <Button
+                        <Button 
                             onClick={onSaveToNewSheet}
                             variant="default"
                             size="sm"
@@ -79,7 +79,7 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
                             dir="rtl"
                         >
                             <Save className="mr-1 h-4 w-4" />
-                            <span>שמור לגיליון חדש</span>
+                            <span>שמור ופתח מיקום קובץ</span>
                         </Button>
                     )}
                     <Button

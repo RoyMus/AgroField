@@ -15,10 +15,10 @@ interface SheetDataEditorProps {
   onSaveProgress?: (saveFunc: () => void) => void;
   onSaveToNewSheet?: (saveFunc: () => void) => void;
   handleSaveProgress: () => void;
-  selectedFile: string;
+  copiedFileId: string;
 }
 
-const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSaveProgress, selectedFile }: SheetDataEditorProps) => {
+const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSaveProgress, copiedFileId }: SheetDataEditorProps) => {
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && getValue(sheetData.values[i][0]).trim() != "")
     {
@@ -71,11 +71,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const [currentColumnIndex, setCurrentColumnIndex] = useState(minColIndex);
   const [currentCount, setCurrentCount] = useState(1);
   const [currentValue, setCurrentValue] = useState<string>("");
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const { isRecording, startRecording, stopRecording, error: recordingError, onWordRecognized } = useVoiceRecording();
-  const { createNewSheet } = useGoogleDrive();
   const dataRows = sheetData.values.slice(0, commentIndex);
   var isSpeakingState = false;
   const{
@@ -154,6 +151,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       }
       sum /= counter;
       sheetData.values[dataRows.length - 1][i].modified = `${sum.toFixed(2)}`;
+      sheetData.values[dataRows.length - 1][i].saved = false;
       const wantedResult = getValue(sheetData.values[dataRows.length - 2][i])?.split('-');
       let isBetween = false;
       if(wantedResult && wantedResult.length > 1)
@@ -222,54 +220,22 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     toast({
       title: "Progress Saved",
       description: `Saved modifications`,
-    });
+    });``
     
   }, [toast]);
 
-  const handleSaveToNewSheet = useCallback(() => {
+  const handleOpenSheet = async () => {
     calcAverages();
     handleSaveProgress();
-    setShowSaveDialog(true);
-    
-  }, [toast]);
-
-  const handleCreateNewSheet = async (fileName: string) => {
-    setIsSaving(true);
-    try {
-      const result = await createNewSheet(fileName);
-      
-      if (result.success) {
-        toast({
-          title: "Sheet Created Successfully",
-          description: `Created new Google Sheet: ${fileName}`,
-        });
-        setShowSaveDialog(false);
-        // Optionally open the new sheet
-        if (result.url) {
-          window.location.href = result.url;
-        }
-      } else {
-        toast({
-          title: "Failed to Create Sheet",
-          description: result.error || "An error occurred while creating the sheet.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred while creating the sheet.",
-        variant: "destructive",
-      });
-      console.error('Error creating new sheet:', error);
-    } finally {
-      setIsSaving(false);
+    if (copiedFileId) {
+      window.location.href = `https://docs.google.com/spreadsheets/d/${copiedFileId}/edit`;
     }
   };
 
   const recordCurrentValue = async (value) => {
     // Save the current value
     sheetData.values[currentRowIndex][currentColumnIndex].modified = value;
+    sheetData.values[currentRowIndex][currentColumnIndex].saved = false;
     handleSaveProgress();
     toast({
       title: "Value Recorded",
@@ -369,6 +335,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     } while (sheetData.values[nextRow]?.[nextCol]?.original?.startsWith('='));
 
     if (currentRowIndex !== nextRow) {
+      calcAverages();
       setRowChangeCounter(rowChangeCounter + 1);
     }
     setCurrentRowIndex(nextRow);
@@ -418,17 +385,14 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const isLastCell = currentRowIndex === dataRows.length - 1 && currentColumnIndex === headers.length - 1;
   const isFirstCell = currentRowIndex === 0 && currentColumnIndex === 0;
 
-  // Set up the callback functions for the parent component
   useEffect(() => {
     if (onSaveProgress) {
       onSaveProgress(saveModifications);
     }
     if (onSaveToNewSheet) {
-      onSaveToNewSheet(handleSaveToNewSheet);
+      onSaveToNewSheet(handleOpenSheet);
     }
-  }, [onSaveProgress, onSaveToNewSheet, saveModifications, handleSaveToNewSheet]);
-
-  const [formattedDate] = useState(() => new Date().toLocaleDateString());
+  }, []);
   return (
     <div className="space-y-6">
       {/* Current Cell Editor */}
@@ -447,22 +411,12 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         onStopRecording={stopVoiceRecording}
         onResetCell={resetCurrentCell}
         onSaveProgress={saveModifications}
-        onSaveToNewSheet={handleSaveToNewSheet}
+        onSaveToNewSheet={handleOpenSheet}
         onMovePrevious={moveToPreviousCell}
         onSkipCurrent={skipCurrentValue}
         onRecordValue={() => recordCurrentValue(currentValue)}
         isFirstCell={isFirstCell}
         isLastCell={isLastCell}
-      />
-      
-      {/* Save to New Sheet Dialog */}
-      <SaveToNewSheetDialog
-        open={showSaveDialog}
-        onOpenChange={setShowSaveDialog}
-        onConfirm={handleCreateNewSheet}
-        onCancel={() => setShowSaveDialog(false)}
-        previousFileName={`${selectedFile} ${formattedDate}`}
-        isLoading={isSaving}
       />
     </div>
   );
