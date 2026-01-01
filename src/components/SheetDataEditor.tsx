@@ -246,9 +246,17 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     moveToNextCell();
   };
 
+  function unlockSpeechIOS() {
+  if (!window.speechSynthesis) return;
+
+    const utterance = new SpeechSynthesisUtterance('');
+    utterance.volume = 0; // silent
+    window.speechSynthesis.speak(utterance);
+  }
   const startVoiceRecording = async () => {
     if (!isRecording) {
       console.log('Starting voice recording...');
+      unlockSpeechIOS();
       await startRecording();
       toast({
         title: "Recording Started",

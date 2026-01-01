@@ -130,33 +130,44 @@ serve(async (req)=>{
 
       console.log('Successfully copied file:', copyData.id);
       try {
-        const permissionsResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
+        const permissionsResponse = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${fileId}/permissions?` +
+          new URLSearchParams({
+            supportsAllDrives: 'true',
+            fields: 'permissions(id,type,role,emailAddress,domain)'
+          }),
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
           }
-        });
+        );
+
         if (permissionsResponse.ok) {
           const permissions = await permissionsResponse.json();
           // Copy each permission to the new file (skip owner permission)
           for (const permission of permissions.permissions || []){
             if (permission.role !== 'owner') {
-              await fetch(`https://www.googleapis.com/drive/v3/files/${copyData.id}/permissions`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${accessToken}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  role: permission.role,
-                  type: permission.type,
-                  ...permission.emailAddress && {
-                    emailAddress: permission.emailAddress
+              await fetch(
+                `https://www.googleapis.com/drive/v3/files/${copyData.id}/permissions?` +
+                new URLSearchParams({
+                  supportsAllDrives: 'true',
+                  sendNotificationEmail: 'false'
+                }),
+                {
+                  method: 'POST',
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
                   },
-                  ...permission.domain && {
-                    domain: permission.domain
-                  }
-                })
-              });
+                  body: JSON.stringify({
+                    role: permission.role,
+                    type: permission.type,
+                    ...(permission.emailAddress && { emailAddress: permission.emailAddress }),
+                    ...(permission.domain && { domain: permission.domain })
+                  })
+                }
+              );
             }
           }
         }
