@@ -113,7 +113,20 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
             continue;
           }
           
-          const url = `https://gsi.galcon-smart.com/api/api/External/21060/${programID}/ProgramSettings?Key=1wtDCaf98RtKVP1y7XAfRWzJM`;
+          // Get externalID from row 2, column 1
+          const externalIDValue = getValue(sheetData.values[2][1]);
+          const externalID = parseInt(externalIDValue);
+          
+          if (isNaN(externalID)) {
+            console.warn(`Invalid externalID: ${externalIDValue}`);
+            continue;
+          }
+          
+          if (true) {
+            console.log(`Debugging API call - externalID: ${externalID}, programID: ${programID}`);
+          }
+          
+          const url = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${programID}/ProgramSettings?Key=1wtDCaf98RtKVP1y7XAfRWzJM`;
           
           const response = await fetch(url);
           const data = await response.json();
