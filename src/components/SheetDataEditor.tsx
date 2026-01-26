@@ -89,6 +89,68 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   
   // Track if we've initialized to prevent infinite loops
   const hasInitialized = useRef(false);
+  const lastFetchedSheet = useRef<string | null>(null);
+  const hasFetched = useRef(false);
+  
+  // Fetch data when sheet changes (once per sheet)
+  useEffect(() => {
+    const sheetName = sheetData?.sheetName;
+    if (!sheetName || hasFetched.current) return;
+
+    hasFetched.current = true;
+
+    // Make API call to retrieve data for each row in the editable area
+    const fetchSheetData = async () => {
+      try {
+        // Loop through each row in the editable area
+        for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 3; rowIndex++) {
+          // Get programID from the third column (index 2)
+          const programIDValue = getValue(sheetData.values[rowIndex][2]);
+          const programID = parseInt(programIDValue);
+          
+          if (isNaN(programID)) {
+            console.warn(`Invalid programID at row ${rowIndex}: ${programIDValue}`);
+            continue;
+          }
+          
+          const url = `https://gsi.galcon-smart.com/api/api/External/21060/${programID}/ProgramSettings?Key=1wtDCaf98RtKVP1y7XAfRWzJM`;
+          
+          const response = await fetch(url);
+          const data = await response.json();
+          
+          if (data.Result && data.Body) {
+            const extractedData = {
+              daysinterval: data.Body.CyclicDayProgram?.DaysInterval,
+              hourlyCyclesPerDay: data.Body.HourlyCycle?.HourlyCyclesPerDay,
+              waterDuration: data.Body.ValveInProgram?.[0]?.WaterDuration,
+            };
+            console.log(`Fetched program settings for row ${rowIndex} (programID: ${programID}):`, extractedData);
+            
+            // Insert calculated values to columns
+            if (extractedData.daysinterval !== undefined && extractedData.hourlyCyclesPerDay !== undefined) {
+              // Insert product of daysinterval * hourlyCyclesPerDay to column index 6
+              const dailyIterations = extractedData.daysinterval * extractedData.hourlyCyclesPerDay;
+              sheetData.values[rowIndex][6].modified = dailyIterations.toString();
+            }
+            
+            // Insert waterDuration converted from seconds to minutes to column index 5
+            if (extractedData.waterDuration !== undefined) {
+              const durationInMinutes = extractedData.waterDuration / 60;
+              sheetData.values[rowIndex][5].modified = durationInMinutes.toString();
+            }
+          } else {
+            console.error(`API returned unsuccessful result for row ${rowIndex} (programID: ${programID})`);
+          }
+        }
+        // Save progress after all updates
+        handleSaveProgress();
+      } catch (error) {
+        console.error(`Error fetching data for sheet ${sheetName}:`, error);
+      }
+    };
+
+    fetchSheetData();
+  }, [sheetData?.sheetName]);
   
   // Initialize template data and reset position when sheet changes
   useEffect(() => {
