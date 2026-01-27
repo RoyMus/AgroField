@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
 import TopBar from "@/components/TopBarr";
@@ -10,7 +10,20 @@ const InteractivePage = () => {
   const { sheetData, selectedFile, clearSheetData, loadSheetByName, isLoading, handleSaveProgress} = useGoogleDrive();
   const [saveProgressFunc, setSaveProgressFunc] = useState<(() => void) | null>(null);
   const [saveToNewSheetFunc, setSaveToNewSheetFunc] = useState<(() => void) | null>(null);
+  const [fetchSheetDataFunc, setFetchSheetDataFunc] = useState<(() => void) | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
+  const handleSaveProgressSetter = useCallback((func: () => void) => {
+    setSaveProgressFunc(() => func);
+  }, []);
+
+  const handleSaveToNewSheetSetter = useCallback((func: () => void) => {
+    setSaveToNewSheetFunc(() => func);
+  }, []);
+
+  const handleFetchSheetDataSetter = useCallback((func: () => void) => {
+    setFetchSheetDataFunc(() => func);
+  }, []);
 
   // Track when loading completes
   useEffect(() => {
@@ -57,22 +70,24 @@ const InteractivePage = () => {
             {/* Header With File info */}
             {sheetData && (
               <>
-                <TopBar 
-                  sheetData={sheetData} 
-                  handleGoHome={handleBackToHome} 
-                  selectedFile={selectedFile} 
+                <TopBar
+                  sheetData={sheetData}
+                  handleGoHome={handleBackToHome}
+                  selectedFile={selectedFile}
                   onOpenEditor={handleEditSheet}
                   onSaveProgress={saveProgressFunc}
                   onSaveToNewSheet={saveToNewSheetFunc}
+                  onFetchSheetData={fetchSheetDataFunc}
                   loadSheetByName={loadSheetByName}
                   isLoading={isLoading}
                 />
                 
                 {/* Sheet Data Editor */}
-                <SheetDataEditor 
+                <SheetDataEditor
                   sheetData={sheetData}
-                  onSaveProgress={(func) => setSaveProgressFunc(() => func)}
-                  onSaveToNewSheet={(func) => setSaveToNewSheetFunc(() => func)}
+                  onSaveProgress={handleSaveProgressSetter}
+                  onSaveToNewSheet={handleSaveToNewSheetSetter}
+                  onFetchSheetData={handleFetchSheetDataSetter}
                   handleSaveProgress={() => handleSaveProgress(sheetData)}
                   selectedFile={cleanFileName(selectedFile?.name || '')}
                 />

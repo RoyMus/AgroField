@@ -1,14 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { getData } from "@/hooks/getData";
 import { useState, useEffect } from 'react';
-import { Edit, Save } from "lucide-react";
+import { Edit, Save, Download } from "lucide-react";
 import SheetSelector from "./SheetSelector";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { useToast } from "@/hooks/use-toast";
 import { set } from "date-fns";
 import { getValue } from "@/types/cellTypes";
 
-const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet, loadSheetByName, isLoading}) => {
+const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet, onFetchSheetData, loadSheetByName, isLoading}) => {
     const { toast } = useToast();
     const{
     isTemplate,
@@ -70,6 +70,18 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
                     </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    {onFetchSheetData && (
+                        <Button
+                            onClick={onFetchSheetData}
+                            variant="default"
+                            size="sm"
+                            className="bg-purple-600 hover:bg-purple-700 h-9 text-sm"
+                            dir="rtl"
+                        >
+                            <Download className="mr-1 h-4 w-4" />
+                            <span>טען נתוני תוכנית</span>
+                        </Button>
+                    )}
                     {onSaveToNewSheet && (
                         <Button
                             onClick={onSaveToNewSheet}
