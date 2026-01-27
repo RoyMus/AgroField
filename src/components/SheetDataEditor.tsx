@@ -108,11 +108,11 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       }
     } else if (header.includes('ליטר לקוב מורלוב')) {
       if (extractedData.fertQuant !== undefined) {
-        return extractedData.fertQuant.toString();
+        //return extractedData.fertQuant.toString();
       }
     } else if (header.includes('קוב לדונם ליום')) {
       if (extractedData.waterQuantity !== undefined) {
-        return extractedData.waterQuantity.toString();
+        //return extractedData.waterQuantity.toString();
       }
     } else if (header.includes('תכנית דשן')) {
       if (extractedData.fertProgram !== undefined) {
