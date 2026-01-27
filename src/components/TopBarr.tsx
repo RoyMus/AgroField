@@ -79,7 +79,7 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
                             dir="rtl"
                         >
                             <Download className="mr-1 h-4 w-4" />
-                            <span>טען נתוני תוכנית</span>
+                            <span>טען נתונים</span>
                         </Button>
                     )}
                     {onSaveToNewSheet && (
