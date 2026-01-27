@@ -93,26 +93,33 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   
   const getDataForHeader = (headerText: string, extractedData: any, extractedData2?: any) => {
     const header = headerText?.toLowerCase()?.trim();
-    switch (header) {
-      case 'דקות להשקיה':
-      case 'דקות להשקייה':
-        if (extractedData.waterDuration !== undefined) {
-          return (extractedData.waterDuration / 60).toString(); // Convert seconds to minutes
-        }
-        break;
-      case 'השקיות ביום':
-        if (extractedData.daysinterval !== undefined && extractedData.hourlyCyclesPerDay !== undefined) {
-          return (extractedData.daysinterval * extractedData.hourlyCyclesPerDay).toString();
-        }
-        break;
-      case 'ספיקה בפועל':
-        if (extractedData2?.NominalFlow !== undefined) {
-          return extractedData2.NominalFlow.toString();
-        }
-        break;
-      default:
-        return null;
+
+    if (header.includes('דקות להשקיה') || header.includes('דקות להשקייה')) {
+      if (extractedData.waterDuration !== undefined) {
+        return (extractedData.waterDuration / 60).toString(); // Convert seconds to minutes
+      }
+    } else if (header.includes('השקיות ביום')) {
+      if (extractedData.daysinterval !== undefined && extractedData.hourlyCyclesPerDay !== undefined) {
+        return (extractedData.daysinterval * extractedData.hourlyCyclesPerDay).toString();
+      }
+    } else if (header.includes('ספיקה בפועל')) {
+      if (extractedData2?.NominalFlow !== undefined) {
+        return extractedData2.NominalFlow.toString();
+      }
+    } else if (header.includes('ליטר לקוב מורלוב')) {
+      if (extractedData.fertQuant !== undefined) {
+        return extractedData.fertQuant.toString();
+      }
+    } else if (header.includes('קוב לדונם ליום')) {
+      if (extractedData.waterQuantity !== undefined) {
+        return extractedData.waterQuantity.toString();
+      }
+    } else if (header.includes('תכנית דשן')) {
+      if (extractedData.fertProgram !== undefined) {
+        return extractedData.fertProgram.toString();
+      }
     }
+
     return null;
   };
 
@@ -153,6 +160,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
             hourlyCyclesPerDay: data.Body.HourlyCycle?.HourlyCyclesPerDay,
             waterDuration: data.Body.ValveInProgram?.[0]?.WaterDuration,
             valveID: data.Body.ValveInProgram?.[0]?.ValveID,
+            fertQuant: data.Body.ValveInProgram?.[0]?.FertQuant,
+            waterQuantity: data.Body.ValveInProgram?.[0]?.WaterQuantity,
+            fertProgram: data.Body.ValveInProgram?.[0]?.FertProgram,
           };
 
           if (extractedData.valveID !== undefined) {
