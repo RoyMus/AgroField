@@ -126,79 +126,82 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const fetchSheetData = useCallback(async () => {
     const sheetName = sheetData?.sheetName;
     if (!sheetName) return;
+    const externalIDValue = getValue(sheetData.values[2][1]);
+    const prefix = externalIDValue.split(':')[0];
+    const externalIDString = externalIDValue.split(':')[1];
+    const externalID = parseInt(externalIDString);
 
+    
     try {
       const headerRow = sheetData.values[found_headers_row_index] || [];
+      if (prefix === 'gsi-galcon' && !isNaN(externalID)) {
+        for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 3; rowIndex++) {
 
-      for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 3; rowIndex++) {
+          const programIDValue = getValue(sheetData.values[rowIndex][2]);
+          const programID = parseInt(programIDValue);
 
-        // Get programID from the third column (index 2)
-        const programIDValue = getValue(sheetData.values[rowIndex][2]);
-        const programID = parseInt(programIDValue);
-
-        if (isNaN(programID)) {
-          continue;
-        }
-
-        const externalIDValue = getValue(sheetData.values[2][1]);
-        const externalID = parseInt(externalIDValue);
-
-        if (isNaN(externalID)) {
-          continue;
-        }
-
-        const url = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${programID}/ProgramSettings?Key=1wtDCaf98RtKVP1y7XAfRWzJM`;
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        let extractedData2: any = null;
-
-        if (data.Result && data.Body) {
-          const extractedData = {
-            daysinterval: data.Body.CyclicDayProgram?.DaysInterval,
-            hourlyCyclesPerDay: data.Body.HourlyCycle?.HourlyCyclesPerDay,
-            waterDuration: data.Body.ValveInProgram?.[0]?.WaterDuration,
-            valveID: data.Body.ValveInProgram?.[0]?.ValveID,
-            fertQuant: data.Body.ValveInProgram?.[0]?.FertQuant,
-            waterQuantity: data.Body.ValveInProgram?.[0]?.WaterQuantity,
-            fertProgram: data.Body.ValveInProgram?.[0]?.FertProgram,
-          };
-
-          if (extractedData.valveID !== undefined) {
-            const url2 = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${extractedData.valveID}/ValveSettings?Key=1wtDCaf98RtKVP1y7XAfRWzJM`;
-
-            const response2 = await fetch(url2);
-            const data2 = await response2.json();
-
-            if (data2.Result && data2.Body) {
-              extractedData2 = {
-                NominalFlow: data2.Body.SetupNominalFlow,
-              };
-            }
+          if (isNaN(programID)) {
+            continue;
           }
 
-          for (let colIndex = 4; colIndex < minColIndex - 1; colIndex++) {
-            const headerText = getValue(headerRow[colIndex]);
-            const dataToInsert = getDataForHeader(headerText, extractedData, extractedData2);
+          const url = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${programID}/ProgramSettings?Key=1wtDCaf98RtKVP1y7XAfRWzJM`;
 
-            if (dataToInsert !== null) {
-              sheetData.values[rowIndex][colIndex].modified = dataToInsert;
+          const response = await fetch(url);
+          const data = await response.json();
+
+          let extractedData2: any = null;
+
+          if (data.Result && data.Body) {
+            const extractedData = {
+              daysinterval: data.Body.CyclicDayProgram?.DaysInterval,
+              hourlyCyclesPerDay: data.Body.HourlyCycle?.HourlyCyclesPerDay,
+              waterDuration: data.Body.ValveInProgram?.[0]?.WaterDuration,
+              valveID: data.Body.ValveInProgram?.[0]?.ValveID,
+              fertQuant: data.Body.ValveInProgram?.[0]?.FertQuant,
+              waterQuantity: data.Body.ValveInProgram?.[0]?.WaterQuantity,
+              fertProgram: data.Body.ValveInProgram?.[0]?.FertProgram,
+            };
+
+            if (extractedData.valveID !== undefined) {
+              const url2 = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${extractedData.valveID}/ValveSettings?Key=1wtDCaf98RtKVP1y7XAfRWzJM`;
+
+              const response2 = await fetch(url2);
+              const data2 = await response2.json();
+
+              if (data2.Result && data2.Body) {
+                extractedData2 = {
+                  NominalFlow: data2.Body.SetupNominalFlow,
+                };
+              }
+            }
+
+            for (let colIndex = 4; colIndex < minColIndex - 1; colIndex++) {
+              const headerText = getValue(headerRow[colIndex]);
+              const dataToInsert = getDataForHeader(headerText, extractedData, extractedData2);
+
+              if (dataToInsert !== null) {
+                sheetData.values[rowIndex][colIndex].modified = dataToInsert;
+              }
             }
           }
         }
+      } else {
+        toast({
+          title: "API לא זוהתה פלטפורמת",
+          description: ""
+        });
+        return;
       }
       handleSaveProgress();
-      //toast({
-        //title: "נטען בהצלחה",
-        //description: "Program settings have been retrieved and updated in the sheet.",
-      //});
+      toast({
+        title: "נתונים נאספו בהצלחה",
+        description: "",
+      });
     } catch (error) {
-      //toast({
-        //title: "Error Fetching Data",
-        //description: "Failed to retrieve program settings from the API.",
-       // variant: "destructive",
-      //});
+      toast({
+        title: "שגיאה באסיפת נתונים",
+        description: "",
+      });
     }
   }, [sheetData, headersRowIndex, dataRows.length, handleSaveProgress, toast, found_headers_row_index, minColIndex, maxColIndex]);
   
