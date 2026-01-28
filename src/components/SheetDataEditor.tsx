@@ -126,6 +126,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const fetchSheetData = useCallback(async () => {
     const sheetName = sheetData?.sheetName;
     if (!sheetName) return;
+    sheetData.values[2][2].modified = new Date().toLocaleTimeString('he-IL', { timeZone: 'Asia/Jerusalem' });
+    sheetData.values[2][3].modified = new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' }); 
     const externalIDValue = getValue(sheetData.values[2][1]);
     const prefix = externalIDValue.split(':')[0];
     const externalIDString = externalIDValue.split(':')[1];
