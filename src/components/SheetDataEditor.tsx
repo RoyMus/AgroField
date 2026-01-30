@@ -15,11 +15,11 @@ interface SheetDataEditorProps {
   onSaveProgress?: (saveFunc: () => void) => void;
   onSaveToNewSheet?: (saveFunc: () => void) => void;
   handleSaveProgress: () => void;
-  selectedFile: string;
+  copiedFileId: string;
   onFetchSheetData?: (fetchFunc: () => void) => void;
 }
 
-const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSaveProgress, selectedFile, onFetchSheetData }: SheetDataEditorProps) => {
+const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSaveProgress, copiedFileId, onFetchSheetData }: SheetDataEditorProps) => {
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && getValue(sheetData.values[i][0]).trim() != "")
     {

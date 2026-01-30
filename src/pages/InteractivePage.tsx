@@ -77,8 +77,8 @@ const InteractivePage = () => {
                   onSaveProgress={handleSaveProgressSetter}
                   onSaveToNewSheet={handleSaveToNewSheetSetter}
                   onFetchSheetData={handleFetchSheetDataSetter}
-                  handleSaveProgress={() => handleSaveProgress(sheetData)}
-                  selectedFile={cleanFileName(selectedFile?.name || '')}
+                  handleSaveProgress={() => handleSaveProgress(sheetData,false)}
+                  copiedFileId={selectedFile?.id}
                 />
               </>
             )}
