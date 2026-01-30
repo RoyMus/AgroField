@@ -88,33 +88,32 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     faucetConductivity,
   } = getData(false, null, null, null, null, null);
   
-  // Track if we've initialized to prevent infinite loops
   const hasInitialized = useRef(false);
   
-  const getDataForHeader = (headerText: string, extractedData: any, extractedData2?: any) => {
-    const header = headerText?.toLowerCase()?.trim();
+  const getDataForHeader = (colIndex: number, extractedData: any, extractedData2?: any) => {
+    const idFromAboveRow = getValue(sheetData.values[found_headers_row_index - 1][colIndex]);
 
-    if (header.includes('דקות להשקיה') || header.includes('דקות להשקייה')) {
+    if (idFromAboveRow === 'id1') {
       if (extractedData.waterDuration !== undefined) {
-        return (extractedData.waterDuration / 60).toString(); // Convert seconds to minutes
+        return (extractedData.waterDuration / 60).toString();
       }
-    } else if (header.includes('השקיות ביום')) {
+    } else if (idFromAboveRow === 'id2') {
       if (extractedData.daysinterval !== undefined && extractedData.hourlyCyclesPerDay !== undefined) {
         return (extractedData.daysinterval * extractedData.hourlyCyclesPerDay).toString();
       }
-    } else if (header.includes('ספיקה בפועל')) {
+    } else if (idFromAboveRow === 'id3') { // ספיקה בפועל
       if (extractedData2?.NominalFlow !== undefined) {
         return extractedData2.NominalFlow.toString();
       }
-    } else if (header.includes('ליטר לקוב מורלוב')) {
+    } else if (idFromAboveRow === 'id4') {
       if (extractedData.fertQuant !== undefined) {
         //return extractedData.fertQuant.toString();
       }
-    } else if (header.includes('קוב לדונם ליום')) {
+    } else if (idFromAboveRow === 'id5') {
       if (extractedData.waterQuantity !== undefined) {
         //return extractedData.waterQuantity.toString();
       }
-    } else if (header.includes('תכנית דשן')) {
+    } else if (idFromAboveRow === 'id6') {
       if (extractedData.fertProgram !== undefined) {
         return extractedData.fertProgram.toString();
       }
@@ -127,9 +126,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     const sheetName = sheetData?.sheetName;
     if (!sheetName) return;
     sheetData.values[2][2].modified = new Date().toLocaleTimeString('he-IL', { timeZone: 'Asia/Jerusalem' });
-    sheetData.values[2][2].formatting = { backgroundColor: '#ffff00ff' };
-    sheetData.values[2][3].modified = new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' }); 
-    sheetData.values[2][3].formatting = { backgroundColor: '#ffff00ff' };
+    sheetData.values[2][2].formatting = { ...sheetData.values[2][2].formatting, backgroundColor: '#ffff00ff' };
+    sheetData.values[2][3].modified = new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
+    sheetData.values[2][3].formatting = { ...sheetData.values[2][3].formatting, backgroundColor: '#ffff00ff' };
     const externalIDValue = getValue(sheetData.values[2][1]);
     const prefix = externalIDValue.split(':')[0];
     const externalIDString = externalIDValue.split(':')[1];
@@ -181,11 +180,11 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
             for (let colIndex = 4; colIndex < minColIndex - 1; colIndex++) {
               const headerText = getValue(headerRow[colIndex]);
-              const dataToInsert = getDataForHeader(headerText, extractedData, extractedData2);
+              const dataToInsert = getDataForHeader(colIndex, extractedData, extractedData2);
 
               if (dataToInsert !== null) {
                 sheetData.values[rowIndex][colIndex].modified = dataToInsert;
-                sheetData.values[rowIndex][colIndex].formatting = { backgroundColor: '#ffff00ff' };
+                sheetData.values[rowIndex][colIndex].formatting = { ...sheetData.values[rowIndex][colIndex].formatting, backgroundColor: '#ffff00ff' };
               }
             }
           }
