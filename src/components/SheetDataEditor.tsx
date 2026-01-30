@@ -15,10 +15,11 @@ interface SheetDataEditorProps {
   onSaveProgress?: (saveFunc: () => void) => void;
   onSaveToNewSheet?: (saveFunc: () => void) => void;
   handleSaveProgress: () => void;
-  copiedFileId: string;
+  selectedFile: string;
+  onFetchSheetData?: (fetchFunc: () => void) => void;
 }
 
-const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSaveProgress, copiedFileId }: SheetDataEditorProps) => {
+const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSaveProgress, selectedFile, onFetchSheetData }: SheetDataEditorProps) => {
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && getValue(sheetData.values[i][0]).trim() != "")
     {
@@ -84,8 +85,131 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     faucetConductivity,
   } = getData(false, null, null, null, null, null);
   
-  // Track if we've initialized to prevent infinite loops
   const hasInitialized = useRef(false);
+  
+  const getDataForHeader = (colIndex: number, extractedData: any, extractedData2?: any) => {
+    const idFromAboveRow = getValue(sheetData.values[found_headers_row_index - 1][colIndex]);
+
+    if (idFromAboveRow === 'id1') {
+      if (extractedData.waterDuration !== undefined) {
+        return (extractedData.waterDuration / 60).toString();
+      }
+    } else if (idFromAboveRow === 'id2') {
+      if (extractedData.daysinterval !== undefined && extractedData.hourlyCyclesPerDay !== undefined) {
+        return (extractedData.daysinterval * extractedData.hourlyCyclesPerDay).toString();
+      }
+    } else if (idFromAboveRow === 'id3') { // ספיקה בפועל
+      if (extractedData2?.NominalFlow !== undefined) {
+        return extractedData2.NominalFlow.toString();
+      }
+    } else if (idFromAboveRow === 'id4') {
+      if (extractedData.fertQuant !== undefined) {
+        return extractedData.fertQuant.toString();
+      }
+    } else if (idFromAboveRow === 'id5') {
+      if (extractedData.waterQuantity !== undefined) {
+        return extractedData.waterQuantity.toString();
+      }
+    } else if (idFromAboveRow === 'id6') {
+      if (extractedData.fertProgram !== undefined) {
+        return extractedData.fertProgram.toString();
+      }
+    }
+
+    return null;
+  };
+
+  const fetchSheetData = useCallback(async () => {
+    const sheetName = sheetData?.sheetName;
+    if (!sheetName) return;
+    sheetData.values[2][2].modified = 'נתונים נאספו: ' + new Date().toLocaleTimeString('he-IL', {
+      timeZone: 'Asia/Jerusalem',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    sheetData.values[2][2].formatting = { ...sheetData.values[2][2].formatting, backgroundColor: '#ffff00ff' };
+    sheetData.values[2][3].modified = new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
+    sheetData.values[2][3].formatting = { ...sheetData.values[2][3].formatting, backgroundColor: '#ffff00ff' };
+    const externalIDValue = getValue(sheetData.values[2][1]);
+    const prefix = externalIDValue.split(':')[0];
+    const externalIDString = externalIDValue.split(':')[1];
+    const externalID = parseInt(externalIDString);
+
+    
+    try {
+      const headerRow = sheetData.values[found_headers_row_index] || [];
+      if (prefix === 'gsi-galcon' && !isNaN(externalID)) {
+        for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 3; rowIndex++) {
+
+          const programIDValue = getValue(sheetData.values[rowIndex][2]);
+          const programID = parseInt(programIDValue);
+
+          if (isNaN(programID)) {
+            continue;
+          }
+
+          const url = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${programID}/ProgramSettings?Key=1wtDCaf98RtKVP1y7XAfRWzJM`;
+
+          const response = await fetch(url);
+          const data = await response.json();
+
+          let extractedData2: any = null;
+
+          if (data.Result && data.Body) {
+            const extractedData = {
+              daysinterval: data.Body.CyclicDayProgram?.DaysInterval,
+              hourlyCyclesPerDay: data.Body.HourlyCycle?.HourlyCyclesPerDay,
+              waterDuration: data.Body.ValveInProgram?.[0]?.WaterDuration,
+              valveID: data.Body.ValveInProgram?.[0]?.ValveID,
+              fertQuant: data.Body.ValveInProgram?.[0]?.FertQuant,
+              waterQuantity: data.Body.ValveInProgram?.[0]?.WaterQuantity,
+              fertProgram: data.Body.ValveInProgram?.[0]?.FertProgram,
+            };
+
+            if (extractedData.valveID !== undefined) {
+              const url2 = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${extractedData.valveID}/ValveSettings?Key=1wtDCaf98RtKVP1y7XAfRWzJM`;
+
+              const response2 = await fetch(url2);
+              const data2 = await response2.json();
+
+              if (data2.Result && data2.Body) {
+                extractedData2 = {
+                  NominalFlow: data2.Body.SetupNominalFlow,
+                };
+              }
+            }
+
+            for (let colIndex = 4; colIndex < minColIndex - 1; colIndex++) {
+              const headerText = getValue(headerRow[colIndex]);
+              const dataToInsert = getDataForHeader(colIndex, extractedData, extractedData2);
+
+              if (dataToInsert !== null) {
+                sheetData.values[rowIndex][colIndex].modified = dataToInsert;
+                sheetData.values[rowIndex][colIndex].formatting = { ...sheetData.values[rowIndex][colIndex].formatting, backgroundColor: '#ffff00ff' };
+              }
+            }
+          }
+        }
+      } else {
+        toast({
+          title: "API לא זוהתה פלטפורמת",
+          description: ""
+        });
+        return;
+      }
+      handleSaveProgress();
+      toast({
+        title: "נתונים נאספו בהצלחה",
+        description: "",
+      });
+    } catch (error) {
+      toast({
+        title: "שגיאה באסיפת נתונים",
+        description: "",
+      });
+    }
+  }, [sheetData, headersRowIndex, dataRows.length, handleSaveProgress, toast, found_headers_row_index, minColIndex, maxColIndex]);
   
   // Initialize template data and reset position when sheet changes
   useEffect(() => {
@@ -401,7 +525,12 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     if (onSaveToNewSheet) {
       onSaveToNewSheet(handleOpenSheet);
     }
-  }, []);
+    if (onFetchSheetData) {
+      onFetchSheetData(fetchSheetData);
+    }
+  }, [onSaveProgress, onSaveToNewSheet, onFetchSheetData]);
+
+  const [formattedDate] = useState(() => new Date().toLocaleDateString());
   return (
     <div className="space-y-6">
       {/* Current Cell Editor */}
