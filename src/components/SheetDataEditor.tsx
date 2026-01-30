@@ -107,11 +107,11 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       }
     } else if (idFromAboveRow === 'id4') {
       if (extractedData.fertQuant !== undefined) {
-        //return extractedData.fertQuant.toString();
+        return extractedData.fertQuant.toString();
       }
     } else if (idFromAboveRow === 'id5') {
       if (extractedData.waterQuantity !== undefined) {
-        //return extractedData.waterQuantity.toString();
+        return extractedData.waterQuantity.toString();
       }
     } else if (idFromAboveRow === 'id6') {
       if (extractedData.fertProgram !== undefined) {
@@ -125,7 +125,12 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const fetchSheetData = useCallback(async () => {
     const sheetName = sheetData?.sheetName;
     if (!sheetName) return;
-    sheetData.values[2][2].modified = new Date().toLocaleTimeString('he-IL', { timeZone: 'Asia/Jerusalem' });
+    sheetData.values[2][2].modified = 'נתונים נאספו: ' + new Date().toLocaleTimeString('he-IL', {
+      timeZone: 'Asia/Jerusalem',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit'
+    });
     sheetData.values[2][2].formatting = { ...sheetData.values[2][2].formatting, backgroundColor: '#ffff00ff' };
     sheetData.values[2][3].modified = new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
     sheetData.values[2][3].formatting = { ...sheetData.values[2][3].formatting, backgroundColor: '#ffff00ff' };
