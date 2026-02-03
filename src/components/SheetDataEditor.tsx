@@ -88,29 +88,41 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const hasInitialized = useRef(false);
   
   const getDataForHeader = (colIndex: number, extractedData: any, extractedData2?: any) => {
-    const idFromAboveRow = getValue(sheetData.values[found_headers_row_index - 1][colIndex]);
+    let idsRowIndex = -1;
+    for (let rowIdx = 0; rowIdx < sheetData.values.length; rowIdx++) {
+      if (getValue(sheetData.values[rowIdx][0]) === 'נתונים לשליפה') {
+        idsRowIndex = rowIdx;
+        break;
+      }
+    }
 
-    if (idFromAboveRow === 'השקייה' || idFromAboveRow === 'השקיה') {
+    if (idsRowIndex === -1) {
+      return null;
+    }
+
+    const idFromIdsRow = getValue(sheetData.values[idsRowIndex][colIndex]);
+
+    if (idFromIdsRow === 'השקייה' || idFromIdsRow === 'השקיה') {
       if (extractedData.waterDuration !== undefined) {
         return (extractedData.waterDuration / 60).toString();
       }
-    } else if (idFromAboveRow === 'מחזורים') {
+    } else if (idFromIdsRow === 'מחזורים') {
       if (extractedData.daysinterval !== undefined && extractedData.hourlyCyclesPerDay !== undefined) {
         return (extractedData.daysinterval * extractedData.hourlyCyclesPerDay).toString();
       }
-    } else if (idFromAboveRow === 'ספיקה') {
+    } else if (idFromIdsRow === 'ספיקה') {
       if (extractedData2?.NominalFlow !== undefined) {
         return extractedData2.NominalFlow.toString();
       }
-    } else if (idFromAboveRow === 'דשן') {
+    } else if (idFromIdsRow === 'דשן') {
       if (extractedData.fertQuant !== undefined) {
         return extractedData.fertQuant.toString();
       }
-    } else if (idFromAboveRow === 'מים') {
+    } else if (idFromIdsRow === 'מים') {
       if (extractedData.waterQuantity !== undefined) {
         return extractedData.waterQuantity.toString();
       }
-    } else if (idFromAboveRow === 'תכנית') {
+    } else if (idFromIdsRow === 'תכנית') {
       if (extractedData.fertProgram !== undefined) {
         return extractedData.fertProgram.toString();
       }
