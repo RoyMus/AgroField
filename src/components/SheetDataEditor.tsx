@@ -51,7 +51,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const [updateCounter, setUpdateCounter] = useState(0);
   
   var AlreadySetFirst = false;
-  for (let i = 0; i < headers.length; i++) {
+  for (let i = 4; i < headers.length; i++) {
     if (getValue(headers[i]) == "")
     {
       if (!AlreadySetFirst)
@@ -90,27 +90,27 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const getDataForHeader = (colIndex: number, extractedData: any, extractedData2?: any) => {
     const idFromAboveRow = getValue(sheetData.values[found_headers_row_index - 1][colIndex]);
 
-    if (idFromAboveRow === 'id1') {
+    if (idFromAboveRow === 'השקייה' || idFromAboveRow === 'השקיה') {
       if (extractedData.waterDuration !== undefined) {
         return (extractedData.waterDuration / 60).toString();
       }
-    } else if (idFromAboveRow === 'id2') {
+    } else if (idFromAboveRow === 'מחזורים') {
       if (extractedData.daysinterval !== undefined && extractedData.hourlyCyclesPerDay !== undefined) {
         return (extractedData.daysinterval * extractedData.hourlyCyclesPerDay).toString();
       }
-    } else if (idFromAboveRow === 'id3') { // ספיקה בפועל
+    } else if (idFromAboveRow === 'ספיקה') {
       if (extractedData2?.NominalFlow !== undefined) {
         return extractedData2.NominalFlow.toString();
       }
-    } else if (idFromAboveRow === 'id4') {
+    } else if (idFromAboveRow === 'דשן') {
       if (extractedData.fertQuant !== undefined) {
         return extractedData.fertQuant.toString();
       }
-    } else if (idFromAboveRow === 'id5') {
+    } else if (idFromAboveRow === 'מים') {
       if (extractedData.waterQuantity !== undefined) {
         return extractedData.waterQuantity.toString();
       }
-    } else if (idFromAboveRow === 'id6') {
+    } else if (idFromAboveRow === 'תכנית') {
       if (extractedData.fertProgram !== undefined) {
         return extractedData.fertProgram.toString();
       }
@@ -139,7 +139,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     
     try {
       const headerRow = sheetData.values[found_headers_row_index] || [];
-      if (prefix === 'gsi-galcon' && !isNaN(externalID)) {
+      if (prefix === 'gsig' && !isNaN(externalID)) {
         for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 3; rowIndex++) {
 
           const programIDValue = getValue(sheetData.values[rowIndex][2]);
