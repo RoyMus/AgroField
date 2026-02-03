@@ -139,10 +139,27 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     
     try {
       const headerRow = sheetData.values[found_headers_row_index] || [];
+
+      let programIdColumnIndex = -1;
+      for (let colIndex = 0; colIndex < headerRow.length; colIndex++) {
+        if (getValue(headerRow[colIndex]) === 'מספר זיהוי') {
+          programIdColumnIndex = colIndex;
+          break;
+        }
+      }
+
+      if (programIdColumnIndex === -1) {
+        toast({
+          title: "שגיאה",
+          description: "לא נמצאה עמודת מספר זיהוי",
+        });
+        return;
+      }
+
       if (prefix === 'gsig' && !isNaN(externalID)) {
         for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 3; rowIndex++) {
 
-          const programIDValue = getValue(sheetData.values[rowIndex][2]);
+          const programIDValue = getValue(sheetData.values[rowIndex][programIdColumnIndex]);
           const programID = parseInt(programIDValue);
 
           if (isNaN(programID)) {
