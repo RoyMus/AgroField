@@ -144,8 +144,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     sheetData.values[2][3].modified = new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
     sheetData.values[2][3].formatting = { ...sheetData.values[2][3].formatting, backgroundColor: '#ffff00ff' };
     const externalIDValue = getValue(sheetData.values[2][1]);
-    const prefix = externalIDValue.split(':')[0];
-    const externalIDString = externalIDValue.split(':')[1];
+    const [prefix, key, externalIDString] = externalIDValue.split(':');
     const externalID = parseInt(externalIDString);
 
     
@@ -178,7 +177,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
             continue;
           }
 
-          const url = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${programID}/ProgramSettings?Key=1wtDCaf98RtKVP1y7XAfRWzJM`;
+          const url = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${programID}/ProgramSettings?Key=${key}`;
 
           const response = await fetch(url);
           const data = await response.json();
@@ -197,7 +196,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
             };
 
             if (extractedData.valveID !== undefined) {
-              const url2 = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${extractedData.valveID}/ValveSettings?Key=1wtDCaf98RtKVP1y7XAfRWzJM`;
+              const url2 = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${extractedData.valveID}/ValveSettings?Key=${key}`;
 
               const response2 = await fetch(url2);
               const data2 = await response2.json();
