@@ -90,7 +90,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const getDataForHeader = (colIndex: number, extractedData: any, extractedData2?: any) => {
     let idsRowIndex = -1;
     for (let rowIdx = 0; rowIdx < sheetData.values.length; rowIdx++) {
-      if (getValue(sheetData.values[rowIdx][0]) === 'נתונים לשליפה') {
+      if (getValue(sheetData.values[rowIdx][0])?.includes('נתונים') && (getValue(sheetData.values[rowIdx][0])?.includes('לשליפה') || getValue(sheetData.values[rowIdx][0])?.includes('שליפה') || getValue(sheetData.values[rowIdx][0])?.includes('לשלוף'))) {
         idsRowIndex = rowIdx;
         break;
       }
@@ -153,7 +153,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
       let programIdColumnIndex = -1;
       for (let colIndex = 0; colIndex < headerRow.length; colIndex++) {
-        if (getValue(headerRow[colIndex]) === 'מספר זיהוי') {
+        if ((getValue(headerRow[colIndex])?.includes('סידורי') || getValue(headerRow[colIndex])?.includes('זיהוי') || getValue(headerRow[colIndex])?.includes('מזהה')) && getValue(headerRow[colIndex])?.includes('מספר')) {
           programIdColumnIndex = colIndex;
           break;
         }
