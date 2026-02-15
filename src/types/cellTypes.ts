@@ -53,7 +53,20 @@ export interface ModifiedSheet {
   };
   values: ModifiedCell[][];
 }
-
+export function setFormat(cell: ModifiedCell, newFormat: CellFormat): ModifiedCell {
+  return {
+    ...cell,
+    formatting: newFormat,
+    saved: false
+  };
+}
+export function setValue(cell: ModifiedCell, newValue: string): ModifiedCell {
+  return {
+    ...cell,
+    modified: newValue,
+    saved: false
+  };
+}
 export function getValue(cell: ModifiedCell | null | undefined): string {
   if (!cell) return String('');
   const value = cell.modified ?? cell.original ?? '';

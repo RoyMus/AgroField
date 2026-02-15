@@ -4,6 +4,7 @@ import { ModifiedCell, ModifiedSheet,createModifiedSheet, getValue } from '@/typ
 import { format } from 'path';
 import { set } from 'date-fns';
 import { ref } from 'process';
+import { toast } from 'sonner';
 
 interface GoogleDriveFile {
   id: string;
@@ -485,8 +486,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
             });
         });
     } catch (err) {
-        console.error('Failed to update sheet:', err);
-        // Maybe show a toast?
+        toast('Failed to update sheet:', err);
     }
   };
 
