@@ -512,18 +512,14 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
           if (!newData.values[r][c].saved) {
             updated.push({row: r + 1, column: c + 1, value: getValue(newData.values[r][c])});
             // Collect formatting for unsaved cells that have formatting
-            newData.values[r][c].saved = true;
-          }
-          if (newData.values[r][c].formatting && Object.keys(newData.values[r][c].formatting).length > 0) {
+            if (newData.values[r][c].formatting && Object.keys(newData.values[r][c].formatting).length > 0) {
               formattingUpdates.push({
                 rowIndex: r,
                 columnIndex: c,
                 format: newData.values[r][c].formatting
-              });
-              newData.values[r][c].saved = true;
-              newData.values[r][c].formatting = {};
+            });
+            newData.values[r][c].saved = true;
           }
-
           refreshedSheetData[r][c] = getValue(newData.values[r][c]);
         }
       }
