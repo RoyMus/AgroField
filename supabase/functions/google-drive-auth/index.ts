@@ -27,7 +27,7 @@ serve(async (req)=>{
   try {
     // Read the request body once and store it
     const requestBody = await req.json();
-    const { action, code, accessToken, fileId, sheetName, newFileName, rangeUpdates, refreshAll, refreshedSheetData } = requestBody;
+    const { action, code, accessToken, fileId, sheetName, newFileName, rangeUpdates, refreshAll, refreshedSheetData, formattingUpdates } = requestBody;
     console.log('Request action:', action);
     const CLIENT_ID = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID');
     const CLIENT_SECRET = Deno.env.get('GOOGLE_DRIVE_CLIENT_SECRET');
@@ -245,7 +245,141 @@ serve(async (req)=>{
         throw new Error(`Failed to update sheet: ${JSON.stringify(updateData.error)}`);
       }
 
-      console.log('Successfully updated sheet.');
+      console.log('Successfully updated sheet values.');
+
+      // Apply formatting updates if provided
+      if (formattingUpdates && Array.isArray(formattingUpdates) && formattingUpdates.length > 0) {
+        const sheetId = sheet.properties.sheetId;
+        console.log(`Applying ${formattingUpdates.length} formatting updates to sheetId: ${sheetId}`);
+
+            // Helper: Convert Hex to Google Sheets RGB (0 to 1 scale)
+        const hexToRgb = (hex: string) => {
+          // Remove # and any alpha channel (the last 2 chars of an 8-char hex)
+          let cleanHex = hex.replace('#', '');
+          
+          if (cleanHex.length === 8) {
+            cleanHex = cleanHex.substring(0, 6);
+          }
+
+          if (cleanHex.length !== 6) {
+            console.warn(`Invalid hex color: ${hex}. Defaulting to white.`);
+            return { red: 1, green: 1, blue: 1 };
+          }
+
+          const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
+          const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
+          const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
+
+          return { red: r, green: g, blue: b };
+        };
+
+        const requests: any[] = [];
+
+        // 2. Add Value Updates to the Request list
+        // Note: We'll use updateCells for everything so it's one atomic transaction
+        if (refreshAll) {
+          // This wipes and replaces the whole grid or specific range
+          requests.push({
+            updateCells: {
+              rows: refreshedSheetData.map(row => ({
+                values: row.map(val => ({ userEnteredValue: { stringValue: String(val) } }))
+              })),
+              fields: 'userEnteredValue',
+              range: { sheetId, startRowIndex: 0, startColumnIndex: 0 }
+            }
+          });
+        } else if (rangeUpdates.length > 0) {
+          // Individual cell value updates
+          rangeUpdates.forEach(u => {
+            requests.push({
+              updateCells: {
+                rows: [{ values: [{ userEnteredValue: { stringValue: String(u.value) } }] }],
+                fields: 'userEnteredValue',
+                range: {
+                  sheetId,
+                  startRowIndex: u.row - 1,
+                  endRowIndex: u.row,
+                  startColumnIndex: u.column - 1,
+                  endColumnIndex: u.column
+                }
+              }
+            });
+          });
+        }
+
+        // 3. Add Formatting Updates to the Request list
+        if (formattingUpdates && formattingUpdates.length > 0) {
+          formattingUpdates.forEach(({ rowIndex, columnIndex, format }) => {
+            const userEnteredFormat: any = {};
+            const fields: string[] = [];
+
+            // Background Color Fix
+            if (format.backgroundColor) {
+              userEnteredFormat.backgroundColor = hexToRgb(format.backgroundColor);
+              fields.push('backgroundColor');
+            }
+
+            // Text Format (Bold, Color)
+            const textFormat: any = {};
+            if (format.textColor) {
+              textFormat.foregroundColor = hexToRgb(format.textColor);
+            }
+            if (format.fontWeight) {
+              textFormat.bold = format.fontWeight === 'bold';
+            }
+            if (Object.keys(textFormat).length > 0) {
+              userEnteredFormat.textFormat = textFormat;
+              fields.push('textFormat');
+            }
+
+            // Horizontal Alignment
+            if (format.textAlign) {
+              userEnteredFormat.horizontalAlignment = format.textAlign.toUpperCase();
+              fields.push('horizontalAlignment');
+            }
+
+            if (fields.length > 0) {
+              requests.push({
+                repeatCell: {
+                  range: {
+                    sheetId,
+                    startRowIndex: rowIndex,
+                    endRowIndex: rowIndex + 1,
+                    startColumnIndex: columnIndex,
+                    endColumnIndex: columnIndex + 1,
+                  },
+                  cell: { userEnteredFormat },
+                  // Construct field mask: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat"
+                  fields: fields.map(f => `userEnteredFormat.${f}`).join(','),
+                },
+              });
+            }
+          });
+        }
+
+        // 4. Send everything in one single BatchUpdate call
+        if (requests.length > 0) {
+          const batchResponse = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${fileId}:batchUpdate`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ requests }),
+            }
+          );
+
+          const resultData = await batchResponse.json();
+          if (!batchResponse.ok) {
+            console.error('Batch Update Error:', resultData);
+            throw new Error(`Update failed: ${resultData.error?.message}`);
+          }
+          console.log('Successfully updated values and formatting.');
+        }
+      }
+
       return new Response(JSON.stringify({ success: true, updatedRange: updateData.updatedRange }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

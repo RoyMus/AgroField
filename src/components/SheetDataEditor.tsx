@@ -6,7 +6,7 @@ import { getData } from "@/hooks/getData";
 import ProgressStats from "./ProgressStats";
 import CellEditor from "./CellEditor";
 import SaveToNewSheetDialog from "./SaveToNewSheetDialog";
-import { ModifiedSheet,getValue } from "@/types/cellTypes";
+import { ModifiedSheet,getValue,setValue,setFormat } from "@/types/cellTypes";
 import { set } from "date-fns";
 import { supabase } from '@/integrations/supabase/client';
 
@@ -14,7 +14,7 @@ interface SheetDataEditorProps {
   sheetData: ModifiedSheet;
   onSaveProgress?: (saveFunc: () => void) => void;
   onSaveToNewSheet?: (saveFunc: () => void) => void;
-  handleSaveProgress: () => void;
+  handleSaveProgress: (bulkSave?: boolean) => void;
   copiedFileId: string;
   onFetchSheetData?: (fetchFunc: () => void) => void;
 }
@@ -90,7 +90,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const getDataForHeader = (colIndex: number, extractedData: any) => {
     let idsRowIndex = -1;
     for (let rowIdx = 0; rowIdx < sheetData.values.length; rowIdx++) {
-      if (getValue(sheetData.values[rowIdx][0]) === 'נתונים לשליפה') {
+      if (getValue(sheetData.values[rowIdx][0])?.includes('נתונים') && (getValue(sheetData.values[rowIdx][0])?.includes('לשליפה') || getValue(sheetData.values[rowIdx][0])?.includes('שליפה') || getValue(sheetData.values[rowIdx][0])?.includes('לשלוף'))) {
         idsRowIndex = rowIdx;
         break;
       }
@@ -134,18 +134,17 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const fetchSheetData = useCallback(async () => {
     const sheetName = sheetData?.sheetName;
     if (!sheetName) return;
-    sheetData.values[2][2].modified = 'נתונים נאספו: ' + new Date().toLocaleTimeString('he-IL', {
+    sheetData.values[2][2] = setValue(sheetData.values[2][2], 'נתונים נאספו: ' + new Date().toLocaleTimeString('he-IL', {
       timeZone: 'Asia/Jerusalem',
       hour12: false,
       hour: '2-digit',
       minute: '2-digit'
-    });
-    sheetData.values[2][2].formatting = { ...sheetData.values[2][2].formatting, backgroundColor: '#ffff00ff' };
-    sheetData.values[2][3].modified = new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
-    sheetData.values[2][3].formatting = { ...sheetData.values[2][3].formatting, backgroundColor: '#ffff00ff' };
+    }));
+    sheetData.values[2][2] = setFormat(sheetData.values[2][2], { ...sheetData.values[2][2].formatting, backgroundColor: '#ffff00ff' });
+    sheetData.values[2][3] = setValue(sheetData.values[2][3], new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' }));
+    sheetData.values[2][3] = setFormat(sheetData.values[2][3], { ...sheetData.values[2][3].formatting, backgroundColor: '#ffff00ff' });
     const externalIDValue = getValue(sheetData.values[2][1]);
-    const prefix = externalIDValue.split(':')[0];
-    const externalIDString = externalIDValue.split(':')[1];
+    const [prefix, key, externalIDString] = externalIDValue.split(':');
     const externalID = parseInt(externalIDString);
 
     
@@ -154,7 +153,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
       let programIdColumnIndex = -1;
       for (let colIndex = 0; colIndex < headerRow.length; colIndex++) {
-        if (getValue(headerRow[colIndex]) === 'מספר זיהוי') {
+        if ((getValue(headerRow[colIndex])?.includes('סידורי') || getValue(headerRow[colIndex])?.includes('זיהוי') || getValue(headerRow[colIndex])?.includes('מזהה')) && getValue(headerRow[colIndex])?.includes('מספר')) {
           programIdColumnIndex = colIndex;
           break;
         }
@@ -193,15 +192,16 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       const extractedDataArray = JSON.parse(data) as any[];
       let dataIndex = 0;
       for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 3; rowIndex++) {
+          const extractedData = extractedDataArray[dataIndex++];
           for (let colIndex = 4; colIndex < minColIndex - 1; colIndex++) {
-            const dataToInsert = getDataForHeader(colIndex, extractedDataArray[dataIndex++]);
+            const dataToInsert = getDataForHeader(colIndex, extractedData);
             if (dataToInsert !== null) {
-              sheetData.values[rowIndex][colIndex].modified = dataToInsert;
-              sheetData.values[rowIndex][colIndex].formatting = { ...sheetData.values[rowIndex][colIndex].formatting, backgroundColor: '#ffff00ff' };
+              sheetData.values[rowIndex][colIndex] = setValue(sheetData.values[rowIndex][colIndex], dataToInsert);
+              sheetData.values[rowIndex][colIndex] = setFormat(sheetData.values[rowIndex][colIndex], { ...sheetData.values[rowIndex][colIndex].formatting, backgroundColor: '#ffff00ff' });
             }
         }
       }
-      handleSaveProgress();
+      handleSaveProgress(true);
       toast({
         title: "נתונים נאספו בהצלחה",
         description: "",
@@ -211,6 +211,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         title: "שגיאה באסיפת נתונים",
         description: "",
       });
+      console.error("Error fetching data from API:", error);
     }
   }, [sheetData, headersRowIndex, dataRows.length, handleSaveProgress, toast, found_headers_row_index, minColIndex, maxColIndex]);
   
@@ -246,11 +247,11 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     }
     if(faucetConductivity != "")
     {
-      sheetData.values[faucetRowIndex][faucetIndex + 1].modified = `${faucetConductivity}`;
+      sheetData.values[faucetRowIndex][faucetIndex + 1] = setValue(sheetData.values[faucetRowIndex][faucetIndex + 1], `${faucetConductivity}`);
     }
         
     if (isTemplate) {
-      sheetData.values[topBarRowIndex][topBarIndex].modified = `${place} - ${plant} - ${grower}`;
+      sheetData.values[topBarRowIndex][topBarIndex] = setValue(sheetData.values[topBarRowIndex][topBarIndex], `${place} - ${plant} - ${grower}`);
     }
 
     hasInitialized.current = true;
@@ -278,15 +279,14 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         continue;
       }
       sum /= counter;
-      sheetData.values[dataRows.length - 1][i].modified = `${sum.toFixed(2)}`;
-      sheetData.values[dataRows.length - 1][i].saved = false;
+      sheetData.values[dataRows.length - 1][i] = setValue(sheetData.values[dataRows.length - 1][i], `${sum.toFixed(2)}`);
       const wantedResult = getValue(sheetData.values[dataRows.length - 2][i])?.split('-');
       let isBetween = false;
       if(wantedResult && wantedResult.length > 1)
         isBetween = sum > parseFloat(wantedResult[0]) && sum < parseFloat(wantedResult[1]);
       else if (wantedResult && wantedResult.length === 1)
         isBetween = sum < parseFloat(wantedResult[0]);
-      sheetData.values[dataRows.length - 1][i].formatting.backgroundColor = isBetween ? '#00ff15ff' : '#ff0000ff';
+      sheetData.values[dataRows.length - 1][i] = setFormat(sheetData.values[dataRows.length - 1][i], { ...sheetData.values[dataRows.length - 1][i].formatting, backgroundColor: isBetween ? '#00ff15ff' : '#ff0000ff' });
     }
   };
 
@@ -362,8 +362,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
   const recordCurrentValue = async (value) => {
     // Save the current value
-    sheetData.values[currentRowIndex][currentColumnIndex].modified = value;
-    sheetData.values[currentRowIndex][currentColumnIndex].saved = false;
+    sheetData.values[currentRowIndex][currentColumnIndex] = setValue(sheetData.values[currentRowIndex][currentColumnIndex], value);
     handleSaveProgress();
     toast({
       title: "Value Recorded",
@@ -505,7 +504,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const resetCurrentCell = () => {
     setCurrentValue("");
     // Remove from modified data if it exists
-    sheetData.values[currentRowIndex][currentColumnIndex].modified = null;
+    sheetData.values[currentRowIndex][currentColumnIndex] = setValue(sheetData.values[currentRowIndex][currentColumnIndex], null);
     handleSaveProgress();
     setUpdateCounter(prev => prev + 1);
   };

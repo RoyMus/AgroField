@@ -4,6 +4,7 @@ import { ModifiedCell, ModifiedSheet,createModifiedSheet, getValue } from '@/typ
 import { format } from 'path';
 import { set } from 'date-fns';
 import { ref } from 'process';
+import { toast } from 'sonner';
 
 interface GoogleDriveFile {
   id: string;
@@ -469,7 +470,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     }
   }, [isAuthenticated, accessToken]);
 
-  const updateSheet = async (fileId: string, sheetName: string, updated: { row: number; column: number; value: string }[], refreshAll: boolean,refreshedSheetData : string[][]) => {
+  const updateSheet = async (fileId: string, sheetName: string, updated: { row: number; column: number; value: string }[], refreshAll: boolean, refreshedSheetData: string[][], formattingUpdates: { rowIndex: number; columnIndex: number; format: any }[] = []) => {
     try {
         await makeApiCall(async (token: string) => {
             return await supabase.functions.invoke('google-drive-auth', {
@@ -480,13 +481,13 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
                     sheetName: sheetName,
                     rangeUpdates: updated,
                     refreshAll: refreshAll,
-                    refreshedSheetData: refreshedSheetData
+                    refreshedSheetData: refreshedSheetData,
+                    formattingUpdates: formattingUpdates
                 }
             });
         });
     } catch (err) {
-        console.error('Failed to update sheet:', err);
-        // Maybe show a toast?
+        toast('Failed to update sheet:', err);
     }
   };
 
@@ -503,19 +504,31 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     if (selectedFile) {
       const fileId = selectedFile.id;
       const updated = [];
+      const formattingUpdates: { rowIndex: number; columnIndex: number; format: any }[] = [];
       const refreshedSheetData: string[][] = [];
       for(let r = 0; r < newData.values.length; r++) {
         refreshedSheetData[r] = [];
         for(let c = 0; c < newData.values[r].length; c++) {
           if (!newData.values[r][c].saved) {
             updated.push({row: r + 1, column: c + 1, value: getValue(newData.values[r][c])});
+            // Collect formatting for unsaved cells that have formatting
             newData.values[r][c].saved = true;
           }
+          if (newData.values[r][c].formatting && Object.keys(newData.values[r][c].formatting).length > 0) {
+              formattingUpdates.push({
+                rowIndex: r,
+                columnIndex: c,
+                format: newData.values[r][c].formatting
+              });
+              newData.values[r][c].saved = true;
+              newData.values[r][c].formatting = {};
+          }
+
           refreshedSheetData[r][c] = getValue(newData.values[r][c]);
         }
       }
-      if (updated.length > 0 || refreshAll) {
-        await updateSheet(fileId, newData.sheetName, updated,refreshAll,refreshedSheetData);
+      if (updated.length > 0 || formattingUpdates.length > 0 || refreshAll) {
+        await updateSheet(fileId, newData.sheetName, updated, refreshAll, refreshedSheetData, formattingUpdates);
       }
     }
   };
