@@ -8,7 +8,7 @@ import CellEditor from "./CellEditor";
 import SaveToNewSheetDialog from "./SaveToNewSheetDialog";
 import { ModifiedSheet,getValue,setValue,setFormat } from "@/types/cellTypes";
 import { set } from "date-fns";
-
+import { supabase } from '@/integrations/supabase/client';
 
 interface SheetDataEditorProps {
   sheetData: ModifiedSheet;
@@ -87,7 +87,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   
   const hasInitialized = useRef(false);
   
-  const getDataForHeader = (colIndex: number, extractedData: any, extractedData2?: any) => {
+  const getDataForHeader = (colIndex: number, extractedData: any) => {
     let idsRowIndex = -1;
     for (let rowIdx = 0; rowIdx < sheetData.values.length; rowIdx++) {
       if (getValue(sheetData.values[rowIdx][0])?.includes('נתונים') && (getValue(sheetData.values[rowIdx][0])?.includes('לשליפה') || getValue(sheetData.values[rowIdx][0])?.includes('שליפה') || getValue(sheetData.values[rowIdx][0])?.includes('לשלוף'))) {
@@ -111,8 +111,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         return (extractedData.daysinterval * extractedData.hourlyCyclesPerDay).toString();
       }
     } else if (idFromIdsRow === 'ספיקה') {
-      if (extractedData2?.NominalFlow !== undefined) {
-        return extractedData2.NominalFlow.toString();
+      if (extractedData?.NominalFlow !== undefined) {
+        return extractedData.NominalFlow.toString();
       }
     } else if (idFromIdsRow === 'דשן') {
       if (extractedData.fertQuant !== undefined) {
@@ -166,65 +166,40 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         });
         return;
       }
-
-      if (prefix === 'gsig' && !isNaN(externalID)) {
-        for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 3; rowIndex++) {
-
-          const programIDValue = getValue(sheetData.values[rowIndex][programIdColumnIndex]);
-          const programID = parseInt(programIDValue);
-
-          if (isNaN(programID)) {
-            continue;
-          }
-
-          const url = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${programID}/ProgramSettings?Key=${key}`;
-
-          const response = await fetch(url);
-          const data = await response.json();
-
-          let extractedData2: any = null;
-
-          if (data.Result && data.Body) {
-            const extractedData = {
-              daysinterval: data.Body.CyclicDayProgram?.DaysInterval,
-              hourlyCyclesPerDay: data.Body.HourlyCycle?.HourlyCyclesPerDay,
-              waterDuration: data.Body.ValveInProgram?.[0]?.WaterDuration,
-              valveID: data.Body.ValveInProgram?.[0]?.ValveID,
-              fertQuant: data.Body.ValveInProgram?.[0]?.FertQuant,
-              waterQuantity: data.Body.ValveInProgram?.[0]?.WaterQuantity,
-              fertProgram: data.Body.ValveInProgram?.[0]?.FertProgram,
-            };
-
-            if (extractedData.valveID !== undefined) {
-              const url2 = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${extractedData.valveID}/ValveSettings?Key=${key}`;
-
-              const response2 = await fetch(url2);
-              const data2 = await response2.json();
-
-              if (data2.Result && data2.Body) {
-                extractedData2 = {
-                  NominalFlow: data2.Body.SetupNominalFlow,
-                };
-              }
-            }
-
-            for (let colIndex = 4; colIndex < minColIndex - 1; colIndex++) {
-              const headerText = getValue(headerRow[colIndex]);
-              const dataToInsert = getDataForHeader(colIndex, extractedData, extractedData2);
-
-              if (dataToInsert !== null) {
-                sheetData.values[rowIndex][colIndex] = setValue(sheetData.values[rowIndex][colIndex], dataToInsert);
-                sheetData.values[rowIndex][colIndex] = setFormat(sheetData.values[rowIndex][colIndex], { ...sheetData.values[rowIndex][colIndex].formatting, backgroundColor: '#ffff00ff' });
-              }
-            }
-          }
+      const programIDs = new Array<number>();
+      for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 3; rowIndex++) {
+        const programIDValue = getValue(sheetData.values[rowIndex][programIdColumnIndex]);
+        const programID = parseInt(programIDValue);
+        if (isNaN(programID)) {
+          continue;
         }
-      } else {
-        toast({
-          title: "API לא זוהתה פלטפורמת",
-          description: ""
+        programIDs.push(programID);
+      }
+      const { data, error } = await supabase.functions.invoke('fetch-data-from-api', {
+          body: {
+            platform: prefix,
+            externalID:externalID,
+            programIDs:programIDs,
+          },
         });
-        return;
+        if(error) {
+          toast({
+            title: error.message || "שגיאה באסיפת נתונים",
+            description: ""
+          });
+          return;
+        }
+      const extractedDataArray = JSON.parse(data) as any[];
+      let dataIndex = 0;
+      for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 3; rowIndex++) {
+          const extractedData = extractedDataArray[dataIndex++];
+          for (let colIndex = 4; colIndex < minColIndex - 1; colIndex++) {
+            const dataToInsert = getDataForHeader(colIndex, extractedData);
+            if (dataToInsert !== null) {
+              sheetData.values[rowIndex][colIndex] = setValue(sheetData.values[rowIndex][colIndex], dataToInsert);
+              sheetData.values[rowIndex][colIndex] = setFormat(sheetData.values[rowIndex][colIndex], { ...sheetData.values[rowIndex][colIndex].formatting, backgroundColor: '#ffff00ff' });
+            }
+        }
       }
       handleSaveProgress(true);
       toast({
@@ -236,6 +211,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         title: "שגיאה באסיפת נתונים",
         description: "",
       });
+      console.error("Error fetching data from API:", error);
     }
   }, [sheetData, headersRowIndex, dataRows.length, handleSaveProgress, toast, found_headers_row_index, minColIndex, maxColIndex]);
   
