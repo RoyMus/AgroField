@@ -252,103 +252,114 @@ serve(async (req)=>{
         const sheetId = sheet.properties.sheetId;
         console.log(`Applying ${formattingUpdates.length} formatting updates to sheetId: ${sheetId}`);
 
+            // Helper: Convert Hex to Google Sheets RGB (0 to 1 scale)
         const hexToRgb = (hex: string) => {
-          const cleanHex = hex.replace('#', '');
-          if (cleanHex.length !== 6) return null;
-          return {
-            red: parseInt(cleanHex.substring(0, 2), 16) / 255,
-            green: parseInt(cleanHex.substring(2, 4), 16) / 255,
-            blue: parseInt(cleanHex.substring(4, 6), 16) / 255,
-          };
+          // Remove # and any alpha channel (the last 2 chars of an 8-char hex)
+          let cleanHex = hex.replace('#', '');
+          
+          if (cleanHex.length === 8) {
+            cleanHex = cleanHex.substring(0, 6);
+          }
+
+          if (cleanHex.length !== 6) {
+            console.warn(`Invalid hex color: ${hex}. Defaulting to white.`);
+            return { red: 1, green: 1, blue: 1 };
+          }
+
+          const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
+          const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
+          const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
+
+          return { red: r, green: g, blue: b };
         };
 
-        // Build the list of fields we actually set per cell
-        const formatRequests = formattingUpdates.map((style: any) => {
-          const { rowIndex, columnIndex, format } = style;
-          const googleFormat: any = {};
-          const fieldsSet: string[] = [];
+        const requests: any[] = [];
 
-          if (format.backgroundColor) {
-            const rgb = hexToRgb(format.backgroundColor);
-            if (rgb) {
-              googleFormat.backgroundColor = rgb;
-              fieldsSet.push('userEnteredFormat.backgroundColor');
+        // 2. Add Value Updates to the Request list
+        // Note: We'll use updateCells for everything so it's one atomic transaction
+        if (refreshAll) {
+          // This wipes and replaces the whole grid or specific range
+          requests.push({
+            updateCells: {
+              rows: refreshedSheetData.map(row => ({
+                values: row.map(val => ({ userEnteredValue: { stringValue: String(val) } }))
+              })),
+              fields: 'userEnteredValue',
+              range: { sheetId, startRowIndex: 0, startColumnIndex: 0 }
             }
-          }
-
-          const textFormat: any = {};
-          if (format.textColor) {
-            const rgb = hexToRgb(format.textColor);
-            if (rgb) {
-              textFormat.foregroundColor = rgb;
-              fieldsSet.push('userEnteredFormat.textFormat.foregroundColor');
-            }
-          }
-          if (format.fontWeight === 'bold') {
-            textFormat.bold = true;
-            fieldsSet.push('userEnteredFormat.textFormat.bold');
-          } else if (format.fontWeight === 'normal') {
-            textFormat.bold = false;
-            fieldsSet.push('userEnteredFormat.textFormat.bold');
-          }
-          if (format.fontStyle === 'italic') {
-            textFormat.italic = true;
-            fieldsSet.push('userEnteredFormat.textFormat.italic');
-          } else if (format.fontStyle === 'normal') {
-            textFormat.italic = false;
-            fieldsSet.push('userEnteredFormat.textFormat.italic');
-          }
-          if (format.fontSize) {
-            textFormat.fontSize = format.fontSize;
-            fieldsSet.push('userEnteredFormat.textFormat.fontSize');
-          }
-          if (Object.keys(textFormat).length > 0) {
-            googleFormat.textFormat = textFormat;
-          }
-
-          if (format.textAlign) {
-            googleFormat.horizontalAlignment = format.textAlign.toUpperCase();
-            fieldsSet.push('userEnteredFormat.horizontalAlignment');
-          }
-
-          if (format.borders) {
-            googleFormat.borders = {};
-            Object.entries(format.borders).forEach(([side, border]: [string, any]) => {
-              if (border) {
-                const rgb = hexToRgb(border.color || '#000000');
-                if (rgb) {
-                  googleFormat.borders[side] = {
-                    style: (border.style || 'solid').toUpperCase() === 'SOLID' ? 'SOLID' : border.style.toUpperCase(),
-                    color: rgb,
-                    width: border.width || 1,
-                  };
-                  fieldsSet.push(`userEnteredFormat.borders.${side}`);
+          });
+        } else if (rangeUpdates.length > 0) {
+          // Individual cell value updates
+          rangeUpdates.forEach(u => {
+            requests.push({
+              updateCells: {
+                rows: [{ values: [{ userEnteredValue: { stringValue: String(u.value) } }] }],
+                fields: 'userEnteredValue',
+                range: {
+                  sheetId,
+                  startRowIndex: u.row - 1,
+                  endRowIndex: u.row,
+                  startColumnIndex: u.column - 1,
+                  endColumnIndex: u.column
                 }
               }
             });
-          }
+          });
+        }
 
-          if (fieldsSet.length === 0) return null;
+        // 3. Add Formatting Updates to the Request list
+        if (formattingUpdates && formattingUpdates.length > 0) {
+          formattingUpdates.forEach(({ rowIndex, columnIndex, format }) => {
+            const userEnteredFormat: any = {};
+            const fields: string[] = [];
 
-          return {
-            repeatCell: {
-              range: {
-                sheetId,
-                startRowIndex: rowIndex,
-                endRowIndex: rowIndex + 1,
-                startColumnIndex: columnIndex,
-                endColumnIndex: columnIndex + 1,
-              },
-              cell: { userEnteredFormat: googleFormat },
-              fields: fieldsSet.join(','),
-            },
-          };
-        }).filter((r: any) => r !== null);
+            // Background Color Fix
+            if (format.backgroundColor) {
+              userEnteredFormat.backgroundColor = hexToRgb(format.backgroundColor);
+              fields.push('backgroundColor');
+            }
 
-        console.log(`Built ${formatRequests.length} format requests`);
-        if (formatRequests.length > 0) {
-          console.log('Sample request:', JSON.stringify(formatRequests[0]));
-          const formatResponse = await fetch(
+            // Text Format (Bold, Color)
+            const textFormat: any = {};
+            if (format.textColor) {
+              textFormat.foregroundColor = hexToRgb(format.textColor);
+            }
+            if (format.fontWeight) {
+              textFormat.bold = format.fontWeight === 'bold';
+            }
+            if (Object.keys(textFormat).length > 0) {
+              userEnteredFormat.textFormat = textFormat;
+              fields.push('textFormat');
+            }
+
+            // Horizontal Alignment
+            if (format.textAlign) {
+              userEnteredFormat.horizontalAlignment = format.textAlign.toUpperCase();
+              fields.push('horizontalAlignment');
+            }
+
+            if (fields.length > 0) {
+              requests.push({
+                repeatCell: {
+                  range: {
+                    sheetId,
+                    startRowIndex: rowIndex,
+                    endRowIndex: rowIndex + 1,
+                    startColumnIndex: columnIndex,
+                    endColumnIndex: columnIndex + 1,
+                  },
+                  cell: { userEnteredFormat },
+                  // Construct field mask: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat"
+                  fields: fields.map(f => `userEnteredFormat.${f}`).join(','),
+                },
+              });
+            }
+          });
+        }
+
+        // 4. Send everything in one single BatchUpdate call
+        if (requests.length > 0) {
+          const batchResponse = await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${fileId}:batchUpdate`,
             {
               method: 'POST',
@@ -356,15 +367,16 @@ serve(async (req)=>{
                 Authorization: `Bearer ${accessToken}`,
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({ requests: formatRequests }),
+              body: JSON.stringify({ requests }),
             }
           );
-          if (formatResponse.ok) {
-            console.log('Successfully applied formatting updates.');
-          } else {
-            const formatError = await formatResponse.text();
-            console.error('Failed to apply formatting:', formatError);
+
+          const resultData = await batchResponse.json();
+          if (!batchResponse.ok) {
+            console.error('Batch Update Error:', resultData);
+            throw new Error(`Update failed: ${resultData.error?.message}`);
           }
+          console.log('Successfully updated values and formatting.');
         }
       }
 
