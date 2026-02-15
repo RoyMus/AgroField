@@ -250,53 +250,85 @@ serve(async (req)=>{
       // Apply formatting updates if provided
       if (formattingUpdates && Array.isArray(formattingUpdates) && formattingUpdates.length > 0) {
         const sheetId = sheet.properties.sheetId;
+        console.log(`Applying ${formattingUpdates.length} formatting updates to sheetId: ${sheetId}`);
 
         const hexToRgb = (hex: string) => {
-          const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-          if (!result) return null;
+          const cleanHex = hex.replace('#', '');
+          if (cleanHex.length !== 6) return null;
           return {
-            red: parseInt(result[1], 16) / 255,
-            green: parseInt(result[2], 16) / 255,
-            blue: parseInt(result[3], 16) / 255,
+            red: parseInt(cleanHex.substring(0, 2), 16) / 255,
+            green: parseInt(cleanHex.substring(2, 4), 16) / 255,
+            blue: parseInt(cleanHex.substring(4, 6), 16) / 255,
           };
         };
 
+        // Build the list of fields we actually set per cell
         const formatRequests = formattingUpdates.map((style: any) => {
           const { rowIndex, columnIndex, format } = style;
           const googleFormat: any = {};
+          const fieldsSet: string[] = [];
 
           if (format.backgroundColor) {
             const rgb = hexToRgb(format.backgroundColor);
-            if (rgb) googleFormat.backgroundColor = rgb;
-          }
-          if (format.textColor || format.fontWeight || format.fontStyle || format.fontSize) {
-            googleFormat.textFormat = {};
-            if (format.textColor) {
-              const rgb = hexToRgb(format.textColor);
-              if (rgb) googleFormat.textFormat.foregroundColor = rgb;
+            if (rgb) {
+              googleFormat.backgroundColor = rgb;
+              fieldsSet.push('userEnteredFormat.backgroundColor');
             }
-            if (format.fontWeight === 'bold') googleFormat.textFormat.bold = true;
-            if (format.fontStyle === 'italic') googleFormat.textFormat.italic = true;
-            if (format.fontSize) googleFormat.textFormat.fontSize = format.fontSize;
           }
+
+          const textFormat: any = {};
+          if (format.textColor) {
+            const rgb = hexToRgb(format.textColor);
+            if (rgb) {
+              textFormat.foregroundColor = rgb;
+              fieldsSet.push('userEnteredFormat.textFormat.foregroundColor');
+            }
+          }
+          if (format.fontWeight === 'bold') {
+            textFormat.bold = true;
+            fieldsSet.push('userEnteredFormat.textFormat.bold');
+          } else if (format.fontWeight === 'normal') {
+            textFormat.bold = false;
+            fieldsSet.push('userEnteredFormat.textFormat.bold');
+          }
+          if (format.fontStyle === 'italic') {
+            textFormat.italic = true;
+            fieldsSet.push('userEnteredFormat.textFormat.italic');
+          } else if (format.fontStyle === 'normal') {
+            textFormat.italic = false;
+            fieldsSet.push('userEnteredFormat.textFormat.italic');
+          }
+          if (format.fontSize) {
+            textFormat.fontSize = format.fontSize;
+            fieldsSet.push('userEnteredFormat.textFormat.fontSize');
+          }
+          if (Object.keys(textFormat).length > 0) {
+            googleFormat.textFormat = textFormat;
+          }
+
           if (format.textAlign) {
             googleFormat.horizontalAlignment = format.textAlign.toUpperCase();
+            fieldsSet.push('userEnteredFormat.horizontalAlignment');
           }
+
           if (format.borders) {
             googleFormat.borders = {};
             Object.entries(format.borders).forEach(([side, border]: [string, any]) => {
               if (border) {
-                const rgb = hexToRgb(border.color);
+                const rgb = hexToRgb(border.color || '#000000');
                 if (rgb) {
                   googleFormat.borders[side] = {
-                    style: border.style.toUpperCase(),
+                    style: (border.style || 'solid').toUpperCase() === 'SOLID' ? 'SOLID' : border.style.toUpperCase(),
                     color: rgb,
-                    width: border.width,
+                    width: border.width || 1,
                   };
+                  fieldsSet.push(`userEnteredFormat.borders.${side}`);
                 }
               }
             });
           }
+
+          if (fieldsSet.length === 0) return null;
 
           return {
             repeatCell: {
@@ -308,12 +340,14 @@ serve(async (req)=>{
                 endColumnIndex: columnIndex + 1,
               },
               cell: { userEnteredFormat: googleFormat },
-              fields: 'userEnteredFormat',
+              fields: fieldsSet.join(','),
             },
           };
-        }).filter((r: any) => Object.keys(r.repeatCell.cell.userEnteredFormat).length > 0);
+        }).filter((r: any) => r !== null);
 
+        console.log(`Built ${formatRequests.length} format requests`);
         if (formatRequests.length > 0) {
+          console.log('Sample request:', JSON.stringify(formatRequests[0]));
           const formatResponse = await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${fileId}:batchUpdate`,
             {
