@@ -521,6 +521,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
             newData.values[r][c].saved = true;
           }
           refreshedSheetData[r][c] = getValue(newData.values[r][c]);
+          }
         }
       }
       if (updated.length > 0 || formattingUpdates.length > 0 || refreshAll) {
