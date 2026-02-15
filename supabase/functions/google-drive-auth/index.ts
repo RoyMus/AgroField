@@ -27,7 +27,7 @@ serve(async (req)=>{
   try {
     // Read the request body once and store it
     const requestBody = await req.json();
-    const { action, code, accessToken, fileId, sheetName, newFileName, rangeUpdates, refreshAll, refreshedSheetData } = requestBody;
+    const { action, code, accessToken, fileId, sheetName, newFileName, rangeUpdates, refreshAll, refreshedSheetData, formattingUpdates } = requestBody;
     console.log('Request action:', action);
     const CLIENT_ID = Deno.env.get('GOOGLE_DRIVE_CLIENT_ID');
     const CLIENT_SECRET = Deno.env.get('GOOGLE_DRIVE_CLIENT_SECRET');
@@ -245,7 +245,95 @@ serve(async (req)=>{
         throw new Error(`Failed to update sheet: ${JSON.stringify(updateData.error)}`);
       }
 
-      console.log('Successfully updated sheet.');
+      console.log('Successfully updated sheet values.');
+
+      // Apply formatting updates if provided
+      if (formattingUpdates && Array.isArray(formattingUpdates) && formattingUpdates.length > 0) {
+        const sheetId = sheet.properties.sheetId;
+
+        const hexToRgb = (hex: string) => {
+          const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+          if (!result) return null;
+          return {
+            red: parseInt(result[1], 16) / 255,
+            green: parseInt(result[2], 16) / 255,
+            blue: parseInt(result[3], 16) / 255,
+          };
+        };
+
+        const formatRequests = formattingUpdates.map((style: any) => {
+          const { rowIndex, columnIndex, format } = style;
+          const googleFormat: any = {};
+
+          if (format.backgroundColor) {
+            const rgb = hexToRgb(format.backgroundColor);
+            if (rgb) googleFormat.backgroundColor = rgb;
+          }
+          if (format.textColor || format.fontWeight || format.fontStyle || format.fontSize) {
+            googleFormat.textFormat = {};
+            if (format.textColor) {
+              const rgb = hexToRgb(format.textColor);
+              if (rgb) googleFormat.textFormat.foregroundColor = rgb;
+            }
+            if (format.fontWeight === 'bold') googleFormat.textFormat.bold = true;
+            if (format.fontStyle === 'italic') googleFormat.textFormat.italic = true;
+            if (format.fontSize) googleFormat.textFormat.fontSize = format.fontSize;
+          }
+          if (format.textAlign) {
+            googleFormat.horizontalAlignment = format.textAlign.toUpperCase();
+          }
+          if (format.borders) {
+            googleFormat.borders = {};
+            Object.entries(format.borders).forEach(([side, border]: [string, any]) => {
+              if (border) {
+                const rgb = hexToRgb(border.color);
+                if (rgb) {
+                  googleFormat.borders[side] = {
+                    style: border.style.toUpperCase(),
+                    color: rgb,
+                    width: border.width,
+                  };
+                }
+              }
+            });
+          }
+
+          return {
+            repeatCell: {
+              range: {
+                sheetId,
+                startRowIndex: rowIndex,
+                endRowIndex: rowIndex + 1,
+                startColumnIndex: columnIndex,
+                endColumnIndex: columnIndex + 1,
+              },
+              cell: { userEnteredFormat: googleFormat },
+              fields: 'userEnteredFormat',
+            },
+          };
+        }).filter((r: any) => Object.keys(r.repeatCell.cell.userEnteredFormat).length > 0);
+
+        if (formatRequests.length > 0) {
+          const formatResponse = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${fileId}:batchUpdate`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ requests: formatRequests }),
+            }
+          );
+          if (formatResponse.ok) {
+            console.log('Successfully applied formatting updates.');
+          } else {
+            const formatError = await formatResponse.text();
+            console.error('Failed to apply formatting:', formatError);
+          }
+        }
+      }
+
       return new Response(JSON.stringify({ success: true, updatedRange: updateData.updatedRange }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
