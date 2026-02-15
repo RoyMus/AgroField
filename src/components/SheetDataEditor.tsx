@@ -167,19 +167,20 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         });
         return;
       }
-
+      const programIDs = new Array<number>();
       for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 3; rowIndex++) {
         const programIDValue = getValue(sheetData.values[rowIndex][programIdColumnIndex]);
         const programID = parseInt(programIDValue);
-
         if (isNaN(programID)) {
           continue;
         }
-        const { data, error } = await supabase.functions.invoke('fetch-data-from-api', {
+        programIDs.push(programID);
+      }
+      const { data, error } = await supabase.functions.invoke('fetch-data-from-api', {
           body: {
             platform: prefix,
             externalID:externalID,
-            programID:programID,
+            programIDs:programIDs,
           },
         });
         if(error) {
@@ -189,17 +190,17 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
           });
           return;
         }
-        for (let colIndex = 4; colIndex < minColIndex - 1; colIndex++) {
-          const headerText = getValue(headerRow[colIndex]);
-          const dataToInsert = getDataForHeader(colIndex, data);
-
-          if (dataToInsert !== null) {
-            sheetData.values[rowIndex][colIndex].modified = dataToInsert;
-            sheetData.values[rowIndex][colIndex].formatting = { ...sheetData.values[rowIndex][colIndex].formatting, backgroundColor: '#ffff00ff' };
-          }
+      const extractedDataArray = JSON.parse(data) as any[];
+      let dataIndex = 0;
+      for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 3; rowIndex++) {
+          for (let colIndex = 4; colIndex < minColIndex - 1; colIndex++) {
+            const dataToInsert = getDataForHeader(colIndex, extractedDataArray[dataIndex++]);
+            if (dataToInsert !== null) {
+              sheetData.values[rowIndex][colIndex].modified = dataToInsert;
+              sheetData.values[rowIndex][colIndex].formatting = { ...sheetData.values[rowIndex][colIndex].formatting, backgroundColor: '#ffff00ff' };
+            }
         }
       }
-
       handleSaveProgress();
       toast({
         title: "נתונים נאספו בהצלחה",

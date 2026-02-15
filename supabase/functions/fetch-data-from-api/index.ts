@@ -33,12 +33,14 @@ serve(async (req)=> {
         fertProgram: null,
         NominalFlow: null,
     };
+    const extractedDataArray: ExtractedData[] = [];
   try {
         const reqText = await req.json();
         console.log(reqText);
-        const {platform, externalID,programID} = reqText;
+        const {platform, externalID,programIDs} = reqText;
    
         if (platform === 'gsig' && !isNaN(externalID)) {
+          for (const programID of programIDs) {
             const url = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${programID}/ProgramSettings?Key=${gsigAPIKey}`;
 
             const response = await fetch(url);
@@ -56,7 +58,7 @@ serve(async (req)=> {
                 fertProgram: data.Body.ValveInProgram?.[0]?.FertProgram,
                 };
 
-                if (extractedData.valveID !== undefined) {
+            if (extractedData.valveID !== undefined) {
                 const url2 = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${extractedData.valveID}/ValveSettings?Key=${gsigAPIKey}`;
 
                 const response2 = await fetch(url2);
@@ -69,9 +71,12 @@ serve(async (req)=> {
                     };
                 }
             }
+            extractedDataArray.push(extractedData);
           }
+        }
       }
       else if (platform === 'talgil' && !isNaN(externalID)) {
+        for (const programID of programIDs) {
           const url = `https://dev.talgil.com/api/targets/${externalID}/programs/${programID}`;
 
           const response = await fetch(url,{
@@ -99,16 +104,18 @@ serve(async (req)=> {
               ...extractedData,
               NominalFlow: valve.Flow,
             };
+            extractedDataArray.push(extractedData);
           }
         }
-        else
-        {
-            return new Response(JSON.stringify({ error: "API לא זוהתה פלטפורמת" }), { status: 400, headers: corsHeaders });
-        }
+      }
+      else
+      {
+          return new Response(JSON.stringify({ error: "API לא זוהתה פלטפורמת" }), { status: 400, headers: corsHeaders });
+      }
     }
     catch (error) {
         console.error("Error fetching data from API:", error);
         return new Response(JSON.stringify({ error: "שגיאה באיסוף נתונים" }), { status: 500, headers: corsHeaders });
     }
-    return new Response(JSON.stringify(extractedData), { status: 200, headers: corsHeaders });
+    return new Response(JSON.stringify(extractedDataArray), { status: 200, headers: corsHeaders });
 });
