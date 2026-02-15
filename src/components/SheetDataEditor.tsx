@@ -180,6 +180,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
             platform: prefix,
             externalID:externalID,
             programIDs:programIDs,
+            APIKey: key,
           },
         });
         if(error) {

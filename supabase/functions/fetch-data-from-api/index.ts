@@ -37,11 +37,11 @@ serve(async (req)=> {
   try {
         const reqText = await req.json();
         console.log(reqText);
-        const {platform, externalID,programIDs} = reqText;
+        const {platform, externalID,programIDs, APIKey} = reqText;
    
         if (platform === 'gsig' && !isNaN(externalID)) {
           for (const programID of programIDs) {
-            const url = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${programID}/ProgramSettings?Key=${gsigAPIKey}`;
+            const url = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${programID}/ProgramSettings?Key=${APIKey}`;
 
             const response = await fetch(url);
             const data = await response.json();
@@ -59,7 +59,7 @@ serve(async (req)=> {
                 };
 
             if (extractedData.valveID !== undefined) {
-                const url2 = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${extractedData.valveID}/ValveSettings?Key=${gsigAPIKey}`;
+                const url2 = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${extractedData.valveID}/ValveSettings?Key=${APIKey}`;
 
                 const response2 = await fetch(url2);
                 const data2 = await response2.json();
@@ -82,7 +82,7 @@ serve(async (req)=> {
           const response = await fetch(url,{
             method: 'GET',
             headers: {
-              'TLG-API-Key': talgilAPIKey
+              'TLG-API-Key': APIKey
             }
           });
           const responseText = await response.text();
