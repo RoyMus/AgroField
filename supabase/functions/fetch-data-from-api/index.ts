@@ -6,6 +6,9 @@ const corsHeaders = {
   "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 serve(async (req)=> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -106,6 +109,7 @@ serve(async (req)=> {
             };
             extractedDataArray.push(extractedData);
           }
+          await sleep(1000); // Sleep for 1 second between requests to avoid hitting rate limits
         }
       }
       else
