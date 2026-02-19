@@ -392,7 +392,7 @@ serve(async (req)=>{
         throw new Error('Access token is required for listFiles action');
       }
       
-      const filesResponse = await fetch('https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.spreadsheet"&fields=files(id,name,modifiedTime)', {
+      const filesResponse = await fetch('https://www.googleapis.com/drive/v3/files?q=mimeType="application/vnd.google-apps.spreadsheet" and trashed=false&fields=files(id,name,modifiedTime)', {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
