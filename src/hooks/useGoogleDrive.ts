@@ -518,10 +518,10 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
                 columnIndex: c,
                 format: newData.values[r][c].formatting
             });
-            newData.values[r][c].saved = true;
           }
-          refreshedSheetData[r][c] = getValue(newData.values[r][c]);
-          }
+          newData.values[r][c].saved = true;
+        }
+        refreshedSheetData[r][c] = getValue(newData.values[r][c]);
         }
       }
       if (updated.length > 0 || formattingUpdates.length > 0 || refreshAll) {
