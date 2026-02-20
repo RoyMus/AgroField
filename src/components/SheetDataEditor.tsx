@@ -167,7 +167,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         return;
       }
       const programIDs = new Array<number>();
-      for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 3; rowIndex++) {
+      for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 2; rowIndex++) {
         const programIDValue = getValue(sheetData.values[rowIndex][programIdColumnIndex]);
         const programID = parseInt(programIDValue);
         if (isNaN(programID)) {
@@ -185,7 +185,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         });
         if(error) {
           toast({
-            title: error.message || "שגיאה באסיפת נתונים",
+            title: error.message || "שגיאה באיסוף נתונים",
             description: ""
           });
           return;
@@ -209,7 +209,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       });
     } catch (error) {
       toast({
-        title: "שגיאה באסיפת נתונים",
+        title: "שגיאה באיסוף נתונים",
         description: "",
       });
       console.error("Error fetching data from API:", error);
