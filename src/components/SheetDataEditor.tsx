@@ -549,7 +549,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     if (onFetchSheetData) {
       onFetchSheetData(fetchSheetData);
     }
-  }, [onSaveProgress, onSaveToNewSheet, onFetchSheetData]);
+  }, [onSaveProgress, onSaveToNewSheet, onFetchSheetData, fetchSheetData]);
 
   const [formattedDate] = useState(() => new Date().toLocaleDateString());
   return (
