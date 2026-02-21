@@ -19,6 +19,11 @@ interface SheetDataEditorProps {
   onFetchSheetData?: (fetchFunc: () => void) => void;
 }
 
+interface FetchDataResponse {
+  data: any[];
+  error: any;
+}
+
 const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSaveProgress, copiedFileId, onFetchSheetData }: SheetDataEditorProps) => {
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && getValue(sheetData.values[i][0]).trim() != "")
@@ -112,7 +117,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       }
     } else if (idFromIdsRow === 'ספיקה') {
       if (extractedData?.NominalFlow !== undefined) {
-        return extractedData.NominalFlow.toString();
+        let nominalFlow = parseInt(extractedData.NominalFlow);
+        return (nominalFlow < 100) ? extractedData.NominalFlow.toString() : (extractedData.NominalFlow / 1000.0).toString();
       }
     } else if (idFromIdsRow === 'דשן') {
       if (extractedData.fertQuant !== undefined) {
@@ -153,8 +159,15 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
       let programIdColumnIndex = -1;
       for (let colIndex = 0; colIndex < headerRow.length; colIndex++) {
-        if ((getValue(headerRow[colIndex])?.includes('סידורי') || getValue(headerRow[colIndex])?.includes('זיהוי') || getValue(headerRow[colIndex])?.includes('מזהה')) && getValue(headerRow[colIndex])?.includes('מספר')) {
-          programIdColumnIndex = colIndex;
+        if ((getValue(headerRow[colIndex])?.includes('סידורי') || getValue(headerRow[colIndex])?.includes('זיהוי') || getValue(headerRow[colIndex])?.includes('מזהה')) && getValue(headerRow[colIndex])?.includes('מספר') && (!getValue(headerRow[colIndex])?.includes('ברז'))) {          programIdColumnIndex = colIndex;
+          break;
+        }
+      }
+
+      let valveIdColumnIndex = -1;
+      for (let colIndex = 0; colIndex < headerRow.length; colIndex++) {
+        if ((getValue(headerRow[colIndex])?.includes('סידורי') || getValue(headerRow[colIndex])?.includes('זיהוי') || getValue(headerRow[colIndex])?.includes('מזהה') || getValue(headerRow[colIndex])?.includes('מספר')) && getValue(headerRow[colIndex])?.includes('ברז')) {
+          valveIdColumnIndex = colIndex;
           break;
         }
       }
@@ -167,13 +180,16 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         return;
       }
       const programIDs = new Array<number>();
+      const valveIDs = new Array<number>();
       for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 2; rowIndex++) {
         const programIDValue = getValue(sheetData.values[rowIndex][programIdColumnIndex]);
+        const valveIDValue = valveIdColumnIndex !== -1? parseInt(getValue(sheetData.values[rowIndex][valveIdColumnIndex])) - 1 : 0;
         const programID = parseInt(programIDValue);
         if (isNaN(programID)) {
           continue;
         }
         programIDs.push(programID);
+        valveIDs.push(valveIDValue);
       }
       const { data, error } = await supabase.functions.invoke('fetch-data-from-api', {
           body: {
@@ -181,6 +197,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
             externalID:externalID,
             programIDs:programIDs,
             APIKey: key,
+            valveIDs:valveIDs,
           },
         });
         if(error) {
@@ -190,9 +207,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
           });
           return;
         }
-      const extractedDataArray = JSON.parse(data) as any[];
+      const response = JSON.parse(data) as FetchDataResponse;
+      const extractedDataArray = response.data;
       let dataIndex = 0;
-      for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 3; rowIndex++) {
+      for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 2; rowIndex++) {
           const extractedData = extractedDataArray[dataIndex++];
           for (let colIndex = 4; colIndex < minColIndex - 1; colIndex++) {
             const dataToInsert = getDataForHeader(colIndex, extractedData);

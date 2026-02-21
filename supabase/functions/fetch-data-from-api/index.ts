@@ -40,12 +40,13 @@ serve(async (req)=> {
   try {
         const reqText = await req.json();
         console.log(reqText);
-        const {platform, externalID,programIDs, APIKey} = reqText;
+        const {platform, externalID,programIDs, APIKey, valveIDs} = reqText;
    
         if (platform === 'gsig' && !isNaN(externalID)) {
-          for (const programID of programIDs) {
+          for (let i = 0; i < programIDs.length; i++) {
+            const programID = programIDs[i];
+            const valveIDInProgram = valveIDs[i];
             const url = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${programID}/ProgramSettings?Key=${APIKey}`;
-
             const response = await fetch(url);
             const data = await response.json();
 
@@ -54,11 +55,11 @@ serve(async (req)=> {
                 ...extractedData,
                 daysinterval: data.Body.CyclicDayProgram?.DaysInterval,
                 hourlyCyclesPerDay: data.Body.HourlyCycle?.HourlyCyclesPerDay,
-                waterDuration: data.Body.ValveInProgram?.[0]?.WaterDuration,
-                valveID: data.Body.ValveInProgram?.[0]?.ValveID,
-                fertQuant: data.Body.ValveInProgram?.[0]?.FertQuant,
-                waterQuantity: data.Body.ValveInProgram?.[0]?.WaterQuantity,
-                fertProgram: data.Body.ValveInProgram?.[0]?.FertProgram,
+                waterDuration: data.Body.ValveInProgram?.[valveIDInProgram]?.WaterDuration,
+                valveID: data.Body.ValveInProgram?.[valveIDInProgram]?.ValveID,
+                fertQuant: data.Body.ValveInProgram?.[valveIDInProgram]?.FertQuant,
+                waterQuantity: data.Body.ValveInProgram?.[valveIDInProgram]?.WaterQuantity,
+                fertProgram: data.Body.ValveInProgram?.[valveIDInProgram]?.FertProgram,
                 };
 
             if (extractedData.valveID !== undefined) {
