@@ -117,17 +117,17 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       }
     } else if (idFromIdsRow === 'ספיקה') {
       if (extractedData?.NominalFlow !== undefined) {
-        let nominalFlow = parseInt(extractedData.NominalFlow);
+        let nominalFlow = parseFloat(extractedData.NominalFlow);
         return (nominalFlow < 100) ? nominalFlow.toString() : (nominalFlow / 1000.0).toString();
       }
     } else if (idFromIdsRow === 'דשן') {
       if (extractedData.fertQuant !== undefined) {
-        let fertQuant = parseInt(extractedData.fertQuant);
+        let fertQuant = parseFloat(extractedData.fertQuant);
         return (fertQuant < 100) ? fertQuant.toString() : (fertQuant / 1000.0).toString();
       }
     } else if (idFromIdsRow === 'מים') {
       if (extractedData.waterQuantity !== undefined) {
-        let waterQuant = parseInt(extractedData.waterQuantity);
+        let waterQuant = parseFloat(extractedData.waterQuantity);
         return (waterQuant < 100) ? waterQuant.toString() : (waterQuant / 1000.0).toString();
       }
     } else if (idFromIdsRow === 'תכנית') {
