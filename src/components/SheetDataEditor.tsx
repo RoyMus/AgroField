@@ -550,9 +550,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     if (onFetchSheetData) {
       onFetchSheetData(fetchSheetData);
     }
-  }, [onSaveProgress, onSaveToNewSheet, onFetchSheetData, fetchSheetData]);
+  }, [onSaveProgress, onSaveToNewSheet, onFetchSheetData,sheetData]);
 
-  const [formattedDate] = useState(() => new Date().toLocaleDateString());
   return (
     <div className="space-y-6">
       {/* Current Cell Editor */}
