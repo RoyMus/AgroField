@@ -22,7 +22,7 @@ interface UseGoogleDriveReturn {
   authenticate: () => Promise<void>;
   selectFile: (file: GoogleDriveFile) => void;
   readSheet: (fileId: string, sheetName?: string) => Promise<void>;
-  loadAndCopySheet: (sheetName?: string) => Promise<void>;
+  loadAndCopySheet: (sheetName?: string,copySheet?: boolean) => Promise<void>;
   logout: () => void;
   clearSheetData: () => void;
   createNewSheet: (fileName: string) => Promise<{ success: boolean; url?: string; error?: string }>;
@@ -363,14 +363,24 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     return `${day}/${month}/${year}`;
   }
   
-  const loadAndCopySheet = async (sheetName?: string) => {
+  const loadAndCopySheet = async (sheetName?: string,copySheet?: boolean) => {
     if (!selectedFile) {
       setError('No file selected to load and copy.');
       return;
     }
     setIsLoading(true);
-    const newName = `${cleanFileName(selectedFile.name)} ${formatToday()}`;
-    const copied = await copyFile(selectedFile.id, newName);
+    let copied;
+    let newName;
+    if(copySheet)
+    {
+      newName = `${cleanFileName(selectedFile.name)} ${formatToday()}`;
+      copied = await copyFile(selectedFile.id, newName);
+    }
+    else
+    {
+      copied = selectedFile;
+      newName = selectedFile.name;
+    }
 
     if (copied) {
         setSelectedFile(copied);
