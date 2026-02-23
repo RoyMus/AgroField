@@ -8,6 +8,8 @@ import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { useToast } from "@/hooks/use-toast";
 import SaveProgressDialog from "./SaveProgressDialog";
 import { useNavigate } from "react-router-dom";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "./ui/label";
 
 
 const GoogleDriveFilePicker = () => {
@@ -31,6 +33,7 @@ const GoogleDriveFilePicker = () => {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [pendingFile, setPendingFile] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [createNewFile, setCreateNewFile] = useState(true);
 
   const handleAuthenticate = async () => {
     try {
@@ -108,7 +111,7 @@ const GoogleDriveFilePicker = () => {
       try {
         setIsReadingSheet(true);
         console.log('Starting to load and copy sheet for file:', selectedFile.id, 'sheet:', sheetName);
-        await loadAndCopySheet(sheetName);
+        await loadAndCopySheet(sheetName,createNewFile);
         console.log('Sheet load and copy completed successfully');
         navigate("/page/workspace"); // Navigate to workspace after loading
       } catch (err) {
@@ -281,29 +284,23 @@ const GoogleDriveFilePicker = () => {
             )}
           </Button>
         )}
-        
-        {selectedFile && sheetData && (
-          <Button
-            onClick={() => handleReadSheet()}
-            disabled={isLoading || isReadingSheet}
-            size="lg"
-            variant="outline"
-            className="w-full"
-          >
-            {isLoading || isReadingSheet ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                טוען מידע מהקובץ
-              </>
-            ) : (
-              <>
-                <FileText className="mr-2 h-4 w-4" />
-                טען מחדש את הקובץ
-              </>
-            )}
-          </Button>
-        )}
+       
       </div>
+
+      <div className="flex items-center space-x-3 justify-center">
+          <Checkbox
+            id="copy-sheet"
+            checked={createNewFile}
+            onCheckedChange={(checked) => setCreateNewFile(checked as boolean)}
+            className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+          />
+          <Label 
+            htmlFor="copy-sheet" 
+            className="text-base font-medium text-foreground cursor-pointer"
+          >
+            העתק לקובץ חדש
+          </Label>
+        </div>
 
       <SaveProgressDialog
         open={showSaveDialog}

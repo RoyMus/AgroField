@@ -209,8 +209,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
           });
           return;
         }
-      const response = JSON.parse(data) as FetchDataResponse;
-      const extractedDataArray = response.data;
+      const extractedDataArray = JSON.parse(data) as FetchDataResponse;
       let dataIndex = 0;
       for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 2; rowIndex++) {
           const extractedData = extractedDataArray[dataIndex++];
