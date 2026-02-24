@@ -80,37 +80,39 @@ serve(async (req)=> {
         }
       }
       else if (platform === 'talgil' && !isNaN(externalID)) {
-        for (const programID of programIDs) {
-          const url = `https://dev.talgil.com/api/targets/${externalID}/programs/${programID}`;
+        const url = `https://dev.talgil.com/api/targets/${externalID}/programs`;
 
-          const response = await fetch(url,{
-            method: 'GET',
-            headers: {
-              'TLG-API-Key': APIKey
-            }
-          });
-          const responseText = await response.text();
-          const data = JSON.parse(responseText);
-          
-          if(data)
-          {     
-            const valve = data.valves?.[0];
-            extractedData = {
-              ...extractedData,
-              daysinterval: 1,
-              hourlyCyclesPerDay: data.cyclesPerStart,
-              waterDuration: valve.waterPlanned,
-              fertQuant: valve.localFertPlanned?.[0],
-              waterQuantity: valve.waterPlanned,
-              fertProgram: data.name,
-            };
-            extractedData = {
-              ...extractedData,
-              NominalFlow: valve.Flow,
-            };
-            extractedDataArray.push(extractedData);
+        const response = await fetch(url,{
+          method: 'GET',
+          headers: {
+            'TLG-API-Key': APIKey
           }
-          await sleep(1000); // Sleep for 1 second between requests to avoid hitting rate limits
+        });
+        const responseText = await response.text();
+        const data = JSON.parse(responseText);
+        if(data)
+        {  
+            const filtered = data.filter((item: any) => programIDs.includes(item.id));
+            for (let i = 0; i < filtered.length; i++) {
+              const item = filtered[i];
+              console.log(item);
+              const valve = item.valves?.[0];
+              if(!valve)
+                continue;
+              
+              extractedData = {
+                ...extractedData,
+                daysinterval: 1,
+                hourlyCyclesPerDay: item.cyclesPerStart,
+                waterDuration: valve.waterPlanned,
+                fertQuant: valve.localFertPlanned?.[0],
+                waterQuantity: valve.waterPlanned,
+                fertProgram: item.name,
+                NominalFlow: valve.Flow,
+                valveID: valve.id,
+              };
+              extractedDataArray.push(extractedData);
+            }
         }
       }
       else
