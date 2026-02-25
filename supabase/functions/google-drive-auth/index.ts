@@ -275,38 +275,6 @@ serve(async (req)=>{
 
         const requests: any[] = [];
 
-        // 2. Add Value Updates to the Request list
-        // Note: We'll use updateCells for everything so it's one atomic transaction
-        if (refreshAll) {
-          // This wipes and replaces the whole grid or specific range
-          requests.push({
-            updateCells: {
-              rows: refreshedSheetData.map(row => ({
-                values: row.map(val => ({ userEnteredValue: { stringValue: String(val) } }))
-              })),
-              fields: 'userEnteredValue',
-              range: { sheetId, startRowIndex: 0, startColumnIndex: 0 }
-            }
-          });
-        } else if (rangeUpdates.length > 0) {
-          // Individual cell value updates
-          rangeUpdates.forEach(u => {
-            requests.push({
-              updateCells: {
-                rows: [{ values: [{ userEnteredValue: { stringValue: String(u.value) } }] }],
-                fields: 'userEnteredValue',
-                range: {
-                  sheetId,
-                  startRowIndex: u.row - 1,
-                  endRowIndex: u.row,
-                  startColumnIndex: u.column - 1,
-                  endColumnIndex: u.column
-                }
-              }
-            });
-          });
-        }
-
         // 3. Add Formatting Updates to the Request list
         if (formattingUpdates && formattingUpdates.length > 0) {
           formattingUpdates.forEach(({ rowIndex, columnIndex, format }) => {
