@@ -25,6 +25,8 @@ serve(async (req)=> {
         waterQuantity: number | null;
         fertProgram: number | null;
         NominalFlow: number | null;
+        fertQuantities: number[] | null;
+        waterDosageMode: number | null;
     };
     let extractedData :ExtractedData = {
         daysinterval: null,
@@ -35,6 +37,8 @@ serve(async (req)=> {
         waterQuantity: null,
         fertProgram: null,
         NominalFlow: null,
+        fertQuantities: null,
+        waterDosageMode: null,
     };
     const extractedDataArray: ExtractedData[] = [];
   try {
@@ -102,12 +106,11 @@ serve(async (req)=> {
               
               extractedData = {
                 ...extractedData,
-                daysinterval: 1,
+                daysinterval: item.daysCycle ? item.daysCycle: 1,
                 hourlyCyclesPerDay: item.cyclesPerStart,
+                waterDosageMode: item.waterDosageMode,
                 waterDuration: valve.waterPlanned,
-                fertQuant: valve.localFertPlanned?.[0],
-                waterQuantity: valve.waterPlanned,
-                fertProgram: item.name,
+                fertQuantities: valve.localFertPlanned,
                 NominalFlow: valve.Flow,
                 valveID: valve.id,
               };

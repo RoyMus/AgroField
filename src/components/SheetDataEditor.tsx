@@ -109,7 +109,13 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
     if (idFromIdsRow === 'השקייה' || idFromIdsRow === 'השקיה') {
       if (extractedData.waterDuration !== undefined) {
-        return (extractedData.waterDuration / 60).toString();
+        if (extractedData.waterDosageMode !== undefined && extractedData.waterDosageMode === 2) {
+          return (extractedData.waterDuration).toString();
+        }
+        else
+        {
+          return (extractedData.waterDuration / 60).toString();
+        }
       }
     } else if (idFromIdsRow === 'מחזורים') {
       if (extractedData.daysinterval !== undefined && extractedData.hourlyCyclesPerDay !== undefined) {
@@ -135,6 +141,38 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         return extractedData.fertProgram.toString();
       }
     }
+    else if(idFromIdsRow === 'מחזור בימים' || idFromIdsRow === 'מחזור')
+    {
+      if (extractedData.daysinterval !== undefined) {
+        return extractedData.daysinterval.toString();
+      }
+    }
+    else if(idFromIdsRow === 'השקיה ביום' || idFromIdsRow === 'השקיה ליום' || idFromIdsRow === 'השקיות ביום')
+    {
+      if (extractedData.hourlyCyclesPerDay !== undefined) {
+        return extractedData.hourlyCyclesPerDay.toString();
+      }
+    }
+    else
+    {
+      const fertMatch = idFromIdsRow.match(/^דשן\s?(\d+)$/);
+      if (fertMatch) {
+        const index = parseInt(fertMatch[1], 10) - 1;
+
+        if (
+          extractedData.fertQuantities &&
+          extractedData.fertQuantities.length > index
+        ) {
+          const fertQuant = parseFloat(extractedData.fertQuantities[index]);
+
+          if (!isNaN(fertQuant)) {
+            return fertQuant < 100
+              ? fertQuant.toString()
+              : (fertQuant / 1000).toString();
+          }
+        }
+    }
+}
 
     return null;
   };
