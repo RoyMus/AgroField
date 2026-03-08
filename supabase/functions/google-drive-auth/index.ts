@@ -305,7 +305,28 @@ serve(async (req)=>{
               userEnteredFormat.horizontalAlignment = format.textAlign.toUpperCase();
               fields.push('horizontalAlignment');
             }
+            if (format.type) {
+              // mapping custom types to Google Sheets NumberFormatTypes
+              const typeMapping: Record<string, string> = {
+                'number': 'NUMBER',
+                'date': 'DATE',
+                'currency': 'CURRENCY',
+                'percent': 'PERCENT',
+                'time': 'TIME',
+                'duration': 'DURATION',
+                'text': 'TEXT'
+            };
 
+            const googleType = typeMapping[format.type.toLowerCase()];
+            
+            if (googleType) {
+              userEnteredFormat.numberFormat = {
+                type: googleType,
+                pattern: format.pattern || undefined 
+              };
+              fields.push('numberFormat');
+            }
+          }
             if (fields.length > 0) {
               requests.push({
                 repeatCell: {
