@@ -11,6 +11,8 @@ export interface CellFormat {
     left?: { style: string; color: string; width: number };
     right?: { style: string; color: string; width: number };
   };
+  type? : 'number' | 'currency' | 'date' | 'percent' | 'duration' | 'text';
+  pattern?: string;
 }
 
 export interface CellStyle {

@@ -19,6 +19,8 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
     } = getData(false, null, null, null, null, null);
     
     const [topBar, setTopBar] = useState("");
+    const [fetchDataButtonDisabled, setFetchDataButtonDisabled] = useState(false);
+
     useEffect(()=>{
         const topBarRowIndex = 0;
         const topBarRow = sheetData.values[topBarRowIndex];
@@ -46,7 +48,15 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
         }
     };
     
-
+    const handleClickFetchData = () => {
+        if(fetchDataButtonDisabled)
+            return;
+        setFetchDataButtonDisabled(true);
+        setTimeout(() => {
+            setFetchDataButtonDisabled(false);
+        }, 5000); // Disable button for 1 second
+        onFetchSheetData();
+    };
     return (
         <div className="bg-white rounded-xl p-4 sm:p-6 shadow-lg border-2 border-gray-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -72,11 +82,12 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     {onFetchSheetData && (
                         <Button
-                            onClick={onFetchSheetData}
+                            onClick={handleClickFetchData}
                             variant="default"
                             size="sm"
                             className="bg-purple-600 hover:bg-purple-700 h-9 text-sm"
                             dir="rtl"
+                            disabled={fetchDataButtonDisabled}
                         >
                             <Download className="mr-1 h-4 w-4" />
                             <span>טען נתוני API</span>
