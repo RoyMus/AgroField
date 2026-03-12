@@ -43,7 +43,6 @@ serve(async (req)=> {
     const extractedDataArray: ExtractedData[] = [];
   try {
         const reqText = await req.json();
-        console.log(reqText);
         const {platform, externalID,programIDs, APIKey, valveIDs} = reqText;
    
         if (platform === 'gsig' && !isNaN(externalID)) {
@@ -75,7 +74,7 @@ serve(async (req)=> {
                 if (data2.Result && data2.Body) {
                     extractedData = {
                     ...extractedData,
-                    NominalFlow: data2.Body.SetupNominalFlow,
+                    NominalFlow: data2.Body.LastFlow,
                     };
                 }
             }
@@ -99,7 +98,6 @@ serve(async (req)=> {
             const filtered = data.filter((item: any) => programIDs.includes(item.id));
             for (let i = 0; i < filtered.length; i++) {
               const item = filtered[i];
-              console.log(item);
               const valve = item.valves?.[0];
               if(!valve)
                 continue;
@@ -114,6 +112,7 @@ serve(async (req)=> {
                 NominalFlow: valve.Flow,
                 valveID: valve.id,
               };
+              console.log(extractedData);
               extractedDataArray.push(extractedData);
             }
         }
