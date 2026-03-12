@@ -13,9 +13,6 @@ serve(async (req)=> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
-    const talgilAPIKey = Deno.env.get("TLG_API_KEY");
-    const gsigAPIKey = Deno.env.get("GSI_API_KEY");
-
     type ExtractedData = {
         daysinterval: number | null;
         hourlyCyclesPerDay: number | null;
@@ -83,7 +80,7 @@ serve(async (req)=> {
         }
       }
       else if (platform === 'talgil' && !isNaN(externalID)) {
-        const url = `https://dev.talgil.com/api/targets/${externalID}/programs`;
+        const url = `https://srv.talgil.com/api/targets/${externalID}/programs`;
 
         const response = await fetch(url,{
           method: 'GET',
