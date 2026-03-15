@@ -126,6 +126,7 @@ serve(async (req)=> {
                 extractedDataArray.push(extractedData);
               }
           }
+          await sleep(1000);
         }
       }
       else
