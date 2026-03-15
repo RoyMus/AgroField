@@ -91,8 +91,17 @@ serve(async (req)=> {
           }
           map.get(innerExternalID).push(programIDs[i]);
         }
-        for (const externalID of externalIDs)
+        let shouldAwait = false;
+        for (const externalID of map.keys())
         {
+          if (shouldAwait)
+          {
+            await sleep(1000);
+          }
+          else
+          {
+            shouldAwait = true;
+          }
           const url = `https://srv.talgil.com/api/targets/${externalID}/programs`;
 
           const response = await fetch(url,{
@@ -105,7 +114,7 @@ serve(async (req)=> {
           const data = JSON.parse(responseText);
           if(data)
           {  
-              const filtered = data.filter((item: any) => externalIDs.get(externalID).includes(item.id + 1));
+              const filtered = data.filter((item: any) => map.get(externalID).includes(item.id + 1));
               for (let i = 0; i < filtered.length; i++) {
                 const item = filtered[i];
                 const valve = item.valves?.[0];
@@ -122,11 +131,9 @@ serve(async (req)=> {
                   NominalFlow: valve.flow,
                   valveID: valve.valve,
                 };
-                console.log(extractedData);
                 extractedDataArray.push(extractedData);
               }
           }
-          await sleep(1000);
         }
       }
       else
