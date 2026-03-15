@@ -92,7 +92,7 @@ serve(async (req)=> {
         const data = JSON.parse(responseText);
         if(data)
         {  
-            const filtered = data.filter((item: any) => programIDs.includes(item.id));
+            const filtered = data.filter((item: any) => programIDs.includes(item.id + 1));
             for (let i = 0; i < filtered.length; i++) {
               const item = filtered[i];
               const valve = item.valves?.[0];
@@ -101,13 +101,13 @@ serve(async (req)=> {
               
               extractedData = {
                 ...extractedData,
-                daysinterval: item.daysCycle ? item.daysCycle: 1,
+                daysinterval: item.daysCycle ? item.daysCycle : 1,
                 hourlyCyclesPerDay: item.cyclesPerStart,
-                waterDosageMode: item.waterDosageMode,
+                waterDosageMode: valve.waterDosageMode,
                 waterDuration: valve.waterPlanned,
                 fertQuantities: valve.localFertPlanned,
-                NominalFlow: valve.Flow,
-                valveID: valve.id,
+                NominalFlow: valve.flow,
+                valveID: valve.valve,
               };
               console.log(extractedData);
               extractedDataArray.push(extractedData);
