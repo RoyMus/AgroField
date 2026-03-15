@@ -194,15 +194,14 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     sheetData.values[2][3] = setFormat(sheetData.values[2][3], { ...sheetData.values[2][3].formatting, backgroundColor: '#ffff00ff' });
     const externalIDValue = getValue(sheetData.values[2][1]);
     const [prefix, key, externalIDString] = externalIDValue.split(':');
-    const externalID = parseInt(externalIDString);
-
     
     try {
       const headerRow = sheetData.values[found_headers_row_index] || [];
 
       let programIdColumnIndex = -1;
       for (let colIndex = 0; colIndex < headerRow.length; colIndex++) {
-        if ((getValue(headerRow[colIndex])?.includes('סידורי') || getValue(headerRow[colIndex])?.includes('זיהוי') || getValue(headerRow[colIndex])?.includes('מזהה')) && getValue(headerRow[colIndex])?.includes('מספר') && (!getValue(headerRow[colIndex])?.includes('ברז'))) {          programIdColumnIndex = colIndex;
+        if ((getValue(headerRow[colIndex])?.includes('סידורי') || getValue(headerRow[colIndex])?.includes('זיהוי') || getValue(headerRow[colIndex])?.includes('מזהה') || getValue(headerRow[colIndex])?.includes('מספר')) && getValue(headerRow[colIndex])?.includes('מגוף')) {          
+          programIdColumnIndex = colIndex;
           break;
         }
       }
@@ -215,6 +214,14 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         }
       }
 
+      let bakarIdColumnIndex = -1;
+      for (let colIndex = 0; colIndex < headerRow.length; colIndex++) {
+        if ((getValue(headerRow[colIndex])?.includes('סידורי') || getValue(headerRow[colIndex])?.includes('זיהוי') || getValue(headerRow[colIndex])?.includes('מזהה') || getValue(headerRow[colIndex])?.includes('מספר')) && getValue(headerRow[colIndex])?.includes('בקר')) {
+          bakarIdColumnIndex = colIndex;
+          break;
+        }
+      }
+
       if (programIdColumnIndex === -1) {
         toast({
           title: "שגיאה",
@@ -222,22 +229,36 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         });
         return;
       }
+
+
       const programIDs = new Array<number>();
       const valveIDs = new Array<number>();
+      const externalIDs = new Array<number>();
       for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 2; rowIndex++) {
         const programIDValue = getValue(sheetData.values[rowIndex][programIdColumnIndex]);
-        const valveIDValue = valveIdColumnIndex !== -1? parseInt(getValue(sheetData.values[rowIndex][valveIdColumnIndex])) - 1 : 0;
+        let externalIDValue = -1;
+        if (bakarIdColumnIndex === -1)
+        {
+          externalIDValue = parseInt(externalIDString);
+        }
+        else
+        {
+          externalIDValue = parseInt(getValue(sheetData.values[rowIndex][bakarIdColumnIndex]));
+        }
+
+        const valveIDValue = valveIdColumnIndex !== -1 && getValue(sheetData.values[rowIndex][valveIdColumnIndex]) != "" ? parseInt(getValue(sheetData.values[rowIndex][valveIdColumnIndex])) - 1 : 0;
         const programID = parseInt(programIDValue);
         if (isNaN(programID)) {
           continue;
         }
         programIDs.push(programID);
         valveIDs.push(valveIDValue);
+        externalIDs.push(externalIDValue);
       }
       const { data, error } = await supabase.functions.invoke('fetch-data-from-api', {
           body: {
             platform: prefix,
-            externalID:externalID,
+            externalIDs:externalIDs,
             programIDs:programIDs,
             APIKey: key,
             valveIDs:valveIDs,

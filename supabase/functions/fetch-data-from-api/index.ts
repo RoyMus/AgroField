@@ -25,6 +25,7 @@ serve(async (req)=> {
         fertQuantities: number[] | null;
         waterDosageMode: number | null;
     };
+    
     let extractedData :ExtractedData = {
         daysinterval: null,
         hourlyCyclesPerDay: null,
@@ -40,10 +41,10 @@ serve(async (req)=> {
     const extractedDataArray: ExtractedData[] = [];
   try {
         const reqText = await req.json();
-        const {platform, externalID,programIDs, APIKey, valveIDs} = reqText;
-   
-        if (platform === 'gsig' && !isNaN(externalID)) {
+        const {platform, externalIDs, programIDs, APIKey, valveIDs} = reqText;
+        if (platform === 'gsig') {
           for (let i = 0; i < programIDs.length; i++) {
+            const externalID = externalIDs[i];
             const programID = programIDs[i];
             const valveIDInProgram = valveIDs[i];
             const url = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${programID}/ProgramSettings?Key=${APIKey}`;
@@ -79,39 +80,52 @@ serve(async (req)=> {
           }
         }
       }
-      else if (platform === 'talgil' && !isNaN(externalID)) {
-        const url = `https://srv.talgil.com/api/targets/${externalID}/programs`;
-
-        const response = await fetch(url,{
-          method: 'GET',
-          headers: {
-            'TLG-API-Key': APIKey
+      else if (platform === 'talgil') {
+        const map = new Map();
+        for (let i = 0; i < externalIDs.length; i++)
+        {
+          var innerExternalID = externalIDs[i];
+          if (!map.has(innerExternalID))
+          {
+            map.set(innerExternalID, []);
           }
-        });
-        const responseText = await response.text();
-        const data = JSON.parse(responseText);
-        if(data)
-        {  
-            const filtered = data.filter((item: any) => programIDs.includes(item.id + 1));
-            for (let i = 0; i < filtered.length; i++) {
-              const item = filtered[i];
-              const valve = item.valves?.[0];
-              if(!valve)
-                continue;
-              
-              extractedData = {
-                ...extractedData,
-                daysinterval: item.daysCycle ? item.daysCycle : 1,
-                hourlyCyclesPerDay: item.cyclesPerStart,
-                waterDosageMode: valve.waterDosageMode,
-                waterDuration: valve.waterPlanned,
-                fertQuantities: valve.localFertPlanned,
-                NominalFlow: valve.flow,
-                valveID: valve.valve,
-              };
-              console.log(extractedData);
-              extractedDataArray.push(extractedData);
+          map.get(innerExternalID).push(programIDs[i]);
+        }
+        for (const externalID of externalIDs)
+        {
+          const url = `https://srv.talgil.com/api/targets/${externalID}/programs`;
+
+          const response = await fetch(url,{
+            method: 'GET',
+            headers: {
+              'TLG-API-Key': APIKey
             }
+          });
+          const responseText = await response.text();
+          const data = JSON.parse(responseText);
+          if(data)
+          {  
+              const filtered = data.filter((item: any) => externalIDs.get(externalID).includes(item.id + 1));
+              for (let i = 0; i < filtered.length; i++) {
+                const item = filtered[i];
+                const valve = item.valves?.[0];
+                if(!valve)
+                  continue;
+                
+                extractedData = {
+                  ...extractedData,
+                  daysinterval: item.daysCycle ? item.daysCycle : 1,
+                  hourlyCyclesPerDay: item.cyclesPerStart,
+                  waterDosageMode: valve.waterDosageMode,
+                  waterDuration: valve.waterPlanned,
+                  fertQuantities: valve.localFertPlanned,
+                  NominalFlow: valve.flow,
+                  valveID: valve.valve,
+                };
+                console.log(extractedData);
+                extractedDataArray.push(extractedData);
+              }
+          }
         }
       }
       else
