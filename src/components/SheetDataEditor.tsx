@@ -109,8 +109,11 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
     if (idFromIdsRow === 'השקייה' || idFromIdsRow === 'השקיה') {
       if (extractedData.waterDuration !== undefined) {
-        if (extractedData.waterDosageMode !== undefined && extractedData.waterDosageMode === 2) {
-          return (extractedData.waterDuration).toString();
+        if (extractedData.waterDosageMode !== undefined) {
+          if (extractedData.waterDosageMode == 0)
+            return (extractedData.waterDuration / 60).toString();
+          else
+            return (extractedData.waterDuration).toString();
         }
         else
         {
