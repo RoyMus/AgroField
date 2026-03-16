@@ -111,7 +111,16 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       if (extractedData.waterDuration !== undefined) {
         if (extractedData.waterDosageMode !== undefined) {
           if (extractedData.waterDosageMode == 0)
-            return (extractedData.waterDuration / 60).toString();
+          {
+            const totalSeconds = extractedData.waterDuration;
+            // 1. Calculate the components
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const formattedMinutes = minutes.toString().padStart(2, '0');
+            // 3. Create the final string
+            const displayValue = `${hours}:${formattedMinutes}`;
+            return displayValue;
+          }
           else
             return (extractedData.waterDuration).toString();
         }
@@ -279,7 +288,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
             const dataToInsert = getDataForHeader(colIndex, extractedData);
             if (dataToInsert !== null) {
               sheetData.values[rowIndex][colIndex] = setValue(sheetData.values[rowIndex][colIndex], dataToInsert);
-              sheetData.values[rowIndex][colIndex] = setFormat(sheetData.values[rowIndex][colIndex], { ...sheetData.values[rowIndex][colIndex].formatting, backgroundColor: '#ffff00ff' });
+              sheetData.values[rowIndex][colIndex] = setFormat(sheetData.values[rowIndex][colIndex], { ...sheetData.values[rowIndex][colIndex].formatting, backgroundColor: '#ffff00ff', type: 'text' });
             }
         }
       }
