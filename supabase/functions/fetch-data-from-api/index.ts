@@ -114,7 +114,10 @@ serve(async (req)=> {
           const data = JSON.parse(responseText);
           if(data)
           {  
-              const filtered = data.filter((item: any) => map.get(externalID).includes(item.id + 1));
+              const order = map.get(externalID);
+              const filtered = data
+                .filter((item: any) => order.includes(item.id + 1))
+                .sort((a: any, b: any) => order.indexOf(a.id + 1) - order.indexOf(b.id + 1));
               for (let i = 0; i < filtered.length; i++) {
                 const item = filtered[i];
                 const valve = item.valves?.[0];
