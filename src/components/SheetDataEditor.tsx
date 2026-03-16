@@ -113,13 +113,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
           if (extractedData.waterDosageMode == 0)
           {
             const totalSeconds = extractedData.waterDuration;
-            // 1. Calculate the components
             const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const formattedMinutes = minutes.toString().padStart(2, '0');
-            // 3. Create the final string
-            const displayValue = `${hours}:${formattedMinutes}`;
-            return displayValue;
+            const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
           }
           else
             return (extractedData.waterDuration).toString();
