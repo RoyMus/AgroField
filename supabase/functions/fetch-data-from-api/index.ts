@@ -123,17 +123,19 @@ serve(async (req)=> {
                 const valve = item.valves?.[0];
                 if(!valve)
                   continue;
-                
+                const convertedFerts = valve.localFertPlanned?.map((fert: any) => fert / 60) || null;
                 extractedData = {
                   ...extractedData,
-                  daysinterval: item.daysCycle ? item.daysCycle : 1,
-                  hourlyCyclesPerDay: item.cyclesPerStart,
+                  fertProgram: item.name,
+                  daysinterval: item.daysCycle == 0 ? 1 : item.daysCycle,
+                  hourlyCyclesPerDay: item.cyclesPerStart == 0  ? 1 : item.cyclesPerStart,
                   waterDosageMode: valve.waterDosageMode,
                   waterDuration: valve.waterPlanned,
-                  fertQuantities: valve.localFertPlanned,
                   NominalFlow: valve.flow,
                   valveID: valve.valve,
+                  fertQuantities: convertedFerts,
                 };
+                
                 extractedDataArray.push(extractedData);
               }
           }
