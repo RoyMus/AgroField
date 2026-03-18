@@ -19,11 +19,6 @@ interface SheetDataEditorProps {
   onFetchSheetData?: (fetchFunc: () => void) => void;
 }
 
-interface FetchDataResponse {
-  data: any[];
-  error: any;
-}
-
 const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSaveProgress, copiedFileId, onFetchSheetData }: SheetDataEditorProps) => {
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && getValue(sheetData.values[i][0]).trim() != "")
@@ -149,7 +144,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         return extractedData.fertProgram.toString();
       }
     }
-    else if(idFromIdsRow === 'מרווח השקייה בימים')
+    else if(idFromIdsRow === 'מרווח השקייה בימים' || idFromIdsRow === 'מרווח השקייה' || idFromIdsRow === 'מרווח השקיה בימים' || idFromIdsRow === 'מרווח בין השקיות')
     {
       if (extractedData.daysinterval !== undefined) {
         return extractedData.daysinterval.toString();
@@ -276,9 +271,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
           });
           return;
         }
-      const extractedDataArray = JSON.parse(data) as FetchDataResponse;
+      const extractedDataArray = JSON.parse(data);
       let dataIndex = 0;
-      for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 2; rowIndex++) {
+      for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 2 && rowIndex < extractedDataArray.length; rowIndex++) {
           const extractedData = extractedDataArray[dataIndex++];
           for (let colIndex = 4; colIndex < minColIndex - 1; colIndex++) {
             const dataToInsert = getDataForHeader(colIndex, extractedData);
