@@ -609,9 +609,10 @@ serve(async (req)=>{
 
         const metadata = await metadataResponse.json();
         
-        const sheets = await Promise.all(metadata.sheets.map(async (sheet: any) => {
+        const sheets = [];
+        for (const sheet of metadata.sheets) {
           const sheetName = sheet.properties.title;
-          
+
           // Fetch values for this sheet
           const dataResponse = await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(sheetName)}?valueRenderOption=FORMULA`,
@@ -723,7 +724,7 @@ serve(async (req)=>{
             });
           }
 
-          return {
+          sheets.push({
             sheetName,
             sheetId: sheet.properties.sheetId,
             values: data.values || [[]],
@@ -738,8 +739,8 @@ serve(async (req)=>{
                 index: s.properties.index
               }))
             }
-          };
-        }));
+          });
+        }
 
         return new Response(
           JSON.stringify({ sheets }),
