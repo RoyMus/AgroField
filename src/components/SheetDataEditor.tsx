@@ -273,7 +273,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         }
       const extractedDataArray = JSON.parse(data);
       let dataIndex = 0;
-      for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 2; rowIndex++) {
+      let rowIndex = 0;
+      for (let i = 0; i < extractedDataArray.length; i++) {
+          rowIndex = headersRowIndex + i;
           const extractedData = extractedDataArray[dataIndex++];
           for (let colIndex = 4; colIndex < minColIndex - 1; colIndex++) {
             const dataToInsert = getDataForHeader(colIndex, extractedData);
