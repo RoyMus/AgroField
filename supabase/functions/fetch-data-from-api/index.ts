@@ -91,6 +91,7 @@ serve(async (req)=> {
           }
           map.get(innerExternalID).push(programIDs[i]);
         }
+        console.log(map);
         let shouldAwait = false;
         for (const externalID of map.keys())
         {
@@ -112,34 +113,38 @@ serve(async (req)=> {
           });
           const responseText = await response.text();
           const data = JSON.parse(responseText);
+          console.log(data);
           if(data)
           {  
               const order = map.get(externalID);
               const filtered = data
                 .filter((item: any) => order.includes(item.id + 1))
                 .sort((a: any, b: any) => order.indexOf(a.id + 1) - order.indexOf(b.id + 1));
+              console.log("Filtered Data: " + filtered);
               for (let i = 0; i < filtered.length; i++) {
                 const item = filtered[i];
                 const valve = item.valves?.[0];
                 if(!valve)
                   continue;
-                const convertedFerts = valve.localFertPlanned?.map((fert: any) => fert / 60) || null;
+                let daysCycle = item.daysCycle == 0 ? 1 : item.daysCycle;
+
                 extractedData = {
                   ...extractedData,
                   fertProgram: item.name,
-                  daysinterval: item.daysCycle == 0 ? 1 : item.daysCycle,
+                  daysinterval: daysCycle,
                   hourlyCyclesPerDay: item.cyclesPerStart == 0  ? 1 : item.cyclesPerStart,
                   waterDosageMode: valve.waterDosageMode,
                   waterDuration: valve.waterPlanned,
                   NominalFlow: valve.flow,
                   valveID: valve.valve,
-                  fertQuantities: convertedFerts,
+                  fertQuantities: valve.localFertPlanned,
                 };
                 
                 extractedDataArray.push(extractedData);
               }
           }
         }
+        console.log("Final Array: " + extractedDataArray);
       }
       else
       {
