@@ -90,7 +90,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const getDataForHeader = (colIndex: number, extractedData: any) => {
     let idsRowIndex = -1;
     for (let rowIdx = 0; rowIdx < sheetData.values.length; rowIdx++) {
-      if (getValue(sheetData.values[rowIdx][0])?.includes('נתונים') && (getValue(sheetData.values[rowIdx][0])?.includes('לשליפה') || getValue(sheetData.values[rowIdx][0])?.includes('שליפה') || getValue(sheetData.values[rowIdx][0])?.includes('לשלוף') || getValue(sheetData.values[rowIdx][0])?.includes('שליפת'))) {
+      if (getValue(sheetData.values[rowIdx][0])?.includes('נתונים') && (getValue(sheetData.values[rowIdx][0])?.includes('לשליפה') || getValue(sheetData.values[rowIdx][0])?.includes('שליפה') || getValue(sheetData.values[rowIdx][0])?.includes('לשלוף'))) {
         idsRowIndex = rowIdx;
         break;
       }
@@ -273,9 +273,14 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         }
       const extractedDataArray = JSON.parse(data);
       let dataIndex = 0;
-      let rowIndex = 0;
-      for (let i = 0; i < extractedDataArray.length; i++) {
-          rowIndex = headersRowIndex + i;
+      for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 2; rowIndex++) {
+          if(dataIndex >= extractedDataArray.length) {
+            break;
+          }
+          if(getValue(sheetData.values[rowIndex][programIdColumnIndex]) == "")
+          {
+            continue;
+          }
           const extractedData = extractedDataArray[dataIndex++];
           for (let colIndex = 4; colIndex < minColIndex - 1; colIndex++) {
             const dataToInsert = getDataForHeader(colIndex, extractedData);
