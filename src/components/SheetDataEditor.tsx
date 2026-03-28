@@ -245,8 +245,15 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         {
           externalIDValue = parseInt(getValue(sheetData.values[rowIndex][bakarIdColumnIndex]));
         }
-
-        const valveIDValue = valveIdColumnIndex !== -1 && getValue(sheetData.values[rowIndex][valveIdColumnIndex]) != "" ? parseInt(getValue(sheetData.values[rowIndex][valveIdColumnIndex])) - 1 : 0;
+        let valveIDValue = 0;
+        if(prefix === 'talgil')
+        {
+          valveIDValue = valveIdColumnIndex !== -1 && getValue(sheetData.values[rowIndex][valveIdColumnIndex]) != "" ? parseInt(getValue(sheetData.values[rowIndex][valveIdColumnIndex])): 0;
+        }
+        else
+        {
+          valveIDValue = valveIdColumnIndex !== -1 && getValue(sheetData.values[rowIndex][valveIdColumnIndex]) != "" ? parseInt(getValue(sheetData.values[rowIndex][valveIdColumnIndex])) - 1 : 0;
+        }
         const programID = parseInt(programIDValue);
         if (isNaN(programID)) {
           continue;
@@ -255,7 +262,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         valveIDs.push(valveIDValue);
         externalIDs.push(externalIDValue);
       }
-      const { data, error } = await supabase.functions.invoke('fetch-data-from-api', {
+      const { data, error } = await supabase.functions.invoke('fetch-data-from-api-dev', {
           body: {
             platform: prefix,
             externalIDs:externalIDs,

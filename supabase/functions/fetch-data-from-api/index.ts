@@ -1,5 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -9,6 +11,62 @@ const corsHeaders = {
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+);
+function createMappingRecords(data: { line: number; position: number; mapped_id: string }[])
+{
+  const mapping: Record<string, string> = {};
+  for (const row of data) {
+    mapping[`${row.line}${row.position}`] = row.mapped_id;
+  }
+  return mapping;
+}
+async function fetchValvesIds(file_id:string, APIKey:string)
+{
+  // 1. Try fetching from DB first
+  const { data, error } = await supabase
+    .from("line_position_map")
+    .select("line, position, mapped_id")
+    .eq("file_id", file_id)
+
+  if (data && data.length > 0) {
+    return createMappingRecords(data);
+  }
+
+  // 2. DB miss — fetch from your API
+  const apiRes = await fetch(`https://srv.talgil.com/api/targets/${file_id}/valves`, {
+     method: 'GET',
+      headers: {
+        'TLG-API-Key': APIKey
+    }
+  });
+
+  if (!apiRes.ok) {
+    return null;
+  }
+
+  const apiData = await apiRes.json();
+
+  const pairs = apiData.map((item: any) => ({
+    line: item.line,
+    position: item.position,
+    id: item.uid,
+  }));
+
+  // 3. Store in DB for next time
+  const rows = pairs.map((pair) => ({
+    file_id,
+    line: pair.line,
+    position: pair.position,
+    mapped_id: pair.id,
+  }));
+
+  await supabase.from("line_position_map").upsert(rows);
+  return createMappingRecords(pairs);
+
+}
 serve(async (req)=> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -81,6 +139,8 @@ serve(async (req)=> {
         }
       }
       else if (platform === 'talgil') {
+        const valvesMapping = await fetchValvesIds(externalIDs[0], APIKey);
+        await sleep(1000); // Ensure we respect any potential rate limits after fetching valve IDs
         const map = new Map();
         for (let i = 0; i < externalIDs.length; i++)
         {
@@ -92,6 +152,7 @@ serve(async (req)=> {
           map.get(innerExternalID).push(programIDs[i]);
         }
         console.log(map);
+
         let shouldAwait = false;
         for (const externalID of map.keys())
         {
@@ -117,30 +178,51 @@ serve(async (req)=> {
           if(data)
           {  
               const order = map.get(externalID);
-              const filtered = data
-                .filter((item: any) => order.includes(item.id + 1))
-                .sort((a: any, b: any) => order.indexOf(a.id + 1) - order.indexOf(b.id + 1));
-              console.log("Filtered Data: " + filtered);
-              for (let i = 0; i < filtered.length; i++) {
-                const item = filtered[i];
-                const valve = item.valves?.[0];
-                if(!valve)
-                  continue;
+              // Keep programs indexed by id for quick lookup
+              const programsById = new Map(data.map((item: any) => [item.id + 1, item]));
+
+              for (let i = 0; i < order.length; i++) {
+                const programID = order[i];
+                const item = programsById.get(programID);
+                
+                if (!item) continue;
+
+                let valves: any[] = [];
+
+                if (valvesMapping !== null) {
+                  const valveID = valvesMapping[valveIDs[i]];
+                  console.log("Trying to find " + valveIDs[i] + " in "+ valvesMapping);
+                  if (valveID) {
+                    const matched = item.valves?.find((v: any) => v.valve === valveID);
+                    valves = matched ? [matched] : [item.valves?.[0]].filter(Boolean);
+                  } else {
+                    valves = [item.valves?.[0]].filter(Boolean);
+                  }
+                }
+                else
+                {
+                  valves = [item.valves?.[0]].filter(Boolean);
+                }
+                // If still no valves at all, skip this program
+                if (valves.length === 0) continue;
+
                 let daysCycle = item.daysCycle == 0 ? 1 : item.daysCycle;
 
-                extractedData = {
-                  ...extractedData,
-                  fertProgram: item.name,
-                  daysinterval: daysCycle,
-                  hourlyCyclesPerDay: item.cyclesPerStart == 0  ? 1 : item.cyclesPerStart,
-                  waterDosageMode: valve.waterDosageMode,
-                  waterDuration: valve.waterPlanned,
-                  NominalFlow: valve.flow,
-                  valveID: valve.valve,
-                  fertQuantities: valve.localFertPlanned,
-                };
-                
-                extractedDataArray.push(extractedData);
+                for (const valve of valves) {
+                  extractedData = {
+                    ...extractedData,
+                    fertProgram: item.name,
+                    daysinterval: daysCycle,
+                    hourlyCyclesPerDay: item.cyclesPerStart == 0 ? 1 : item.cyclesPerStart,
+                    waterDosageMode: valve.waterDosageMode,
+                    waterDuration: valve.waterPlanned,
+                    NominalFlow: valve.flow,
+                    valveID: valve.valve,
+                    fertQuantities: valve.localFertPlanned,
+                  };
+
+                  extractedDataArray.push(extractedData);
+                }
               }
           }
         }
