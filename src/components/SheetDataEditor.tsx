@@ -262,7 +262,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         valveIDs.push(valveIDValue);
         externalIDs.push(externalIDValue);
       }
-      const { data, error } = await supabase.functions.invoke('fetch-data-from-api-dev', {
+      const { data, error } = await supabase.functions.invoke('fetch-data-from-api', {
           body: {
             platform: prefix,
             externalIDs:externalIDs,
