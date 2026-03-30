@@ -104,7 +104,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
     if (idFromIdsRow === 'השקייה' || idFromIdsRow === 'השקיה') {
       if (extractedData.waterDuration !== undefined) {
-        if (extractedData.waterDosageMode !== undefined) {
+        if (extractedData.waterDosageMode != null) {
           if (extractedData.waterDosageMode == 0)
           {
             const totalSeconds = extractedData.waterDuration;
