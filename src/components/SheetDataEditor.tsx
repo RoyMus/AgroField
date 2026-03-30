@@ -87,19 +87,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   
   const hasInitialized = useRef(false);
   
-  const getDataForHeader = (colIndex: number, extractedData: any) => {
-    let idsRowIndex = -1;
-    for (let rowIdx = 0; rowIdx < sheetData.values.length; rowIdx++) {
-      if (getValue(sheetData.values[rowIdx][0])?.includes('נתונים') && (getValue(sheetData.values[rowIdx][0])?.includes('לשליפה') || getValue(sheetData.values[rowIdx][0])?.includes('שליפה') || getValue(sheetData.values[rowIdx][0])?.includes('לשלוף'))) {
-        idsRowIndex = rowIdx;
-        break;
-      }
-    }
-
-    if (idsRowIndex === -1) {
-      return null;
-    }
-
+  const getDataForHeader = (colIndex: number, extractedData: any, idsRowIndex: number) => {
     const idFromIdsRow = getValue(sheetData.values[idsRowIndex][colIndex]);
 
     if (idFromIdsRow === 'השקייה' || idFromIdsRow === 'השקיה') {
@@ -110,7 +98,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
             const totalSeconds = extractedData.waterDuration;
             const hours = Math.floor(totalSeconds / 3600);
             const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
-            return `${hours}:${minutes}`;
+            const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+            return `${hours}:${minutes}:${seconds}`;
           }
           else
             return (extractedData.waterDuration).toString();
@@ -167,11 +156,23 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
           extractedData.fertQuantities.length > index
         ) {
           const fertQuant = parseFloat(extractedData.fertQuantities[index]);
-
-          if (!isNaN(fertQuant)) {
-            return fertQuant < 100
-              ? fertQuant.toString()
-              : (fertQuant / 1000).toString();
+          if(extractedData.fertLocalModes !== null && extractedData.fertLocalModes !== undefined && extractedData.fertLocalModes.length > index && extractedData.fertLocalModes[index] == 3 || extractedData.fertLocalModes[index] == 6)
+          {
+            if(!isNaN(fertQuant)) {
+              const totalSeconds = fertQuant;
+              const hours = Math.floor(totalSeconds / 3600);
+              const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+              const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+              return `${hours}:${minutes}:${seconds}`;
+            }
+          }
+          else
+          {
+            if (!isNaN(fertQuant)) {
+              return fertQuant < 100
+                ? fertQuant.toString()
+                : (fertQuant / 1000).toString();
+            }
           }
         }
     }
@@ -230,7 +231,21 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         return;
       }
 
+      let idsRowIndex = -1;
+      for (let rowIdx = 0; rowIdx < sheetData.values.length; rowIdx++) {
+        if (getValue(sheetData.values[rowIdx][0])?.includes('נתונים') && (getValue(sheetData.values[rowIdx][0])?.includes('לשליפה') || getValue(sheetData.values[rowIdx][0])?.includes('שליפה') || getValue(sheetData.values[rowIdx][0])?.includes('לשלוף')) || getValue(sheetData.values[rowIdx][0])?.includes('שליפת')) {
+          idsRowIndex = rowIdx;
+          break;
+        }
+      }
 
+      if (idsRowIndex === -1) {
+        toast({
+          title: "שגיאה",
+          description: "לא נמצאה שורת שליפת נתונים",
+        });
+        return;
+      }
       const programIDs = new Array<number>();
       const valveIDs = new Array<number>();
       const externalIDs = new Array<number>();
@@ -290,7 +305,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
           }
           const extractedData = extractedDataArray[dataIndex++];
           for (let colIndex = 4; colIndex < minColIndex - 1; colIndex++) {
-            const dataToInsert = getDataForHeader(colIndex, extractedData);
+            const dataToInsert = getDataForHeader(colIndex, extractedData, idsRowIndex);
             if (dataToInsert !== null) {
               sheetData.values[rowIndex][colIndex] = setValue(sheetData.values[rowIndex][colIndex], dataToInsert);
               sheetData.values[rowIndex][colIndex] = setFormat(sheetData.values[rowIndex][colIndex], { ...sheetData.values[rowIndex][colIndex].formatting, backgroundColor: '#ffff00ff', type: 'text' });

@@ -25,16 +25,6 @@ function createMappingRecords(data: { line: number; position: number; mapped_id:
 }
 async function fetchValvesIds(file_id:string, APIKey:string)
 {
-  // 1. Try fetching from DB first
-  const { data, error } = await supabase
-    .from("line_position_map")
-    .select("line, position, mapped_id")
-    .eq("file_id", file_id)
-
-  if (data && data.length > 0) {
-    return createMappingRecords(data);
-  }
-
   // 2. DB miss — fetch from your API
   const apiRes = await fetch(`https://srv.talgil.com/api/targets/${file_id}/valves`, {
      method: 'GET',
@@ -82,6 +72,7 @@ serve(async (req)=> {
         NominalFlow: number | null;
         fertQuantities: number[] | null;
         waterDosageMode: number | null;
+        fertLocalModes: number[] | null;
     };
     
     let extractedData :ExtractedData = {
@@ -95,6 +86,7 @@ serve(async (req)=> {
         NominalFlow: null,
         fertQuantities: null,
         waterDosageMode: null,
+        fertLocalModes: null,
     };
     const extractedDataArray: ExtractedData[] = [];
   try {
@@ -219,6 +211,7 @@ serve(async (req)=> {
                     NominalFlow: valve.flow,
                     valveID: valve.valve,
                     fertQuantities: valve.localFertPlanned,
+                    fertLocalModes: valve.localFertMode
                   };
 
                   extractedDataArray.push(extractedData);
