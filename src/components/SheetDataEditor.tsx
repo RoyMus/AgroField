@@ -129,7 +129,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         return extractedData.fertProgram.toString();
       }
     }
-    else if(idFromIdsRow === 'מרווח השקייה בימים' || idFromIdsRow === 'מרווח השקייה' || idFromIdsRow === 'מרווח השקיה בימים' || idFromIdsRow === 'מרווח בין השקיות')
+    else if(idFromIdsRow === 'מחזור בימים' || idFromIdsRow === 'מרווח בימים')
     {
       if (extractedData.daysinterval !== undefined) {
         return extractedData.daysinterval.toString();
