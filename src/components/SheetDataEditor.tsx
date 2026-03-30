@@ -109,10 +109,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
           return (extractedData.waterDuration / 60).toString();
         }
       }
-    } else if (idFromIdsRow === 'מחזורים') {
-      if (extractedData.daysinterval !== undefined && extractedData.hourlyCyclesPerDay !== undefined) {
-        return (extractedData.daysinterval * extractedData.hourlyCyclesPerDay).toString();
-      }
     } else if (idFromIdsRow === 'ספיקה') {
       if (extractedData?.NominalFlow !== undefined) {
         let nominalFlow = parseFloat(extractedData.NominalFlow);
@@ -139,7 +135,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         return extractedData.daysinterval.toString();
       }
     }
-    else if(idFromIdsRow === 'השקיה ביום' || idFromIdsRow === 'השקיה ליום' || idFromIdsRow === 'השקיות ביום')
+    else if(idFromIdsRow === 'השקיה ביום' || idFromIdsRow === 'השקיה ליום' || idFromIdsRow === 'השקיות ביום' || idFromIdsRow === 'מחזורים')
     {
       if (extractedData.hourlyCyclesPerDay !== undefined) {
         return extractedData.hourlyCyclesPerDay.toString();
