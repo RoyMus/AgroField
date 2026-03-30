@@ -186,48 +186,41 @@ serve(async (req)=>{
         throw new Error('Access token is required for updateSheet action');
       }
 
-      // 1. Get spreadsheet metadata to check dimensions
-      const metadataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}?fields=sheets(properties(sheetId,title,gridProperties))`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
+      // Get sheetId from metadata
+      const metadataResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${fileId}?fields=sheets(properties(sheetId,title,gridProperties))`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
       if (!metadataResponse.ok) {
         const errorData = await metadataResponse.json();
-        console.error('Failed to fetch sheet metadata:', errorData);
         throw new Error(`Failed to fetch sheet metadata: ${errorData.error?.message}`);
       }
       const spreadsheetData = await metadataResponse.json();
       const sheet = spreadsheetData.sheets.find((s: any) => s.properties.title === sheetName);
+      if (!sheet) throw new Error(`Sheet "${sheetName}" not found`);
+      const sheetId = sheet.properties.sheetId;
 
-      if (!sheet) {
-        throw new Error(`Sheet "${sheetName}" not found`);
-      }
-      let updateResponse = null;
-      if(refreshAll){
-        updateResponse = await fetch(
+      // Step 1: Write values via USER_ENTERED (handles formulas and numbers naturally).
+      // TEXT-formatted cells will be corrected in step 2 via explicit stringValue.
+      if (refreshAll) {
+        const res = await fetch(
           `https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(sheetName)}?valueInputOption=USER_ENTERED`,
           {
             method: 'PUT',
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              values: refreshedSheetData
-            }),
+            headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ values: refreshedSheetData }),
           }
         );
-      } else {
-      // 4. Proceed with updating the values
-        updateResponse = await fetch(
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(`Failed to update sheet: ${JSON.stringify(err.error)}`);
+        }
+      } else if (rangeUpdates?.length > 0) {
+        const res = await fetch(
           `https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values:batchUpdate`,
           {
             method: 'POST',
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
+            headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
               valueInputOption: 'USER_ENTERED',
               data: rangeUpdates.map((u: any) => ({
@@ -237,139 +230,109 @@ serve(async (req)=>{
             }),
           }
         );
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(`Failed to update sheet: ${JSON.stringify(err.error)}`);
+        }
       }
 
-      const updateData = await updateResponse.json();
-      if (!updateResponse.ok) {
-        console.error('Failed to update sheet:', updateData);
-        throw new Error(`Failed to update sheet: ${JSON.stringify(updateData.error)}`);
-      }
-
-      console.log('Successfully updated sheet values.');
-
-      // Apply formatting updates if provided
-      if (formattingUpdates && Array.isArray(formattingUpdates) && formattingUpdates.length > 0) {
-        const sheetId = sheet.properties.sheetId;
-        console.log(`Applying ${formattingUpdates.length} formatting updates to sheetId: ${sheetId}`);
-
-            // Helper: Convert Hex to Google Sheets RGB (0 to 1 scale)
+      // Step 2: Apply formatting. For TEXT-type cells that have a value update, also
+      // overwrite the value with an explicit stringValue so USER_ENTERED parsing (e.g.
+      // "00:03" → time fraction) is corrected atomically with the format.
+      if (formattingUpdates?.length > 0) {
         const hexToRgb = (hex: string) => {
-          // Remove # and any alpha channel (the last 2 chars of an 8-char hex)
-          let cleanHex = hex.replace('#', '');
-          
-          if (cleanHex.length === 8) {
-            cleanHex = cleanHex.substring(0, 6);
-          }
-
-          if (cleanHex.length !== 6) {
-            console.warn(`Invalid hex color: ${hex}. Defaulting to white.`);
-            return { red: 1, green: 1, blue: 1 };
-          }
-
-          const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
-          const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
-          const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
-
-          return { red: r, green: g, blue: b };
+          let h = hex.replace('#', '');
+          if (h.length === 8) h = h.substring(0, 6);
+          if (h.length !== 6) return { red: 1, green: 1, blue: 1 };
+          return {
+            red:   parseInt(h.substring(0, 2), 16) / 255,
+            green: parseInt(h.substring(2, 4), 16) / 255,
+            blue:  parseInt(h.substring(4, 6), 16) / 255,
+          };
         };
 
-        const requests: any[] = [];
+        // Build a value lookup so TEXT cells can rewrite their value as a string
+        const valueByCell = new Map<string, string>();
+        rangeUpdates?.forEach((u: any) => valueByCell.set(`${u.row - 1},${u.column - 1}`, u.value));
 
-        // 3. Add Formatting Updates to the Request list
-        if (formattingUpdates && formattingUpdates.length > 0) {
-          formattingUpdates.forEach(({ rowIndex, columnIndex, format }) => {
-            const userEnteredFormat: any = {};
-            const fields: string[] = [];
+        const typeMapping: Record<string, string> = {
+          number: 'NUMBER', date: 'DATE', currency: 'CURRENCY',
+          percent: 'PERCENT', time: 'TIME', duration: 'DURATION', text: 'TEXT',
+        };
 
-            // Background Color Fix
-            if (format.backgroundColor) {
-              userEnteredFormat.backgroundColor = hexToRgb(format.backgroundColor);
-              fields.push('backgroundColor');
-            }
+        const requests = formattingUpdates.flatMap(({ rowIndex, columnIndex, format }: any) => {
+          const cellRange = {
+            sheetId,
+            startRowIndex: rowIndex, endRowIndex: rowIndex + 1,
+            startColumnIndex: columnIndex, endColumnIndex: columnIndex + 1,
+          };
 
-            // Text Format (Bold, Color)
-            const textFormat: any = {};
-            if (format.textColor) {
-              textFormat.foregroundColor = hexToRgb(format.textColor);
-            }
-            if (format.fontWeight) {
-              textFormat.bold = format.fontWeight === 'bold';
-            }
-            if (Object.keys(textFormat).length > 0) {
-              userEnteredFormat.textFormat = textFormat;
-              fields.push('textFormat');
-            }
+          const userEnteredFormat: any = {};
+          const formatFields: string[] = [];
 
-            // Horizontal Alignment
-            if (format.textAlign) {
-              userEnteredFormat.horizontalAlignment = format.textAlign.toUpperCase();
-              fields.push('horizontalAlignment');
-            }
-            if (format.type) {
-              // mapping custom types to Google Sheets NumberFormatTypes
-              const typeMapping: Record<string, string> = {
-                'number': 'NUMBER',
-                'date': 'DATE',
-                'currency': 'CURRENCY',
-                'percent': 'PERCENT',
-                'time': 'TIME',
-                'duration': 'DURATION',
-                'text': 'TEXT'
-            };
-
-            const googleType = typeMapping[format.type.toLowerCase()];
-            
-            if (googleType) {
-              userEnteredFormat.numberFormat = {
-                type: googleType,
-                pattern: format.pattern || undefined 
-              };
-              fields.push('numberFormat');
-            }
+          if (format.backgroundColor) {
+            userEnteredFormat.backgroundColor = hexToRgb(format.backgroundColor);
+            formatFields.push('backgroundColor');
           }
-            if (fields.length > 0) {
-              requests.push({
-                repeatCell: {
-                  range: {
-                    sheetId,
-                    startRowIndex: rowIndex,
-                    endRowIndex: rowIndex + 1,
-                    startColumnIndex: columnIndex,
-                    endColumnIndex: columnIndex + 1,
-                  },
-                  cell: { userEnteredFormat },
-                  // Construct field mask: "userEnteredFormat.backgroundColor,userEnteredFormat.textFormat"
-                  fields: fields.map(f => `userEnteredFormat.${f}`).join(','),
-                },
-              });
-            }
-          });
-        }
+          const textFormat: any = {};
+          if (format.textColor)  textFormat.foregroundColor = hexToRgb(format.textColor);
+          if (format.fontWeight) textFormat.bold = format.fontWeight === 'bold';
+          if (Object.keys(textFormat).length > 0) {
+            userEnteredFormat.textFormat = textFormat;
+            formatFields.push('textFormat');
+          }
+          if (format.textAlign) {
+            userEnteredFormat.horizontalAlignment = format.textAlign.toUpperCase();
+            formatFields.push('horizontalAlignment');
+          }
+          const googleType = format.type && typeMapping[format.type.toLowerCase()];
+          if (googleType) {
+            userEnteredFormat.numberFormat = { type: googleType, pattern: format.pattern || undefined };
+            formatFields.push('numberFormat');
+          }
 
-        // 4. Send everything in one single BatchUpdate call
+          if (formatFields.length === 0) return [];
+
+          const pendingValue = format.type === 'text'
+            ? valueByCell.get(`${rowIndex},${columnIndex}`)
+            : undefined;
+
+          if (pendingValue !== undefined) {
+            return [{
+              updateCells: {
+                range: cellRange,
+                rows: [{ values: [{ userEnteredValue: { stringValue: pendingValue }, userEnteredFormat }] }],
+                fields: `userEnteredValue,${formatFields.map(f => `userEnteredFormat.${f}`).join(',')}`,
+              },
+            }];
+          }
+
+          return [{
+            repeatCell: {
+              range: cellRange,
+              cell: { userEnteredFormat },
+              fields: formatFields.map(f => `userEnteredFormat.${f}`).join(','),
+            },
+          }];
+        });
+
         if (requests.length > 0) {
-          const batchResponse = await fetch(
+          const batchRes = await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${fileId}:batchUpdate`,
             {
               method: 'POST',
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-              },
+              headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
               body: JSON.stringify({ requests }),
             }
           );
-
-          const resultData = await batchResponse.json();
-          if (!batchResponse.ok) {
-            console.error('Batch Update Error:', resultData);
-            throw new Error(`Update failed: ${resultData.error?.message}`);
+          if (!batchRes.ok) {
+            const err = await batchRes.json();
+            throw new Error(`Formatting update failed: ${err.error?.message}`);
           }
-          console.log('Successfully updated values and formatting.');
         }
       }
 
-      return new Response(JSON.stringify({ success: true, updatedRange: updateData.updatedRange }), {
+      return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
