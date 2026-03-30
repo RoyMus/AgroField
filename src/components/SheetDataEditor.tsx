@@ -128,7 +128,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         let waterQuant = parseFloat(extractedData.waterQuantity);
         return (waterQuant < 100) ? waterQuant.toString() : (waterQuant / 1000.0).toString();
       }
-    } else if (idFromIdsRow === 'תכנית') {
+    } else if (idFromIdsRow === 'תכנית' || idFromIdsRow === 'תוכנית') {
       if (extractedData.fertProgram !== undefined) {
         return extractedData.fertProgram.toString();
       }
