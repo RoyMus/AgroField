@@ -19,6 +19,11 @@ interface SheetDataEditorProps {
   onFetchSheetData?: (fetchFunc: () => void) => void;
 }
 
+function convertSecondsToTimeFormat(totalSeconds: number): string {
+  const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+  const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+  return `${minutes}:${seconds}`;
+}
 const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSaveProgress, copiedFileId, onFetchSheetData }: SheetDataEditorProps) => {
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && getValue(sheetData.values[i][0]).trim() != "")
@@ -95,11 +100,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         if (extractedData.waterDosageMode !== null && extractedData.waterDosageMode !== undefined) {
           if (extractedData.waterDosageMode == 0)
           {
-            const totalSeconds = extractedData.waterDuration;
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
-            const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-            return `${hours}:${minutes}:${seconds}`;
+            return convertSecondsToTimeFormat(extractedData.waterDuration);
           }
           else
             return (extractedData.waterDuration).toString();
@@ -155,11 +156,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
           if(extractedData.fertLocalModes !== null && extractedData.fertLocalModes !== undefined && extractedData.fertLocalModes.length > index && extractedData.fertLocalModes[index] == 3 || extractedData.fertLocalModes[index] == 6)
           {
             if(!isNaN(fertQuant)) {
-              const totalSeconds = fertQuant;
-              const hours = Math.floor(totalSeconds / 3600);
-              const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
-              const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-              return `${hours}:${minutes}:${seconds}`;
+              return convertSecondsToTimeFormat(fertQuant);
             }
           }
           else
