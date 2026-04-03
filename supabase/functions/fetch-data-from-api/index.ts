@@ -208,6 +208,7 @@ serve(async (req)=> {
                     hourlyCyclesPerDay: item.cyclesPerStart == 0 ? 1 : item.cyclesPerStart,
                     waterDosageMode: valve.waterDosageMode,
                     waterDuration: valve.waterPlanned,
+                    waterQuantity: valve.waterPlanned, // Assuming waterQuantity is the same as waterPlanned
                     NominalFlow: valve.flow,
                     valveID: valve.valve,
                     fertQuantities: valve.localFertPlanned,

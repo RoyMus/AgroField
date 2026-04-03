@@ -194,7 +194,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
       let programIdColumnIndex = -1;
       for (let colIndex = 0; colIndex < headerRow.length; colIndex++) {
-        if ((getValue(headerRow[colIndex])?.includes('סידורי') || getValue(headerRow[colIndex])?.includes('זיהוי') || getValue(headerRow[colIndex])?.includes('מזהה') || getValue(headerRow[colIndex])?.includes('מספר')) && getValue(headerRow[colIndex])?.includes('מגוף')) {          
+        if ((getValue(headerRow[colIndex])?.includes('סידורי') || getValue(headerRow[colIndex])?.includes('זיהוי') || getValue(headerRow[colIndex])?.includes('מזהה') || getValue(headerRow[colIndex])?.includes('מספר')) && (getValue(headerRow[colIndex])?.includes('מגוף') || getValue(headerRow[colIndex])?.includes('תכנית') || getValue(headerRow[colIndex])?.includes('תוכנית'))) {          
           programIdColumnIndex = colIndex;
           break;
         }

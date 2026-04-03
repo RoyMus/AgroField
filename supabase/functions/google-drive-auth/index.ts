@@ -236,10 +236,13 @@ serve(async (req)=>{
         }
       }
 
-      // Step 2: Apply formatting. For TEXT-type cells that have a value update, also
-      // overwrite the value with an explicit stringValue so USER_ENTERED parsing (e.g.
-      // "00:03" → time fraction) is corrected atomically with the format.
-      if (formattingUpdates?.length > 0) {
+      // Step 2: Apply formatting.
+      // - Explicit formattingUpdates are applied as-is.
+      // - TEXT cells also get their value rewritten as stringValue to prevent USER_ENTERED parsing.
+      // - Numeric/formula cells without an explicit type format get a "0.##" display format
+      //   (up to 2 decimal places, no trailing zeros — purely cosmetic, values unchanged).
+      const hasUpdates = (formattingUpdates?.length > 0) || (rangeUpdates?.length > 0);
+      if (hasUpdates) {
         const hexToRgb = (hex: string) => {
           let h = hex.replace('#', '');
           if (h.length === 8) h = h.substring(0, 6);
@@ -251,7 +254,6 @@ serve(async (req)=>{
           };
         };
 
-        // Build a value lookup so TEXT cells can rewrite their value as a string
         const valueByCell = new Map<string, string>();
         rangeUpdates?.forEach((u: any) => valueByCell.set(`${u.row - 1},${u.column - 1}`, u.value));
 
@@ -260,7 +262,48 @@ serve(async (req)=>{
           percent: 'PERCENT', time: 'TIME', duration: 'DURATION', text: 'TEXT',
         };
 
-        const requests = formattingUpdates.flatMap(({ rowIndex, columnIndex, format }: any) => {
+        // Cells that already have an explicit type format — skip the default number format for these
+        const cellsWithExplicitType = new Set<string>(
+          (formattingUpdates || [])
+            .filter((fu: any) => fu.format?.type)
+            .map((fu: any) => `${fu.rowIndex},${fu.columnIndex}`)
+        );
+
+        // Apply 0.## display format to numeric values and formula cells that don't
+        // have an explicit type override. Leaves integers, text, and typed cells alone.
+        const needsNumberFormat = (v: string) =>
+          v && (v.startsWith('=') || (!isNaN(Number(v)) && v.trim() !== ''));
+
+        const makeNumberFormatRequest = (rowIndex: number, colIndex: number) => ({
+          repeatCell: {
+            range: { sheetId, startRowIndex: rowIndex, endRowIndex: rowIndex + 1, startColumnIndex: colIndex, endColumnIndex: colIndex + 1 },
+            cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '0.##' } } },
+            fields: 'userEnteredFormat.numberFormat',
+          },
+        });
+
+        // Format cells from rangeUpdates (newly written values/formulas)
+        const numericFormatRequests = (rangeUpdates || [])
+          .filter((u: any) => needsNumberFormat(u.value) && !cellsWithExplicitType.has(`${u.row - 1},${u.column - 1}`))
+          .map((u: any) => makeNumberFormatRequest(u.row - 1, u.column - 1));
+
+        // For refreshAll: also format pre-existing formula cells in the full grid.
+        // These have saved=true so they never appear in rangeUpdates, but their
+        // GENERAL format shows all decimal places.
+        if (refreshAll && refreshedSheetData) {
+          refreshedSheetData.forEach((row: string[], rowIndex: number) => {
+            row.forEach((value: string, colIndex: number) => {
+              const key = `${rowIndex},${colIndex}`;
+              if (value?.startsWith('=') && !valueByCell.has(key) && !cellsWithExplicitType.has(key)) {
+                numericFormatRequests.push(makeNumberFormatRequest(rowIndex, colIndex));
+              }
+            });
+          });
+        }
+
+        const requests = [
+          ...numericFormatRequests,
+          ...(formattingUpdates || []).flatMap(({ rowIndex, columnIndex, format }: any) => {
           const cellRange = {
             sheetId,
             startRowIndex: rowIndex, endRowIndex: rowIndex + 1,
@@ -314,7 +357,8 @@ serve(async (req)=>{
               fields: formatFields.map(f => `userEnteredFormat.${f}`).join(','),
             },
           }];
-        });
+        })
+        ];
 
         if (requests.length > 0) {
           const batchRes = await fetch(
