@@ -288,14 +288,41 @@ serve(async (req)=>{
           .map((u: any) => makeNumberFormatRequest(u.row - 1, u.column - 1));
 
         // For refreshAll: also format pre-existing formula cells in the full grid.
-        // These have saved=true so they never appear in rangeUpdates, but their
-        // GENERAL format shows all decimal places.
+        // Fetch their existing numberFormat so we preserve it; fall back to 0.## only
+        // for cells that have no format set (GENERAL).
         if (refreshAll && refreshedSheetData) {
+          // Fetch current userEnteredFormat.numberFormat for every cell in the sheet
+          const existingFmtByCell = new Map<string, any>();
+          try {
+            const fmtRes = await fetch(
+              `https://sheets.googleapis.com/v4/spreadsheets/${fileId}?ranges=${encodeURIComponent(sheetName)}&fields=sheets(data(rowData(values(userEnteredFormat/numberFormat))))`,
+              { headers: { Authorization: `Bearer ${accessToken}` } }
+            );
+            if (fmtRes.ok) {
+              const fmtData = await fmtRes.json();
+              const rowData = fmtData.sheets?.[0]?.data?.[0]?.rowData || [];
+              rowData.forEach((row: any, rIdx: number) => {
+                row.values?.forEach((cell: any, cIdx: number) => {
+                  if (cell.userEnteredFormat?.numberFormat) {
+                    existingFmtByCell.set(`${rIdx},${cIdx}`, cell.userEnteredFormat.numberFormat);
+                  }
+                });
+              });
+            }
+          } catch (_) { /* non-fatal: fall back to 0.## for all */ }
+
           refreshedSheetData.forEach((row: string[], rowIndex: number) => {
             row.forEach((value: string, colIndex: number) => {
               const key = `${rowIndex},${colIndex}`;
               if (value?.startsWith('=') && !valueByCell.has(key) && !cellsWithExplicitType.has(key)) {
-                numericFormatRequests.push(makeNumberFormatRequest(rowIndex, colIndex));
+                const numberFormat = existingFmtByCell.get(key) ?? { type: 'NUMBER', pattern: '0.##' };
+                numericFormatRequests.push({
+                  repeatCell: {
+                    range: { sheetId, startRowIndex: rowIndex, endRowIndex: rowIndex + 1, startColumnIndex: colIndex, endColumnIndex: colIndex + 1 },
+                    cell: { userEnteredFormat: { numberFormat } },
+                    fields: 'userEnteredFormat.numberFormat',
+                  },
+                });
               }
             });
           });
@@ -438,7 +465,7 @@ serve(async (req)=>{
       const selectedSheetName = targetSheet.properties.title;
       console.log('Reading data from sheet:', selectedSheetName);
       // Get the data from the selected sheet
-      const dataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(selectedSheetName)}?valueRenderOption=FORMULA`, {
+      const dataResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(selectedSheetName)}!A1:ZZZ?valueRenderOption=FORMULA`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -460,12 +487,16 @@ serve(async (req)=>{
         try {
           const formatData = await formattingResponse.json();
           const sourceFormatting = formatData.sheets?.[0]?.data?.[0];
+          const fmtRowOffset = sourceFormatting?.startRow ?? 0;
+          const fmtColOffset = sourceFormatting?.startColumn ?? 0;
           // Extract cell formatting using utility function
           const cellStyles: any[] = [];
           if (sourceFormatting?.rowData) {
-            sourceFormatting.rowData.forEach((row: any, rowIndex: number)=>{
+            sourceFormatting.rowData.forEach((row: any, relRowIndex: number)=>{
+              const rowIndex = relRowIndex + fmtRowOffset;
               if (row.values) {
-                row.values.forEach((cell: any, colIndex: number)=>{
+                row.values.forEach((cell: any, relColIndex: number)=>{
+                  const colIndex = relColIndex + fmtColOffset;
                   if (cell.userEnteredFormat || cell.effectiveFormat) {
                     const format = cell.effectiveFormat || cell.userEnteredFormat;
                     // Helper function to convert normalized RGB to hex
@@ -622,7 +653,7 @@ serve(async (req)=>{
 
           // Fetch values for this sheet
           const dataResponse = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(sheetName)}?valueRenderOption=FORMULA`,
+            `https://sheets.googleapis.com/v4/spreadsheets/${fileId}/values/${encodeURIComponent(sheetName)}!A1:ZZZ?valueRenderOption=FORMULA`,
             {
               headers: { 'Authorization': `Bearer ${accessToken}` }
             }
@@ -640,11 +671,15 @@ serve(async (req)=>{
           
           // Extract formatting
           const sheetData = formattingData.sheets?.[0]?.data?.[0];
+          const sheetFmtRowOffset = sheetData?.startRow ?? 0;
+          const sheetFmtColOffset = sheetData?.startColumn ?? 0;
           let formatting: any[] = [];
           if (sheetData?.rowData) {
-            sheetData.rowData.forEach((row: any, rowIndex: number) => {
+            sheetData.rowData.forEach((row: any, relRowIndex: number) => {
+              const rowIndex = relRowIndex + sheetFmtRowOffset;
               if (row.values) {
-                row.values.forEach((cell: any, colIndex: number) => {
+                row.values.forEach((cell: any, relColIndex: number) => {
+                  const colIndex = relColIndex + sheetFmtColOffset;
                  if (cell.userEnteredFormat || cell.effectiveFormat) {
                     const format = cell.effectiveFormat || cell.userEnteredFormat;
                     // Helper function to convert normalized RGB to hex
