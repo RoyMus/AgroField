@@ -34,6 +34,7 @@ async function fetchValvesIds(file_id:string, APIKey:string)
   });
 
   if (!apiRes.ok) {
+    console.error("Failed to fetch valve IDs from API:", apiRes.status, await apiRes.text());
     return null;
   }
 
@@ -42,18 +43,9 @@ async function fetchValvesIds(file_id:string, APIKey:string)
   const pairs = apiData.map((item: any) => ({
     line: item.line,
     position: item.position,
-    id: item.uid,
+    mapped_id: item.uid,
   }));
 
-  // 3. Store in DB for next time
-  const rows = pairs.map((pair) => ({
-    file_id,
-    line: pair.line,
-    position: pair.position,
-    mapped_id: pair.id,
-  }));
-
-  await supabase.from("line_position_map").upsert(rows);
   return createMappingRecords(pairs);
 
 }
@@ -132,6 +124,7 @@ serve(async (req)=> {
       }
       else if (platform === 'talgil') {
         const valvesMapping = await fetchValvesIds(externalIDs[0], APIKey);
+        console.log(JSON.stringify(valvesMapping, null, 2));
         await sleep(1000); // Ensure we respect any potential rate limits after fetching valve IDs
         const map = new Map();
         for (let i = 0; i < externalIDs.length; i++)
@@ -183,7 +176,6 @@ serve(async (req)=> {
 
                 if (valvesMapping !== null) {
                   const valveID = valvesMapping[valveIDs[i]];
-                  console.log("Trying to find " + valveIDs[i] + " in "+ valvesMapping);
                   if (valveID) {
                     const matched = item.valves?.find((v: any) => v.valve === valveID);
                     valves = matched ? [matched] : [item.valves?.[0]].filter(Boolean);
