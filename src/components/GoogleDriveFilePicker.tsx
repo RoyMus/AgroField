@@ -33,7 +33,7 @@ const GoogleDriveFilePicker = () => {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [pendingFile, setPendingFile] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [createNewFile, setCreateNewFile] = useState(true);
+  const [createNewFile, setCreateNewFile] = useState(false);
 
   const handleAuthenticate = async () => {
     try {
@@ -218,7 +218,7 @@ const GoogleDriveFilePicker = () => {
                 />
               </div>
             </div>
-            <ScrollArea className="h-72 w-full">
+            <ScrollArea className="h-48 overflow auto w-full">
               <div className="p-2">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8">
@@ -230,37 +230,35 @@ const GoogleDriveFilePicker = () => {
                     {searchQuery ? `לא נמצאו קבצים שתואמים ל ${searchQuery}` : "לא נמצאו קבצים"}
                   </div>
                 ) : (
-                  <>
-                    {filteredFiles.map((file) => (
-                      <DropdownMenuItem
-                        key={file.id}
-                        onClick={() => handleFileSelect(file)}
-                        className="text-gray-800 hover:bg-blue-50 cursor-pointer py-3 px-4 text-base rounded-lg mx-1 my-1 transition-all duration-200"
-                      >
-                        <div className="flex items-center space-x-3 w-full">
-                          <Sheet className="h-4 w-4 text-green-600 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <div className="truncate font-medium">{file.name}</div>
-                            <div className="text-xs text-gray-500 truncate">
-                              ערוך {new Date(file.modifiedTime).toLocaleDateString()}
-                            </div>
+                  filteredFiles.map((file) => (
+                    <DropdownMenuItem
+                      key={file.id}
+                      onClick={() => handleFileSelect(file)}
+                      className="text-gray-800 hover:bg-blue-50 cursor-pointer py-3 px-4 text-base rounded-lg mx-1 my-1 transition-all duration-200"
+                    >
+                      <div className="flex items-center space-x-3 w-full">
+                        <Sheet className="h-4 w-4 text-green-600 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="truncate font-medium">{file.name}</div>
+                          <div className="text-xs text-gray-500 truncate">
+                            ערוך {new Date(file.modifiedTime).toLocaleDateString()}
                           </div>
                         </div>
-                      </DropdownMenuItem>
-                    ))}
-                    <div className="border-t border-gray-200 mt-2 pt-2">
-                      <DropdownMenuItem
-                        onClick={handleLogout}
-                        className="text-red-600 hover:bg-red-50 cursor-pointer py-3 px-4 text-base rounded-lg mx-1 my-1 transition-all duration-200"
-                      >
-                        <LogOut className="mr-3 h-4 w-4" />
-                        התנתק
-                      </DropdownMenuItem>
-                    </div>
-                  </>
+                      </div>
+                    </DropdownMenuItem>
+                  ))
                 )}
               </div>
             </ScrollArea>
+            <div className="border-t border-gray-200">
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="text-red-600 hover:bg-red-50 cursor-pointer py-3 px-4 text-base rounded-lg mx-1 my-1 transition-all duration-200"
+              >
+                <LogOut className="mr-3 h-4 w-4" />
+                התנתק
+              </DropdownMenuItem>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
         

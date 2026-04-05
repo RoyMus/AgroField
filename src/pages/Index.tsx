@@ -55,79 +55,11 @@ const Index = () => {
                   התחבר לגוגל דרייב, בחר בטמפלייט או בקובץ קיים, והתחל להזין נתונים
                 </p>
               </div>
-              <Card className="w-full max-w-md mx-auto bg-white/80 backdrop-blur-sm shadow-xl border-0">
-                <CardContent className="p-6 space-y-6">
-                  <div className="flex items-center space-x-3 justify-center">
-                    <Checkbox
-                      id="create-new"
-                      checked={isTemplate}
-                      onCheckedChange={(checked) => SetTemplate(checked as boolean)}
-                      className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                    />
-                    <Label 
-                      htmlFor="create-new" 
-                      className="text-base font-medium text-foreground cursor-pointer"
-                    >
-                      צור קובץ חדש
-                    </Label>
-                  </div>
-
-                  {isTemplate && (
-                    <div className="space-y-4 animate-fade-in">
-                      <div className="grid grid-cols-1 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="place" className="text-sm font-medium text-muted-foreground">
-                            מיקום
-                          </Label>
-                          <Input
-                            id="place"
-                            dir = "rtl"
-                            value={currentPlace}
-                            onChange={(e) => SetCurrentPlace(e.target.value)}
-                            placeholder="עין הבשור"
-                            className="h-11 bg-background border-border focus:border-primary transition-colors"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="plant" className="text-sm font-medium text-muted-foreground">
-                            גידול
-                          </Label>
-                          <Input
-                            id="plant"
-                            dir = "rtl"
-                            value={currentPlant}
-                            onChange={(e) => SetCurrentPlant(e.target.value)}
-                            placeholder="תותים"
-                            className="h-11 bg-background border-border focus:border-primary transition-colors"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="grower" className="text-sm font-medium text-muted-foreground">
-                            מגדל
-                          </Label>
-                          <Input
-                            id="grower"
-                            dir = "rtl"
-                            value={currentGrowerName}
-                            onChange={(e) => SetCurrentGrowerName(e.target.value)}
-                            placeholder="ארגואן"
-                            className="h-11 bg-background border-border focus:border-primary transition-colors"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-              <Input
-                id="faucetConductivity"
-                value={faucetConductivity}
-                onChange={(e) => SetfaucetConductivity(e.target.value)}
-                placeholder="מוליכות ברז"
-                className="h-11 w-[45%] mx-auto bg-background text-center border-border focus:border-primary transition-colors"
-              />
+              <br />
+              <br />
+              <br />
+              <br />
+              
               <div className="pt-8">
                 <GoogleDriveFilePicker/>
               </div>
