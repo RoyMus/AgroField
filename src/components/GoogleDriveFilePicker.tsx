@@ -203,7 +203,7 @@ const GoogleDriveFilePicker = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent 
-            className="w-80 bg-white border-2 border-gray-200 rounded-xl shadow-2xl max-h-96 overflow-hidden"
+            className="min-w-80 max-w-lg w-max bg-white border-2 border-gray-200 rounded-xl shadow-2xl max-h-96 overflow-hidden"
             align="center"
           >
             <div className="p-3 border-b border-gray-200">
@@ -238,8 +238,8 @@ const GoogleDriveFilePicker = () => {
                     >
                       <div className="flex items-center space-x-3 w-full">
                         <Sheet className="h-4 w-4 text-green-600 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="truncate font-medium">{file.name}</div>
+                        <div className="flex-1">
+                          <div className="font-medium">{file.name}</div>
                           <div className="text-xs text-gray-500 truncate">
                             ערוך {new Date(file.modifiedTime).toLocaleDateString()}
                           </div>
