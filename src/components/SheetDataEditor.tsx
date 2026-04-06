@@ -24,6 +24,23 @@ function convertSecondsToTimeFormat(totalSeconds: number): string {
   const seconds = (totalSeconds % 60).toString().padStart(2, '0');
   return `${minutes}:${seconds}`;
 }
+
+// Detects the appropriate format type for a value being written to the sheet.
+// Returns 'text' for strings that must NOT be parsed by Google Sheets (e.g. "00:30"),
+// 'percent' for percentage strings (e.g. "50%"), or null to let the sheet's existing
+// number format apply (with 0.00 as the fallback default).
+function detectValueType(value: string): 'text' | 'percent' | 'number' | null{
+  if (!value || value.trim() === '') return null;
+  const v = value.trim();
+  // Time-like strings (MM:SS or HH:MM:SS) — must stay as text or they become fractions
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(v)) return 'text';
+  // Percentage strings
+  if (/^-?\d+(\.\d+)?%$/.test(v)) return 'percent';
+  // Pure numbers — no explicit type, use the sheet's existing format or default 0.00
+  if (!isNaN(Number(v))) return 'number';
+  // Everything else (actual text)
+  return 'text';
+}
 const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSaveProgress, copiedFileId, onFetchSheetData }: SheetDataEditorProps) => {
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && getValue(sheetData.values[i][0]).trim() != "")
@@ -301,7 +318,11 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
             const dataToInsert = getDataForHeader(colIndex, extractedData, idsRowIndex);
             if (dataToInsert !== null) {
               sheetData.values[rowIndex][colIndex] = setValue(sheetData.values[rowIndex][colIndex], dataToInsert);
-              sheetData.values[rowIndex][colIndex] = setFormat(sheetData.values[rowIndex][colIndex], { ...sheetData.values[rowIndex][colIndex].formatting, backgroundColor: '#ffff00ff', type: 'text' });
+              const detectedType = detectValueType(dataToInsert);
+              const newFormatting: any = { ...sheetData.values[rowIndex][colIndex].formatting, backgroundColor: '#ffff00ff' };
+              if (detectedType) newFormatting.type = detectedType;
+              else delete newFormatting.type;
+              sheetData.values[rowIndex][colIndex] = setFormat(sheetData.values[rowIndex][colIndex], newFormatting);
             }
         }
       }

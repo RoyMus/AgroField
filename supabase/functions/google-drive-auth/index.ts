@@ -239,8 +239,8 @@ serve(async (req)=>{
       // Step 2: Apply formatting.
       // - Explicit formattingUpdates are applied as-is.
       // - TEXT cells also get their value rewritten as stringValue to prevent USER_ENTERED parsing.
-      // - Numeric/formula cells without an explicit type format get a "0.##" display format
-      //   (up to 2 decimal places, no trailing zeros — purely cosmetic, values unchanged).
+      // - Numeric/formula cells preserve their existing sheet numberFormat if set,
+      //   otherwise default to "0.00" (2 decimal places — purely cosmetic, values unchanged).
       const hasUpdates = (formattingUpdates?.length > 0) || (rangeUpdates?.length > 0);
       if (hasUpdates) {
         const hexToRgb = (hex: string) => {
@@ -262,67 +262,66 @@ serve(async (req)=>{
           percent: 'PERCENT', time: 'TIME', duration: 'DURATION', text: 'TEXT',
         };
 
-        // Cells that already have an explicit type format — skip the default number format for these
+        // Cells with an explicit type that overrides the default number format.
+        // Plain 'number' without a pattern is NOT treated as explicit — makeNumberFormatRequest
+        // will handle it so the sheet's existing decimal format (or 0.00 default) is preserved.
+        const isExplicitType = (fu: any) =>
+          fu.format?.type && !(fu.format.type.toLowerCase() === 'number' && !fu.format.pattern);
         const cellsWithExplicitType = new Set<string>(
-          (formattingUpdates || [])
-            .filter((fu: any) => fu.format?.type)
-            .map((fu: any) => `${fu.rowIndex},${fu.columnIndex}`)
+          (formattingUpdates || []).filter(isExplicitType).map((fu: any) => `${fu.rowIndex},${fu.columnIndex}`)
         );
 
-        // Apply 0.## display format to numeric values and formula cells that don't
-        // have an explicit type override. Leaves integers, text, and typed cells alone.
+        // True for values/formulas that need a decimal display format.
+        // Pure strings (e.g. "00:30") are not numbers and are left alone.
         const needsNumberFormat = (v: string) =>
           v && (v.startsWith('=') || (!isNaN(Number(v)) && v.trim() !== ''));
 
-        const makeNumberFormatRequest = (rowIndex: number, colIndex: number) => ({
-          repeatCell: {
-            range: { sheetId, startRowIndex: rowIndex, endRowIndex: rowIndex + 1, startColumnIndex: colIndex, endColumnIndex: colIndex + 1 },
-            cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '0.##' } } },
-            fields: 'userEnteredFormat.numberFormat',
-          },
-        });
+        // Fetch existing numberFormat for every cell in the sheet once.
+        // Used to preserve user-defined formats (e.g. 1 decimal) instead of overriding with the default.
+        const existingFmtByCell = new Map<string, any>();
+        try {
+          const fmtRes = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${fileId}?ranges=${encodeURIComponent(sheetName)}&fields=sheets(data(rowData(values(userEnteredFormat/numberFormat))))`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          if (fmtRes.ok) {
+            const fmtData = await fmtRes.json();
+            const rowData = fmtData.sheets?.[0]?.data?.[0]?.rowData || [];
+            rowData.forEach((row: any, rIdx: number) => {
+              row.values?.forEach((cell: any, cIdx: number) => {
+                if (cell.userEnteredFormat?.numberFormat) {
+                  existingFmtByCell.set(`${rIdx},${cIdx}`, cell.userEnteredFormat.numberFormat);
+                }
+              });
+            });
+          }
+        } catch (_) { /* non-fatal: fall back to 0.00 for all */ }
 
-        // Format cells from rangeUpdates (newly written values/formulas)
+        // Returns a repeatCell request that preserves the cell's existing numberFormat
+        // if one is set in the sheet, otherwise defaults to always-2-decimal "0.00".
+        const makeNumberFormatRequest = (rowIndex: number, colIndex: number) => {
+          const numberFormat = existingFmtByCell.get(`${rowIndex},${colIndex}`) ?? { type: 'NUMBER', pattern: '0.00' };
+          return {
+            repeatCell: {
+              range: { sheetId, startRowIndex: rowIndex, endRowIndex: rowIndex + 1, startColumnIndex: colIndex, endColumnIndex: colIndex + 1 },
+              cell: { userEnteredFormat: { numberFormat } },
+              fields: 'userEnteredFormat.numberFormat',
+            },
+          };
+        };
+
+        // Apply to newly written numeric/formula cells from rangeUpdates
         const numericFormatRequests = (rangeUpdates || [])
           .filter((u: any) => needsNumberFormat(u.value) && !cellsWithExplicitType.has(`${u.row - 1},${u.column - 1}`))
           .map((u: any) => makeNumberFormatRequest(u.row - 1, u.column - 1));
 
-        // For refreshAll: also format pre-existing formula cells in the full grid.
-        // Fetch their existing numberFormat so we preserve it; fall back to 0.## only
-        // for cells that have no format set (GENERAL).
+        // Apply to pre-existing formula cells across the full grid on refreshAll
         if (refreshAll && refreshedSheetData) {
-          // Fetch current userEnteredFormat.numberFormat for every cell in the sheet
-          const existingFmtByCell = new Map<string, any>();
-          try {
-            const fmtRes = await fetch(
-              `https://sheets.googleapis.com/v4/spreadsheets/${fileId}?ranges=${encodeURIComponent(sheetName)}&fields=sheets(data(rowData(values(userEnteredFormat/numberFormat))))`,
-              { headers: { Authorization: `Bearer ${accessToken}` } }
-            );
-            if (fmtRes.ok) {
-              const fmtData = await fmtRes.json();
-              const rowData = fmtData.sheets?.[0]?.data?.[0]?.rowData || [];
-              rowData.forEach((row: any, rIdx: number) => {
-                row.values?.forEach((cell: any, cIdx: number) => {
-                  if (cell.userEnteredFormat?.numberFormat) {
-                    existingFmtByCell.set(`${rIdx},${cIdx}`, cell.userEnteredFormat.numberFormat);
-                  }
-                });
-              });
-            }
-          } catch (_) { /* non-fatal: fall back to 0.## for all */ }
-
           refreshedSheetData.forEach((row: string[], rowIndex: number) => {
             row.forEach((value: string, colIndex: number) => {
               const key = `${rowIndex},${colIndex}`;
               if (value?.startsWith('=') && !valueByCell.has(key) && !cellsWithExplicitType.has(key)) {
-                const numberFormat = existingFmtByCell.get(key) ?? { type: 'NUMBER', pattern: '0.##' };
-                numericFormatRequests.push({
-                  repeatCell: {
-                    range: { sheetId, startRowIndex: rowIndex, endRowIndex: rowIndex + 1, startColumnIndex: colIndex, endColumnIndex: colIndex + 1 },
-                    cell: { userEnteredFormat: { numberFormat } },
-                    fields: 'userEnteredFormat.numberFormat',
-                  },
-                });
+                numericFormatRequests.push(makeNumberFormatRequest(rowIndex, colIndex));
               }
             });
           });
@@ -356,7 +355,8 @@ serve(async (req)=>{
             formatFields.push('horizontalAlignment');
           }
           const googleType = format.type && typeMapping[format.type.toLowerCase()];
-          if (googleType) {
+          // Skip numberFormat for plain 'number' without a pattern — makeNumberFormatRequest handles it
+          if (googleType && !(format.type.toLowerCase() === 'number' && !format.pattern)) {
             userEnteredFormat.numberFormat = { type: googleType, pattern: format.pattern || undefined };
             formatFields.push('numberFormat');
           }
