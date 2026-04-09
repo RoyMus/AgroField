@@ -34,11 +34,14 @@ async function fetchValvesIds(file_id:string, APIKey:string)
   });
 
   if (!apiRes.ok) {
-    console.error("Failed to fetch valve IDs from API:", apiRes.status, await apiRes.text());
     return null;
   }
 
   const apiData = await apiRes.json();
+
+  if (!Array.isArray(apiData)) {
+    return null;
+  }
 
   const pairs = apiData.map((item: any) => ({
     line: item.line,
@@ -160,7 +163,7 @@ serve(async (req)=> {
           const responseText = await response.text();
           const data = JSON.parse(responseText);
           console.log(data);
-          if(data)
+          if(data && Array.isArray(data))
           {  
               const order = map.get(externalID);
               // Keep programs indexed by id for quick lookup
@@ -221,7 +224,7 @@ serve(async (req)=> {
     }
     catch (error) {
         console.error("Error fetching data from API:", error);
-        return new Response(JSON.stringify({ error: "שגיאה באיסוף נתונים" }), { status: 500, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: "אנא ודא שהמפתח תקין ,שגיאה באיסוף נתונים" }), { status: 500, headers: corsHeaders });
     }
     return new Response(JSON.stringify(extractedDataArray), { status: 200, headers: corsHeaders });
 });

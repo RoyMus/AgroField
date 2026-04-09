@@ -9,6 +9,7 @@ import SaveToNewSheetDialog from "./SaveToNewSheetDialog";
 import { ModifiedSheet,getValue,setValue,setFormat } from "@/types/cellTypes";
 import { set } from "date-fns";
 import { supabase } from '@/integrations/supabase/client';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 
 interface SheetDataEditorProps {
   sheetData: ModifiedSheet;
@@ -296,13 +297,15 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
             valveIDs:valveIDs,
           },
         });
-        if(error) {
+      if (error instanceof FunctionsHttpError) {
+          const body = await error.context.json();
+          const message = body?.error || error.message;
           toast({
-            title: error.message || "שגיאה באיסוף נתונים",
+            title: message,
             description: ""
           });
           return;
-        }
+      }
       const extractedDataArray = JSON.parse(data);
       let dataIndex = 0;
       for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 2; rowIndex++) {
