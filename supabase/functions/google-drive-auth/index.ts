@@ -477,7 +477,7 @@ serve(async (req)=>{
       }
       const sheetData = await dataResponse.json();
       // Get formatting data for the selected sheet only
-      const formattingResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}?ranges=${encodeURIComponent(selectedSheetName)}&fields=sheets(data(rowData(values(effectiveFormat,userEnteredFormat))))`, {
+      const formattingResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${fileId}?ranges=${encodeURIComponent(selectedSheetName)}&fields=sheets(data(startRow,startColumn,rowData(values(userEnteredFormat))))`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -497,8 +497,8 @@ serve(async (req)=>{
               if (row.values) {
                 row.values.forEach((cell: any, relColIndex: number)=>{
                   const colIndex = relColIndex + fmtColOffset;
-                  if (cell.userEnteredFormat || cell.effectiveFormat) {
-                    const format = cell.effectiveFormat || cell.userEnteredFormat;
+                  if (cell.userEnteredFormat) {
+                    const format = cell.userEnteredFormat;
                     // Helper function to convert normalized RGB to hex
                     const normalizedRgbToHex = (red: number, green: number, blue: number)=>{
                       const toHex = (val: number)=>{
@@ -662,13 +662,13 @@ serve(async (req)=>{
 
           // Fetch formatting for this sheet
           const formattingResponse = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${fileId}?ranges=${encodeURIComponent(sheetName)}&fields=sheets(data(rowData(values(effectiveFormat,userEnteredFormat))))`,
+            `https://sheets.googleapis.com/v4/spreadsheets/${fileId}?ranges=${encodeURIComponent(sheetName)}&fields=sheets(data(startRow,startColumn,rowData(values(userEnteredFormat))))`,
             {
               headers: { 'Authorization': `Bearer ${accessToken}` }
             }
           );
           const formattingData = await formattingResponse.json();
-          
+
           // Extract formatting
           const sheetData = formattingData.sheets?.[0]?.data?.[0];
           const sheetFmtRowOffset = sheetData?.startRow ?? 0;
@@ -680,8 +680,8 @@ serve(async (req)=>{
               if (row.values) {
                 row.values.forEach((cell: any, relColIndex: number) => {
                   const colIndex = relColIndex + sheetFmtColOffset;
-                 if (cell.userEnteredFormat || cell.effectiveFormat) {
-                    const format = cell.effectiveFormat || cell.userEnteredFormat;
+                  if (cell.userEnteredFormat) {
+                    const format = cell.userEnteredFormat;
                     // Helper function to convert normalized RGB to hex
                     const normalizedRgbToHex = (red: number, green: number, blue: number)=>{
                       const toHex = (val: number)=>{
