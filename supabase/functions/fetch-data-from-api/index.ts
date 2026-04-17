@@ -68,9 +68,10 @@ serve(async (req)=> {
         fertQuantities: number[] | null;
         waterDosageMode: number | null;
         fertLocalModes: number[] | null;
+        error: string | null;
     };
-    
-    let extractedData :ExtractedData = {
+
+    const defaultExtractedData: ExtractedData = {
         daysinterval: null,
         hourlyCyclesPerDay: null,
         waterDuration: null,
@@ -82,7 +83,9 @@ serve(async (req)=> {
         fertQuantities: null,
         waterDosageMode: null,
         fertLocalModes: null,
+        error: null,
     };
+    let extractedData: ExtractedData = { ...defaultExtractedData };
     const extractedDataArray: ExtractedData[] = [];
   try {
         const reqText = await req.json();
@@ -95,7 +98,12 @@ serve(async (req)=> {
             const url = `https://gsi.galcon-smart.com/api/api/External/${externalID}/${programID}/ProgramSettings?Key=${APIKey}`;
             const response = await fetch(url);
             const data = await response.json();
-
+            console.log("Valve "+ valveIDInProgram);
+            if (!data.Result || !data.Body) {
+                const apiError = data.Message || data.Error || data.error || `Program ID ${programID} not found or API returned failure`;
+                extractedDataArray.push({ ...defaultExtractedData, error: apiError });
+                continue;
+            }
             if (data.Result && data.Body) {
                 extractedData = {
                 ...extractedData,
@@ -161,11 +169,26 @@ serve(async (req)=> {
             }
           });
           const responseText = await response.text();
-          const data = JSON.parse(responseText);
+          let data: any;
+          try {
+            data = JSON.parse(responseText);
+          } catch {
+            data = null;
+          }
           console.log(data);
-          if(data && Array.isArray(data))
-          {  
-              const order = map.get(externalID);
+          const order = map.get(externalID);
+          if (!data || !Array.isArray(data))
+          {
+            const controllerError = !response.ok
+              ? `Controller ${externalID}: HTTP ${response.status}`
+              : (data?.message || data?.error || data?.Message || `Controller ${externalID}: unexpected response`);
+            for (let i = 0; i < order.length; i++) {
+              extractedDataArray.push({ ...defaultExtractedData, error: controllerError });
+            }
+            continue;
+          }
+          if(Array.isArray(data))
+          {
               // Keep programs indexed by id for quick lookup
               const programsById = new Map(data.map((item: any) => [item.id + 1, item]));
 
@@ -173,7 +196,11 @@ serve(async (req)=> {
                 const programID = order[i];
                 const item = programsById.get(programID);
                 
-                if (!item) continue;
+                if (!item)
+                {
+                  extractedDataArray.push({ ...defaultExtractedData, error: `Program ID ${programID} not found` });
+                  continue;
+                }
 
                 let valves: any[] = [];
 

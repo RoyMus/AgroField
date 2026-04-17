@@ -129,34 +129,34 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         }
       }
     } else if (idFromIdsRow === 'ספיקה') {
-      if (extractedData?.NominalFlow !== undefined) {
+      if (extractedData?.NominalFlow !== undefined && extractedData.NominalFlow !== null) {
         let nominalFlow = parseFloat(extractedData.NominalFlow);
         return (nominalFlow < 100) ? nominalFlow.toString() : (nominalFlow / 1000.0).toString();
       }
     } else if (idFromIdsRow === 'דשן') {
-      if (extractedData.fertQuant !== undefined) {
+      if (extractedData.fertQuant !== undefined && extractedData.fertQuant !== null) {
         let fertQuant = parseFloat(extractedData.fertQuant);
         return (fertQuant < 100) ? fertQuant.toString() : (fertQuant / 1000.0).toString();
       }
     } else if (idFromIdsRow === 'מים') {
-      if (extractedData.waterQuantity !== undefined) {
+      if (extractedData.waterQuantity !== undefined && extractedData.waterQuantity !== null) {
         let waterQuant = parseFloat(extractedData.waterQuantity);
         return (waterQuant < 100) ? waterQuant.toString() : (waterQuant / 1000.0).toString();
       }
     } else if (idFromIdsRow === 'תכנית' || idFromIdsRow === 'תוכנית') {
-      if (extractedData.fertProgram !== undefined) {
+      if (extractedData.fertProgram !== undefined && extractedData.fertProgram !== null) {
         return extractedData.fertProgram.toString();
       }
     }
     else if(idFromIdsRow === 'מחזור בימים' || idFromIdsRow === 'מרווח בימים')
     {
-      if (extractedData.daysinterval !== undefined) {
+      if (extractedData.daysinterval !== undefined && extractedData.daysinterval !== null) {
         return extractedData.daysinterval.toString();
       }
     }
     else if(idFromIdsRow === 'השקיה ביום' || idFromIdsRow === 'השקיה ליום' || idFromIdsRow === 'השקיות ביום' || idFromIdsRow === 'מחזורים')
     {
-      if (extractedData.hourlyCyclesPerDay !== undefined) {
+      if (extractedData.hourlyCyclesPerDay !== undefined && extractedData.hourlyCyclesPerDay !== null) {
         return extractedData.hourlyCyclesPerDay.toString();
       }
     }
@@ -308,6 +308,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       }
       const extractedDataArray = JSON.parse(data);
       let dataIndex = 0;
+      const rowErrors: string[] = [];
       for (let rowIndex = headersRowIndex; rowIndex < dataRows.length - 2; rowIndex++) {
           if(dataIndex >= extractedDataArray.length) {
             break;
@@ -317,6 +318,11 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
             continue;
           }
           const extractedData = extractedDataArray[dataIndex++];
+          if (extractedData.error) {
+            const programId = getValue(sheetData.values[rowIndex][programIdColumnIndex]);
+            rowErrors.push(`שורה ${rowIndex + 1} (תכנית ${programId}): ${extractedData.error}`);
+            continue;
+          }
           for (let colIndex = 4; colIndex < minColIndex - 1; colIndex++) {
             const dataToInsert = getDataForHeader(colIndex, extractedData, idsRowIndex);
             if (dataToInsert !== null) {
@@ -330,10 +336,19 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         }
       }
       handleSaveProgress(true);
-      toast({
-        title: "נתונים נאספו בהצלחה",
-        description: "",
-      });
+      if (rowErrors.length > 0) {
+        toast({
+          title: "חלק מהנתונים לא נמצאו",
+          description: rowErrors.join('\n'),
+          variant: "destructive",
+          duration: 10000,
+        });
+      } else {
+        toast({
+          title: "נתונים נאספו בהצלחה",
+          description: "",
+        });
+      }
     } catch (error) {
       toast({
         title: "שגיאה באיסוף נתונים",
