@@ -137,7 +137,9 @@ serve(async (req)=> {
         const valvesMapping = await fetchValvesIds(externalIDs[0], APIKey);
         console.log(JSON.stringify(valvesMapping, null, 2));
         await sleep(1000); // Ensure we respect any potential rate limits after fetching valve IDs
-        const map = new Map();
+
+        // Store {globalIndex, programID, valveID} so results can be placed back in original row order
+        const map = new Map<number, Array<{globalIndex: number, programID: number, valveID: any}>>();
         for (let i = 0; i < externalIDs.length; i++)
         {
           var innerExternalID = externalIDs[i];
@@ -145,9 +147,12 @@ serve(async (req)=> {
           {
             map.set(innerExternalID, []);
           }
-          map.get(innerExternalID).push(programIDs[i]);
+          map.get(innerExternalID)!.push({ globalIndex: i, programID: programIDs[i], valveID: valveIDs[i] });
         }
         console.log(map);
+
+        // resultByIndex holds each result at its original row position
+        const resultByIndex: ExtractedData[] = new Array(externalIDs.length).fill(null);
 
         let shouldAwait = false;
         for (const externalID of map.keys())
@@ -176,14 +181,14 @@ serve(async (req)=> {
             data = null;
           }
           console.log(data);
-          const order = map.get(externalID);
+          const order = map.get(externalID)!;
           if (!data || !Array.isArray(data))
           {
             const controllerError = !response.ok
               ? `Controller ${externalID}: HTTP ${response.status}`
               : (data?.message || data?.error || data?.Message || `Controller ${externalID}: unexpected response`);
-            for (let i = 0; i < order.length; i++) {
-              extractedDataArray.push({ ...defaultExtractedData, error: controllerError });
+            for (const entry of order) {
+              resultByIndex[entry.globalIndex] = { ...defaultExtractedData, error: controllerError };
             }
             continue;
           }
@@ -192,55 +197,58 @@ serve(async (req)=> {
               // Keep programs indexed by id for quick lookup
               const programsById = new Map(data.map((item: any) => [item.id + 1, item]));
 
-              for (let i = 0; i < order.length; i++) {
-                const programID = order[i];
+              for (const entry of order) {
+                const { globalIndex, programID, valveID } = entry;
                 const item = programsById.get(programID);
-                
+
                 if (!item)
                 {
-                  extractedDataArray.push({ ...defaultExtractedData, error: `Program ID ${programID} not found` });
+                  resultByIndex[globalIndex] = { ...defaultExtractedData, error: `Program ID ${programID} not found` };
                   continue;
                 }
 
-                let valves: any[] = [];
+                let valve: any = null;
 
                 if (valvesMapping !== null) {
-                  const valveID = valvesMapping[valveIDs[i]];
-                  if (valveID) {
-                    const matched = item.valves?.find((v: any) => v.valve === valveID);
-                    valves = matched ? [matched] : [item.valves?.[0]].filter(Boolean);
+                  const mappedValveID = valvesMapping[valveID];
+                  if (mappedValveID) {
+                    valve = item.valves?.find((v: any) => v.valve === mappedValveID) ?? item.valves?.[0] ?? null;
                   } else {
-                    valves = [item.valves?.[0]].filter(Boolean);
+                    valve = item.valves?.[0] ?? null;
                   }
                 }
                 else
                 {
-                  valves = [item.valves?.[0]].filter(Boolean);
+                  valve = item.valves?.[0] ?? null;
                 }
-                // If still no valves at all, skip this program
-                if (valves.length === 0) continue;
+
+                if (valve === null) {
+                  resultByIndex[globalIndex] = { ...defaultExtractedData, error: `Program ID ${programID}: no valves found` };
+                  continue;
+                }
 
                 let daysCycle = item.daysCycle == 0 ? 1 : item.daysCycle;
 
-                for (const valve of valves) {
-                  extractedData = {
-                    ...extractedData,
-                    fertProgram: item.name,
-                    daysinterval: daysCycle,
-                    hourlyCyclesPerDay: item.cyclesPerStart == 0 ? 1 : item.cyclesPerStart,
-                    waterDosageMode: valve.waterDosageMode,
-                    waterDuration: valve.waterPlanned,
-                    waterQuantity: valve.waterPlanned, // Assuming waterQuantity is the same as waterPlanned
-                    NominalFlow: valve.flow,
-                    valveID: valve.valve,
-                    fertQuantities: valve.localFertPlanned,
-                    fertLocalModes: valve.localFertMode
-                  };
-
-                  extractedDataArray.push(extractedData);
-                }
+                resultByIndex[globalIndex] = {
+                  ...defaultExtractedData,
+                  fertProgram: item.name,
+                  daysinterval: daysCycle,
+                  hourlyCyclesPerDay: item.cyclesPerStart == 0 ? 1 : item.cyclesPerStart,
+                  waterDosageMode: valve.waterDosageMode,
+                  waterDuration: valve.waterPlanned,
+                  waterQuantity: valve.waterPlanned,
+                  NominalFlow: valve.flow,
+                  valveID: valve.valve,
+                  fertQuantities: valve.localFertPlanned,
+                  fertLocalModes: valve.localFertMode
+                };
               }
           }
+        }
+
+        // Rebuild extractedDataArray in original row order
+        for (let i = 0; i < resultByIndex.length; i++) {
+          extractedDataArray.push(resultByIndex[i] ?? { ...defaultExtractedData, error: `Row ${i}: no result` });
         }
         console.log("Final Array: " + extractedDataArray);
       }
