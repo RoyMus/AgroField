@@ -41,60 +41,83 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check URL for authorization code
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    
-    // Prevent reusing the same code
-    const usedCode = sessionStorage.getItem('google_auth_code_used');
-    
-    if (code && !isAuthenticated && code !== usedCode) {
-      sessionStorage.setItem('google_auth_code_used', code);
-      handleAuthCode(code);
-      return;
-    }
+    const init = async () => {
+      // Check URL for authorization code
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
 
-    // Load saved state
-    const savedToken = localStorage.getItem('google_drive_token');
-    const savedRefreshToken = localStorage.getItem('google_drive_refresh_token');
-    const savedFile = localStorage.getItem('google_drive_selected_file');
-    const savedSheetData = localStorage.getItem('google_drive_sheet_data');
-    
-    console.log('Loading saved state:', { savedToken: !!savedToken, savedRefreshToken: !!savedRefreshToken, savedFile: !!savedFile, savedSheetData: !!savedSheetData });
-    
-    // Load saved file if it exists
-    if (savedFile) {
-      try {
-        const parsedFile = JSON.parse(savedFile);
-        console.log('Setting saved file:', parsedFile);
-        setSelectedFile(parsedFile);
-      } catch (err) {
-        console.error('Error parsing saved file:', err);
-        localStorage.removeItem('google_drive_selected_file');
+      // Prevent reusing the same code
+      const usedCode = sessionStorage.getItem('google_auth_code_used');
+
+      if (code && !isAuthenticated && code !== usedCode) {
+        sessionStorage.setItem('google_auth_code_used', code);
+        handleAuthCode(code);
+        return;
       }
-    }
-    
-    // Load saved sheet data if it exists
-    if (savedSheetData) {
-      try {
-        const parsedSheetData = JSON.parse(savedSheetData);
-        const values = Object.values(parsedSheetData);
-        if(values.length > 0) {
-          setSheetData(values[0] as ModifiedSheet);
+
+      // Load saved state
+      const savedToken = localStorage.getItem('google_drive_token');
+      const savedRefreshToken = localStorage.getItem('google_drive_refresh_token');
+      const tokenExpiresAt = parseInt(localStorage.getItem('google_drive_token_expires') || '0');
+      const savedFile = localStorage.getItem('google_drive_selected_file');
+      const savedSheetData = localStorage.getItem('google_drive_sheet_data');
+
+      // Load saved file if it exists
+      if (savedFile) {
+        try {
+          const parsedFile = JSON.parse(savedFile);
+          setSelectedFile(parsedFile);
+        } catch (err) {
+          console.error('Error parsing saved file:', err);
+          localStorage.removeItem('google_drive_selected_file');
         }
-      } catch (err) {
-        console.error('Error parsing saved sheet data:', err);
-        localStorage.removeItem('google_drive_sheet_data');
       }
-    }
-    // Set authentication state and tokens if available
-    if (savedToken) {
-      setAccessToken(savedToken);
-      setIsAuthenticated(true);
-    }
-    if (savedRefreshToken) {
-      setRefreshToken(savedRefreshToken);
-    }
+
+      // Load saved sheet data if it exists
+      if (savedSheetData) {
+        try {
+          const parsedSheetData = JSON.parse(savedSheetData);
+          const values = Object.values(parsedSheetData);
+          if(values.length > 0) {
+            setSheetData(values[0] as ModifiedSheet);
+          }
+        } catch (err) {
+          console.error('Error parsing saved sheet data:', err);
+          localStorage.removeItem('google_drive_sheet_data');
+        }
+      }
+
+      if (savedRefreshToken) {
+        setRefreshToken(savedRefreshToken);
+        // Proactively refresh if the access token is missing or expires within 5 minutes
+        const isExpired = !savedToken || tokenExpiresAt < Date.now() + 5 * 60 * 1000;
+        if (isExpired) {
+          try {
+            const { data, error } = await supabase.functions.invoke('google-drive-auth', {
+              body: { action: 'refreshToken', refreshToken: savedRefreshToken }
+            });
+            if (!error && data?.access_token) {
+              setAccessToken(data.access_token);
+              setIsAuthenticated(true);
+              localStorage.setItem('google_drive_token', data.access_token);
+              localStorage.setItem('google_drive_token_expires', String(Date.now() + 3590 * 1000));
+            }
+          } catch (err) {
+            console.error('Startup token refresh failed:', err);
+            // Refresh token is invalid — user will need to re-authenticate
+          }
+          return;
+        }
+      }
+
+      // Token is still valid, restore session from localStorage
+      if (savedToken) {
+        setAccessToken(savedToken);
+        setIsAuthenticated(true);
+      }
+    };
+
+    init();
   }, []);
 
   const handleAuthCode = async (code: string) => {
@@ -108,21 +131,19 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
 
       if (error) throw error;
 
-      const { access_token, refresh_token } = data;
+      const { access_token, refresh_token, expires_in } = data;
       setAccessToken(access_token);
       setIsAuthenticated(true);
       localStorage.setItem('google_drive_token', access_token);
-      
+      localStorage.setItem('google_drive_token_expires', String(Date.now() + ((expires_in || 3600) - 60) * 1000));
+
       if (refresh_token) {
         setRefreshToken(refresh_token);
         localStorage.setItem('google_drive_refresh_token', refresh_token);
       }
-      
+
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
-      
-      // Load files
-      await loadFiles();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
@@ -173,6 +194,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
       const { access_token } = data;
       setAccessToken(access_token);
       localStorage.setItem('google_drive_token', access_token);
+      localStorage.setItem('google_drive_token_expires', String(Date.now() + 3590 * 1000));
       console.log('Access token refreshed successfully');
       return access_token;
     } catch (err) {
@@ -406,6 +428,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     setSelectedFile(null);
     setSheetData(null);
     localStorage.removeItem('google_drive_token');
+    localStorage.removeItem('google_drive_token_expires');
     localStorage.removeItem('google_drive_refresh_token');
     localStorage.removeItem('google_drive_selected_file');
     localStorage.removeItem('google_drive_sheet_data');
