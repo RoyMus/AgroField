@@ -5,10 +5,12 @@ import { Edit, Save, Download } from "lucide-react";
 import SheetSelector from "./SheetSelector";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { useToast } from "@/hooks/use-toast";
-import { set } from "date-fns";
 import { getValue } from "@/types/cellTypes";
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from "./LanguageSwitcher";
 
 const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet, onFetchSheetData, loadSheetByName, isLoading}) => {
+    const { t } = useTranslation();
     const { toast } = useToast();
     const{
     isTemplate,
@@ -17,7 +19,7 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
     place,
     faucetConductivity
     } = getData(false, null, null, null, null, null);
-    
+
     const [topBar, setTopBar] = useState("");
     const [fetchDataButtonDisabled, setFetchDataButtonDisabled] = useState(false);
 
@@ -47,16 +49,17 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
             await loadSheetByName(sheetName);
         }
     };
-    
+
     const handleClickFetchData = () => {
         if(fetchDataButtonDisabled)
             return;
         setFetchDataButtonDisabled(true);
         setTimeout(() => {
             setFetchDataButtonDisabled(false);
-        }, 5000); // Disable button for 1 second
+        }, 5000);
         onFetchSheetData();
     };
+
     return (
         <div className="bg-white rounded-xl p-4 sm:p-6 shadow-lg border-2 border-gray-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -80,29 +83,28 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
                     </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <LanguageSwitcher />
                     {onFetchSheetData && (
                         <Button
                             onClick={handleClickFetchData}
                             variant="default"
                             size="sm"
                             className="bg-purple-600 hover:bg-purple-700 h-9 text-sm"
-                            dir="rtl"
                             disabled={fetchDataButtonDisabled}
                         >
                             <Download className="mr-1 h-4 w-4" />
-                            <span>טען נתוני API</span>
+                            <span>{t('topbar.fetchApiData')}</span>
                         </Button>
                     )}
                     {onSaveToNewSheet && (
-                        <Button 
+                        <Button
                             onClick={onSaveToNewSheet}
                             variant="default"
                             size="sm"
                             className="bg-green-600 hover:bg-green-700 h-9 text-sm"
-                            dir="rtl"
                         >
                             <Save className="mr-1 h-4 w-4" />
-                            <span>שמור ופתח מיקום קובץ</span>
+                            <span>{t('topbar.saveAndOpen')}</span>
                         </Button>
                     )}
                     <Button
@@ -111,14 +113,14 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
                         className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white min-h-[44px] px-4"
                     >
                         <Edit className="w-4 h-4" />
-                        <span className="text-sm sm:text-base">פתח עורך גיליון מלא</span>
+                        <span className="text-sm sm:text-base">{t('topbar.openFullEditor')}</span>
                     </Button>
                     <Button
                         onClick={handleGoHome}
                         variant="outline"
                         className="flex items-center justify-center min-h-[44px] px-4"
                     >
-                        <span className="text-sm sm:text-base">חזור לדף הבית</span>
+                        <span className="text-sm sm:text-base">{t('topbar.backToHome')}</span>
                     </Button>
                 </div>
             </div>

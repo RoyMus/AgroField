@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Save, Plus, Minus, Copy, Clipboard } from "lucide-react";
 import { toast, useToast } from "@/hooks/use-toast";
 import { ModifiedSheet, ModifiedCell, getValue, CellFormat } from "@/types/cellTypes";
+import { useTranslation } from 'react-i18next';
 
 interface EditableSheetTableProps {
   sheetData: ModifiedSheet;
@@ -11,11 +12,12 @@ interface EditableSheetTableProps {
 }
 
 const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTableProps) => {
+  const { t } = useTranslation();
   const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
   const [localData, setLocalData] = useState<ModifiedCell[][]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [copiedFormat, setCopiedFormat] = useState<CellFormat | null>(null);
-  
+
   // Initialize local data from sheet data and apply modifications
   useEffect(() => {
     if (sheetData?.values) {
@@ -23,20 +25,18 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       setLocalData(baseData);
     }
   }, [sheetData.sheetName]);
+
   // Handle cell value changes and sync with localStorage
   const handleCellChange = useCallback((rowIndex: number, colIndex: number, value: string) => {
-    // Update local data
     setLocalData(prev => {
       const newData = prev.map(row => [...row]);
-      
-      // Extend rows if needed
+
       while (newData.length <= rowIndex) {
         newData.push([]);
       }
-      
-      // Extend columns if needed
+
       while (newData[rowIndex].length <= colIndex) {
-        newData[rowIndex].push({ original: "", modified: null,formatting: {} , saved:false});
+        newData[rowIndex].push({ original: "", modified: null, formatting: {}, saved: false });
       }
       newData[rowIndex][colIndex].modified = value;
       return newData;
@@ -47,9 +47,8 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     setSelectedCell({ rowIndex, colIndex });
   };
 
-  // Add new row
   const addRow = () => {
-    const newRow = Array.from({ length: maxCols }, () => ({ original: "", modified: null, formatting: {}, saved:false }));
+    const newRow = Array.from({ length: maxCols }, () => ({ original: "", modified: null, formatting: {}, saved: false }));
     const insertIndex = selectedCell ? selectedCell.rowIndex + 1 : localData.length;
     setLocalData(prev => {
       const updated = [...prev];
@@ -58,7 +57,6 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     });
   };
 
-  // Remove last row
   const removeRow = () => {
     if (localData.length > 1 && selectedCell) {
       const removeIndex = selectedCell.rowIndex;
@@ -70,19 +68,17 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     }
   };
 
-  // Add new column
   const addColumn = () => {
     const insertIndex = selectedCell ? selectedCell.colIndex + 1 : maxCols;
     setLocalData(prev => {
       const updated = [...prev];
       updated.forEach(row => {
-        row.splice(insertIndex, 0, { original: "", modified: null, formatting: {}, saved:false });
+        row.splice(insertIndex, 0, { original: "", modified: null, formatting: {}, saved: false });
       });
       return updated;
     });
   };
 
-  // Remove last column
   const removeColumn = () => {
     if (maxCols > 0 && selectedCell) {
       const removeIndex = selectedCell.colIndex;
@@ -94,33 +90,30 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     }
   };
 
-  // Save current modifications
   const saveModifications = async () => {
     if (isSaving) return;
     setIsSaving(true);
     try {
       onSaveProgress(localData);
-    } 
+    }
     finally {
-      toast({title: "נשמר בהצלחה", description: "השינויים נשמרו בהצלחה"})
+      toast({ title: t('table.savedSuccess'), description: t('table.savedSuccessDesc') });
       setIsSaving(false);
     }
   };
 
-  // Copy format from selected cell
   const copyFormat = () => {
     if (!selectedCell) {
-      toast({ title: "בחר תא", description: "בחר תא קודם להעתקת הפורמט" });
+      toast({ title: t('table.selectCellFirst'), description: t('table.selectCellFirstDesc') });
       return;
     }
     const format = localData[selectedCell.rowIndex]?.[selectedCell.colIndex]?.formatting;
     if (format) {
       setCopiedFormat(format);
-      toast({ title: "הפורמט הועתק", description: "הפורמט של התא הועתק בהצלחה" });
+      toast({ title: t('table.formatCopied'), description: t('table.formatCopiedDesc') });
     }
   };
 
-  // Paste format to selected cell
   const pasteFormat = () => {
     setLocalData(prev => {
       const newData = prev.map(row => [...row]);
@@ -129,10 +122,8 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     });
   };
 
-  // Calculate maximum columns needed
   const maxCols = Math.max(...localData.map(row => row.length), 0);
 
-  // Helper to convert borders object to CSS string
   const getBorderStyle = (borders?: { top?: { style: string; color: string; width: number }; bottom?: { style: string; color: string; width: number }; left?: { style: string; color: string; width: number }; right?: { style: string; color: string; width: number } }) => {
     if (!borders) return {};
     const borderCss: Record<string, string> = {};
@@ -144,19 +135,14 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6" dir="rtl">
+    <div className="bg-white rounded-lg shadow-sm p-6">
       {/* Toolbar - Mobile Optimized */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 space-y-4 lg:space-y-0">
         {/* Row/Column Actions */}
         <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
-          <Button
-            onClick={addRow}
-            variant="outline"
-            size="sm"
-            className="h-10 text-sm"
-          >
+          <Button onClick={addRow} variant="outline" size="sm" className="h-10 text-sm">
             <Plus className="w-4 h-4 mr-1" />
-            <span className="sm:inline">הוסף שורה</span>
+            <span className="sm:inline">{t('table.addRow')}</span>
           </Button>
           <Button
             onClick={removeRow}
@@ -166,16 +152,11 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
             className="h-10 text-sm"
           >
             <Minus className="w-4 h-4 mr-1" />
-            <span className="sm:inline">מחק שורה</span>
+            <span className="sm:inline">{t('table.deleteRow')}</span>
           </Button>
-          <Button
-            onClick={addColumn}
-            variant="outline"
-            size="sm"
-            className="h-10 text-sm"
-          >
+          <Button onClick={addColumn} variant="outline" size="sm" className="h-10 text-sm">
             <Plus className="w-4 h-4 mr-1" />
-            <span className="sm:inline">הוסף עמודה</span>
+            <span className="sm:inline">{t('table.addColumn')}</span>
           </Button>
           <Button
             onClick={removeColumn}
@@ -185,10 +166,10 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
             className="h-10 text-sm"
           >
             <Minus className="w-4 h-4 mr-1" />
-            <span className="sm:inline">מחק עמודה</span>
+            <span className="sm:inline">{t('table.deleteColumn')}</span>
           </Button>
         </div>
-        
+
         {/* Save Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:space-x-2">
           <Button
@@ -196,11 +177,10 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
             variant="default"
             size="sm"
             className="bg-green-600 hover:bg-green-700 h-9 text-sm"
-            dir="rtl"
             disabled={isSaving}
           >
             <Save className="w-4 h-4 mr-1" />
-            <span>שמור שינויים</span>
+            <span>{t('table.saveChanges')}</span>
           </Button>
           <Button
             onClick={copyFormat}
@@ -208,10 +188,10 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
             size="sm"
             disabled={!selectedCell}
             className="h-10 text-sm"
-            title="העתק פורמט מהתא הנבחר"
+            title={t('table.copyFormat')}
           >
             <Copy className="w-4 h-4 mr-1" />
-            <span className="sm:inline">העתק פורמט</span>
+            <span className="sm:inline">{t('table.copyFormat')}</span>
           </Button>
           <Button
             onClick={pasteFormat}
@@ -219,10 +199,10 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
             size="sm"
             disabled={!selectedCell || !copiedFormat}
             className="h-10 text-sm"
-            title="הדבק פורמט לתא הנבחר"
+            title={t('table.pasteFormat')}
           >
             <Clipboard className="w-4 h-4 mr-1" />
-            <span className="sm:inline">הדבק פורמט</span>
+            <span className="sm:inline">{t('table.pasteFormat')}</span>
           </Button>
         </div>
       </div>
@@ -253,13 +233,13 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
                     {rowIndex + 1}
                   </td>
                   {Array.from({ length: maxCols }, (_, colIndex) => {
-                    const cellCssStyle = localData?.[rowIndex]?.[colIndex]?.formatting
-                    const borderStyles = getBorderStyle(cellCssStyle?.borders)
-                    
+                    const cellCssStyle = localData?.[rowIndex]?.[colIndex]?.formatting;
+                    const borderStyles = getBorderStyle(cellCssStyle?.borders);
+
                     return (
                       <td key={colIndex} className="border-r border-b p-0">
                         <Input
-                          value={ row[colIndex] ? getValue(row[colIndex]) : "" }
+                          value={row[colIndex] ? getValue(row[colIndex]) : ""}
                           onFocus={() => handleCellFocus(rowIndex, colIndex)}
                           onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
                           className={`rounded-none focus:ring-2 focus:ring-blue-500 focus:ring-inset h-8 text-sm ${

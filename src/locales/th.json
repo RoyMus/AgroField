@@ -1,0 +1,105 @@
+{
+  "app": {
+    "title": "Orlomati",
+    "subtitle": "เชื่อมต่อ Google Drive เลือกเทมเพลตหรือไฟล์ที่มีอยู่ แล้วเริ่มป้อนข้อมูล"
+  },
+  "auth": {
+    "connecting": "กำลังเชื่อมต่อ",
+    "connectGoogleDrive": "เชื่อมต่อ Google Drive",
+    "loginFailed": "การเข้าสู่ระบบล้มเหลว",
+    "loginFailedDesc": "ไม่สามารถเชื่อมต่อ Google Drive ได้ โปรดลองอีกครั้ง",
+    "disconnected": "ตัดการเชื่อมต่อแล้ว",
+    "disconnectedDesc": "ตัดการเชื่อมต่อจาก Google Drive แล้ว",
+    "retry": "ลองอีกครั้ง"
+  },
+  "files": {
+    "selectFile": "เลือกไฟล์เพื่อโหลด",
+    "searchFiles": "ค้นหาไฟล์",
+    "loadingFiles": "กำลังโหลดไฟล์",
+    "noFiles": "ไม่พบไฟล์",
+    "noFilesMatch": "ไม่พบไฟล์ที่ตรงกับ {{query}}",
+    "fileSelected": "เลือกไฟล์แล้ว",
+    "loadFile": "โหลดไฟล์",
+    "loadingFile": "กำลังโหลดข้อมูลไฟล์",
+    "fileLoadError": "เกิดข้อผิดพลาดในการโหลดไฟล์",
+    "fileLoadErrorDesc": "ไม่สามารถโหลดไฟล์ได้ โปรดลองอีกครั้ง",
+    "lastEdited": "แก้ไขเมื่อ {{date}}",
+    "logout": "ออกจากระบบ",
+    "copyToNewFile": "คัดลอกไปยังไฟล์ใหม่",
+    "changesSaved": "บันทึกการเปลี่ยนแปลงแล้ว",
+    "changesSavedDesc": "การแก้ไขไฟล์ของคุณถูกบันทึกเรียบร้อยแล้ว"
+  },
+  "topbar": {
+    "fetchApiData": "ดึงข้อมูล API",
+    "saveAndOpen": "บันทึกและเปิดที่อยู่ไฟล์",
+    "openFullEditor": "เปิดตัวแก้ไขชีทแบบเต็ม",
+    "backToHome": "กลับหน้าหลัก"
+  },
+  "editor": {
+    "edited": "(แก้ไขแล้ว)",
+    "greenhouse": "โรงเรือน",
+    "valve": "วาล์ว",
+    "crop": "พืช",
+    "delete": "ลบ",
+    "back": "ย้อนกลับ",
+    "skip": "ข้าม",
+    "save": "บันทึก",
+    "valueLabel": "ค่า:",
+    "unsupportedFormat": "รูปแบบหน้านี้ไม่รองรับ",
+    "progressSaved": "บันทึกความคืบหน้าแล้ว",
+    "progressSavedDesc": "บันทึกการแก้ไขแล้ว",
+    "valueRecorded": "บันทึกค่าแล้ว",
+    "valueRecordedDesc": "บันทึกค่าสำหรับ {{header}}",
+    "recordingStarted": "เริ่มบันทึกเสียงแล้ว",
+    "recordingStartedDesc": "พูดได้เลย... คลิกหยุดเพื่อสิ้นสุด"
+  },
+  "table": {
+    "addRow": "เพิ่มแถว",
+    "deleteRow": "ลบแถว",
+    "addColumn": "เพิ่มคอลัมน์",
+    "deleteColumn": "ลบคอลัมน์",
+    "saveChanges": "บันทึกการเปลี่ยนแปลง",
+    "savedSuccess": "บันทึกสำเร็จ",
+    "savedSuccessDesc": "บันทึกการเปลี่ยนแปลงเรียบร้อยแล้ว",
+    "copyFormat": "คัดลอกรูปแบบ",
+    "pasteFormat": "วางรูปแบบ",
+    "selectCellFirst": "เลือกเซลล์",
+    "selectCellFirstDesc": "เลือกเซลล์ก่อนเพื่อคัดลอกรูปแบบ",
+    "formatCopied": "คัดลอกรูปแบบแล้ว",
+    "formatCopiedDesc": "คัดลอกรูปแบบเซลล์เรียบร้อยแล้ว",
+    "editSheet": "แก้ไขชีท: {{name}}"
+  },
+  "saveDialog": {
+    "title": "บันทึกไปยังไฟล์ใหม่",
+    "description": "สร้างไฟล์ใหม่ในตำแหน่งเดิมพร้อมสิทธิ์เดิม",
+    "fileNameLabel": "ชื่อไฟล์",
+    "cancel": "ยกเลิก",
+    "creating": "กำลังสร้าง...",
+    "createNewFile": "สร้างไฟล์ใหม่"
+  },
+  "progressDialog": {
+    "title": "บันทึกความคืบหน้าปัจจุบัน?",
+    "description": "คุณมีการเปลี่ยนแปลง {{count}} รายการที่ยังไม่ได้บันทึก ต้องการบันทึกก่อนเปลี่ยนชีทหรือไม่?",
+    "dontSave": "ไม่บันทึก",
+    "saveProgress": "บันทึกความคืบหน้า"
+  },
+  "voice": {
+    "startVoice": "คลิกไมโครโฟนเพื่อเริ่มโหมดเสียง",
+    "stopVoice": "คลิกสี่เหลี่ยมเพื่อหยุดโหมดเสียง",
+    "examples": ["ป้อน (ค่า)", "ข้าม \\ ถัดไป", "ย้อนกลับ \\ กลับ", "บันทึก", "ลบ"]
+  },
+  "fetch": {
+    "errorTitle": "ข้อผิดพลาด",
+    "noIdColumn": "ไม่พบคอลัมน์ ID",
+    "noDataRow": "ไม่พบแถวดึงข้อมูล",
+    "partialData": "ไม่พบข้อมูลบางส่วน",
+    "successTitle": "รวบรวมข้อมูลสำเร็จ",
+    "errorFetching": "เกิดข้อผิดพลาดในการรวบรวมข้อมูล",
+    "dataCollected": "รวบรวมข้อมูลแล้ว: "
+  },
+  "noSheet": {
+    "title": "ไม่มีข้อมูลชีท",
+    "description": "โปรดเลือก Google Sheet ก่อน",
+    "goHome": "ไปหน้าหลัก"
+  }
+}

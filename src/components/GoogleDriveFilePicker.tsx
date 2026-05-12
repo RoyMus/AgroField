@@ -10,22 +10,26 @@ import SaveProgressDialog from "./SaveProgressDialog";
 import { useNavigate } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "./ui/label";
+import { useTranslation } from 'react-i18next';
+import { useLang } from '@/contexts/LanguageContext';
 
 
 const GoogleDriveFilePicker = () => {
   const navigate = useNavigate();
- 
-  const { 
-    isAuthenticated, 
-    isLoading, 
-    files, 
-    selectedFile, 
+  const { t } = useTranslation();
+  const { locale } = useLang();
+
+  const {
+    isAuthenticated,
+    isLoading,
+    files,
+    selectedFile,
     sheetData,
     error,
-    authenticate, 
-    selectFile, 
+    authenticate,
+    selectFile,
     loadAndCopySheet,
-    logout 
+    logout
   } = useGoogleDrive();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -40,8 +44,8 @@ const GoogleDriveFilePicker = () => {
       await authenticate();
     } catch (err) {
       toast({
-        title: "התחברות נכשלה",
-        description: "ההתחברות לגוגל דרייב נכשלה, אנא נסה שוב",
+        title: t('auth.loginFailed'),
+        description: t('auth.loginFailedDesc'),
         variant: "destructive",
       });
     }
@@ -54,38 +58,34 @@ const GoogleDriveFilePicker = () => {
 
   const handleFileSelect = (file: any) => {
     const modifiedCount = checkForUnsavedProgress();
-    
-    // If there's existing sheet data and unsaved changes, show save dialog
+
     if (sheetData && modifiedCount > 0 && file.id !== selectedFile?.id) {
       setPendingFile(file);
       setShowSaveDialog(true);
       setIsOpen(false);
       return;
     }
-    
-    // Otherwise, proceed directly
+
     selectFile(file);
     setIsOpen(false);
     toast({
-      title: "קובץ נבחר",
+      title: t('files.fileSelected'),
       description: `${file.name}`,
     });
   };
 
   const handleSaveProgressConfirm = () => {
-    // Save current progress
     const savedModifications = localStorage.getItem('sheet_cell_modifications');
     if (savedModifications) {
-      const modificationData = JSON.parse(savedModifications);
       const progressKey = `sheet_progress_${selectedFile?.id}`;
       localStorage.setItem(progressKey, savedModifications);
-      
+
       toast({
-        title: "השינויים נשמרו",
-        description: `השינויים שערכת לקובץ נשמרו בהצלחה`,
+        title: t('files.changesSaved'),
+        description: t('files.changesSavedDesc'),
       });
     }
-    
+
     proceedWithFileSelection();
   };
 
@@ -96,9 +96,9 @@ const GoogleDriveFilePicker = () => {
   const proceedWithFileSelection = () => {
     if (pendingFile) {
       selectFile(pendingFile);
-      localStorage.removeItem('all_sheet_modifications'); // Clear current modifications
+      localStorage.removeItem('all_sheet_modifications');
       toast({
-        title: "קובץ נבחר",
+        title: t('files.fileSelected'),
         description: `${pendingFile.name}`,
       });
       setPendingFile(null);
@@ -111,14 +111,14 @@ const GoogleDriveFilePicker = () => {
       try {
         setIsReadingSheet(true);
         console.log('Starting to load and copy sheet for file:', selectedFile.id, 'sheet:', sheetName);
-        await loadAndCopySheet(sheetName,createNewFile);
+        await loadAndCopySheet(sheetName, createNewFile);
         console.log('Sheet load and copy completed successfully');
-        navigate("/page/workspace"); // Navigate to workspace after loading
+        navigate("/page/workspace");
       } catch (err) {
         console.error('Error loading and copying sheet:', err);
         toast({
-          title: "שגיאה בטעינת הקובץ",
-          description: "טעינת הקובץ נכשלה, אנא נסה שוב",
+          title: t('files.fileLoadError'),
+          description: t('files.fileLoadErrorDesc'),
           variant: "destructive",
         });
       } finally {
@@ -130,14 +130,13 @@ const GoogleDriveFilePicker = () => {
   const handleLogout = () => {
     logout();
     setIsOpen(false);
-    setSearchQuery(""); // Clear search when logging out
+    setSearchQuery("");
     toast({
-      title: "מנותק",
-      description: "מנותק מגוגל דרייב",
+      title: t('auth.disconnected'),
+      description: t('auth.disconnectedDesc'),
     });
   };
 
-  // Filter files based on search query
   const filteredFiles = files.filter(file =>
     file.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -147,7 +146,7 @@ const GoogleDriveFilePicker = () => {
       <div className="text-center space-y-4">
         <p className="text-red-600">{error}</p>
         <Button onClick={handleAuthenticate} variant="outline">
-          נסה שוב
+          {t('auth.retry')}
         </Button>
       </div>
     );
@@ -155,7 +154,7 @@ const GoogleDriveFilePicker = () => {
 
   if (!isAuthenticated) {
     return (
-      <Button 
+      <Button
         onClick={handleAuthenticate}
         disabled={isLoading}
         size="lg"
@@ -164,7 +163,7 @@ const GoogleDriveFilePicker = () => {
         {isLoading ? (
           <>
             <Loader2 className="mr-3 h-5 w-5 animate-spin" />
-            מתחבר
+            {t('auth.connecting')}
           </>
         ) : (
           <>
@@ -174,7 +173,7 @@ const GoogleDriveFilePicker = () => {
                 <div className="w-3 h-3 bg-green-500 rounded-sm -ml-2 mt-1"></div>
                 <div className="w-2 h-2 bg-yellow-500 rounded-sm -ml-2 mt-2"></div>
               </div>
-              <span>התחבר לגוגל דרייב</span>
+              <span>{t('auth.connectGoogleDrive')}</span>
             </div>
           </>
         )}
@@ -195,14 +194,14 @@ const GoogleDriveFilePicker = () => {
                 <div className="flex items-center space-x-3">
                   <Sheet className="h-5 w-5 text-green-600" />
                   <span className="truncate">
-                    {selectedFile ? selectedFile.name : "בחר קובץ לטעינה"}
+                    {selectedFile ? selectedFile.name : t('files.selectFile')}
                   </span>
                 </div>
                 <ChevronDown className="ml-2 h-5 w-5 flex-shrink-0" />
               </div>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent 
+          <DropdownMenuContent
             className="min-w-80 max-w-lg w-max bg-white border-2 border-gray-200 rounded-xl shadow-2xl max-h-96 overflow-hidden"
             align="center"
           >
@@ -210,10 +209,10 @@ const GoogleDriveFilePicker = () => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="חפש קבצים"
+                  placeholder={t('files.searchFiles')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.stopPropagation()}   
+                  onKeyDown={(e) => e.stopPropagation()}
                   className="pl-10 bg-gray-50 border-gray-200 focus:border-blue-300 focus:ring-blue-200"
                 />
               </div>
@@ -223,11 +222,11 @@ const GoogleDriveFilePicker = () => {
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-                    <span className="ml-2 text-gray-600">טוען קבצים</span>
+                    <span className="ml-2 text-gray-600">{t('files.loadingFiles')}</span>
                   </div>
                 ) : filteredFiles.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    {searchQuery ? `לא נמצאו קבצים שתואמים ל ${searchQuery}` : "לא נמצאו קבצים"}
+                    {searchQuery ? t('files.noFilesMatch', { query: searchQuery }) : t('files.noFiles')}
                   </div>
                 ) : (
                   filteredFiles.map((file) => (
@@ -241,7 +240,7 @@ const GoogleDriveFilePicker = () => {
                         <div className="flex-1">
                           <div className="font-medium">{file.name}</div>
                           <div className="text-xs text-gray-500 truncate">
-                            ערוך {new Date(file.modifiedTime).toLocaleDateString()}
+                            {t('files.lastEdited', { date: new Date(file.modifiedTime).toLocaleDateString(locale) })}
                           </div>
                         </div>
                       </div>
@@ -256,12 +255,12 @@ const GoogleDriveFilePicker = () => {
                 className="text-red-600 hover:bg-red-50 cursor-pointer py-3 px-4 text-base rounded-lg mx-1 my-1 transition-all duration-200"
               >
                 <LogOut className="mr-3 h-4 w-4" />
-                התנתק
+                {t('auth.logout')}
               </DropdownMenuItem>
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
-        
+
         {selectedFile && !sheetData && (
           <Button
             onClick={() => handleReadSheet()}
@@ -272,33 +271,33 @@ const GoogleDriveFilePicker = () => {
             {isLoading || isReadingSheet ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                טוען מידע מהקובץ
+                {t('files.loadingFile')}
               </>
             ) : (
               <>
                 <FileText className="mr-2 h-4 w-4" />
-                טען קובץ
+                {t('files.loadFile')}
               </>
             )}
           </Button>
         )}
-       
+
       </div>
 
       <div className="flex items-center space-x-3 justify-center">
-          <Checkbox
-            id="copy-sheet"
-            checked={createNewFile}
-            onCheckedChange={(checked) => setCreateNewFile(checked as boolean)}
-            className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-          />
-          <Label 
-            htmlFor="copy-sheet" 
-            className="text-base font-medium text-foreground cursor-pointer"
-          >
-            העתק לקובץ חדש
-          </Label>
-        </div>
+        <Checkbox
+          id="copy-sheet"
+          checked={createNewFile}
+          onCheckedChange={(checked) => setCreateNewFile(checked as boolean)}
+          className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+        />
+        <Label
+          htmlFor="copy-sheet"
+          className="text-base font-medium text-foreground cursor-pointer"
+        >
+          {t('files.copyToNewFile')}
+        </Label>
+      </div>
 
       <SaveProgressDialog
         open={showSaveDialog}

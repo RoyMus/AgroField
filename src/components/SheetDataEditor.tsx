@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
@@ -10,6 +10,8 @@ import { ModifiedSheet,getValue,setValue,setFormat } from "@/types/cellTypes";
 import { set } from "date-fns";
 import { supabase } from '@/integrations/supabase/client';
 import { FunctionsHttpError } from '@supabase/supabase-js';
+import { useTranslation } from 'react-i18next';
+import { useLang } from '@/contexts/LanguageContext';
 
 interface SheetDataEditorProps {
   sheetData: ModifiedSheet;
@@ -43,6 +45,20 @@ function detectValueType(value: string): 'text' | 'percent' | 'number' | null{
   return 'text';
 }
 const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSaveProgress, copiedFileId, onFetchSheetData }: SheetDataEditorProps) => {
+  const { t } = useTranslation();
+  const { speechLang, numberWords, commands, ttsLangPrefix, locale, timeZone } = useLang();
+
+  const voiceConfig = useMemo(() => ({
+    speechLang,
+    numberWords,
+    decimalWord: commands.decimal,
+    allowedCharPattern: speechLang.startsWith('he')
+      ? /[^֐-׿0-9.\s]/g
+      : speechLang.startsWith('th')
+        ? /[^฀-๿0-9.\s]/g
+        : /[^a-zA-Z0-9.\s]/g,
+  }), [speechLang, numberWords, commands.decimal]);
+
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && getValue(sheetData.values[i][0]).trim() != "")
     {
@@ -66,13 +82,13 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       break;
     }
   }
-  
+
 
   const headersRowIndex = found_headers_row_index + 1;
   const headers = sheetData.values[headersRowIndex -1] || [];
   const [rowChangeCounter, setRowChangeCounter] = useState(0);
   const [updateCounter, setUpdateCounter] = useState(0);
-  
+
   var AlreadySetFirst = false;
   for (let i = 4; i < headers.length; i++) {
     if (getValue(headers[i]) == "")
@@ -89,7 +105,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       }
     }
   }
-  
+
   const minColIndex = firstIndex;
   const maxColIndex = lastindex;
   const [currentRowIndex, setCurrentRowIndex] = useState(headersRowIndex);
@@ -97,7 +113,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const [currentCount, setCurrentCount] = useState(1);
   const [currentValue, setCurrentValue] = useState<string>("");
   const { toast } = useToast();
-  const { isRecording, startRecording, stopRecording, error: recordingError, onWordRecognized } = useVoiceRecording();
+  const { isRecording, startRecording, stopRecording, error: recordingError, onWordRecognized } = useVoiceRecording(voiceConfig);
   const dataRows = sheetData.values.slice(0, commentIndex);
   var isSpeakingState = false;
   const{
@@ -107,9 +123,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     place,
     faucetConductivity,
   } = getData(false, null, null, null, null, null);
-  
+
   const hasInitialized = useRef(false);
-  
+
   const getDataForHeader = (colIndex: number, extractedData: any, idsRowIndex: number) => {
     const idFromIdsRow = getValue(sheetData.values[idsRowIndex][colIndex]);
 
@@ -195,24 +211,24 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const fetchSheetData = useCallback(async () => {
     const sheetName = sheetData?.sheetName;
     if (!sheetName) return;
-    sheetData.values[2][2] = setValue(sheetData.values[2][2], 'נתונים נאספו: ' + new Date().toLocaleTimeString('he-IL', {
-      timeZone: 'Asia/Jerusalem',
+    sheetData.values[2][2] = setValue(sheetData.values[2][2], t('fetch.dataCollected') + new Date().toLocaleTimeString(locale, {
+      timeZone,
       hour12: false,
       hour: '2-digit',
       minute: '2-digit'
     }));
     sheetData.values[2][2] = setFormat(sheetData.values[2][2], { ...sheetData.values[2][2].formatting, backgroundColor: '#ffff00ff' });
-    sheetData.values[2][3] = setValue(sheetData.values[2][3], new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' }));
+    sheetData.values[2][3] = setValue(sheetData.values[2][3], new Date().toLocaleDateString(locale, { timeZone }));
     sheetData.values[2][3] = setFormat(sheetData.values[2][3], { ...sheetData.values[2][3].formatting, backgroundColor: '#ffff00ff' });
     const externalIDValue = getValue(sheetData.values[2][1]);
     const [prefix, key, externalIDString] = externalIDValue.split(':');
-    
+
     try {
       const headerRow = sheetData.values[found_headers_row_index] || [];
 
       let programIdColumnIndex = -1;
       for (let colIndex = 0; colIndex < headerRow.length; colIndex++) {
-        if ((getValue(headerRow[colIndex])?.includes('סידורי') || getValue(headerRow[colIndex])?.includes('זיהוי') || getValue(headerRow[colIndex])?.includes('מזהה') || getValue(headerRow[colIndex])?.includes('מספר')) && (getValue(headerRow[colIndex])?.includes('מגוף') || getValue(headerRow[colIndex])?.includes('תכנית') || getValue(headerRow[colIndex])?.includes('תוכנית'))) {          
+        if ((getValue(headerRow[colIndex])?.includes('סידורי') || getValue(headerRow[colIndex])?.includes('זיהוי') || getValue(headerRow[colIndex])?.includes('מזהה') || getValue(headerRow[colIndex])?.includes('מספר')) && (getValue(headerRow[colIndex])?.includes('מגוף') || getValue(headerRow[colIndex])?.includes('תכנית') || getValue(headerRow[colIndex])?.includes('תוכנית'))) {
           programIdColumnIndex = colIndex;
           break;
         }
@@ -236,8 +252,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
       if (programIdColumnIndex === -1) {
         toast({
-          title: "שגיאה",
-          description: "לא נמצאה עמודת מספר זיהוי",
+          title: t('fetch.errorTitle'),
+          description: t('fetch.noIdColumn'),
         });
         return;
       }
@@ -252,8 +268,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
       if (idsRowIndex === -1) {
         toast({
-          title: "שגיאה",
-          description: "לא נמצאה שורת שליפת נתונים",
+          title: t('fetch.errorTitle'),
+          description: t('fetch.noDataRow'),
         });
         return;
       }
@@ -338,26 +354,26 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       handleSaveProgress(true);
       if (rowErrors.length > 0) {
         toast({
-          title: "חלק מהנתונים לא נמצאו",
+          title: t('fetch.partialData'),
           description: rowErrors.join('\n'),
           variant: "destructive",
           duration: 10000,
         });
       } else {
         toast({
-          title: "נתונים נאספו בהצלחה",
+          title: t('fetch.successTitle'),
           description: "",
         });
       }
     } catch (error) {
       toast({
-        title: "שגיאה באיסוף נתונים",
+        title: t('fetch.errorFetching'),
         description: "",
       });
       console.error("Error fetching data from API:", error);
     }
-  }, [sheetData, headersRowIndex, dataRows.length, handleSaveProgress, toast, found_headers_row_index, minColIndex, maxColIndex]);
-  
+  }, [sheetData, headersRowIndex, dataRows.length, handleSaveProgress, toast, found_headers_row_index, minColIndex, maxColIndex, t, locale, timeZone]);
+
   // Initialize template data and reset position when sheet changes
   useEffect(() => {
     const sheetName = sheetData?.sheetName;
@@ -375,7 +391,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     const faucetRow = sheetData.values[faucetRowIndex];
     let topBarIndex = 0;
     let faucetIndex = 0;
-    
+
     for (let i = 0; i < topBarRow.length; i++) {
       if (getValue(topBarRow[i]) != "") {
         topBarIndex = i;
@@ -392,7 +408,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     {
       sheetData.values[faucetRowIndex][faucetIndex + 1] = setValue(sheetData.values[faucetRowIndex][faucetIndex + 1], `${faucetConductivity}`);
     }
-        
+
     if (isTemplate) {
       sheetData.values[topBarRowIndex][topBarIndex] = setValue(sheetData.values[topBarRowIndex][topBarIndex], `${place} - ${plant} - ${grower}`);
     }
@@ -444,30 +460,26 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       handleInputChange(word,true);
   });
 
-  const handleInputChange = (value: string,from_voice?: boolean) => {
+  const handleInputChange = (value: string, from_voice?: boolean) => {
     console.log('Recognized word:', value);
-    if (value.includes("דלג") || value.includes("הבא")|| value.includes("אבא") || value.includes("דלק") || value.includes("דלת")) {
+    const lower = value.toLowerCase();
+
+    if (commands.skip.some(cmd => lower.includes(cmd.toLowerCase()))) {
       skipCurrentValue();
       setCurrentValue("");
-    }
-    else if (value.includes("חזור") || value.includes("אחורה")) {
+    } else if (commands.back.some(cmd => lower.includes(cmd.toLowerCase()))) {
       moveToPreviousCell();
       setCurrentValue("");
-    }
-    else if(value.includes("מחק"))
-    {
+    } else if (commands.delete.some(cmd => lower.includes(cmd.toLowerCase()))) {
       resetCurrentCell();
-    }
-    else if (value.includes("שמור")) {
-      if(currentValue) {
+    } else if (commands.save.some(cmd => lower.includes(cmd.toLowerCase()))) {
+      if (currentValue) {
         recordCurrentValue(currentValue);
         setCurrentValue("");
       }
-    }
-    else {
+    } else {
       setCurrentValue(value);
-      if(from_voice)
-      {
+      if (from_voice) {
         const rowIndex = currentRowIndex;
         const colIndex = currentColumnIndex;
         speak(value, false, () => {
@@ -478,7 +490,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         });
       }
     }
-    
   };
 
   const handleChangeToNewRow = (value: number) => {
@@ -487,13 +498,11 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   };
 
   const saveModifications = useCallback(() => {
-    // The context handles saving to localStorage, so this is just for the toast.
     toast({
-      title: "Progress Saved",
-      description: `Saved modifications`,
-    });``
-    
-  }, [toast]);
+      title: t('editor.progressSaved'),
+      description: t('editor.progressSavedDesc'),
+    });
+  }, [toast, t]);
 
   const handleOpenSheet = async () => {
     calcAverages();
@@ -504,32 +513,31 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   };
 
   const recordCurrentValue = async (value) => {
-    // Save the current value
     sheetData.values[currentRowIndex][currentColumnIndex] = setValue(sheetData.values[currentRowIndex][currentColumnIndex], value);
     handleSaveProgress();
     toast({
-      title: "Value Recorded",
-      description: `Recorded value for ${getValue(headers[currentColumnIndex])}`,
+      title: t('editor.valueRecorded'),
+      description: t('editor.valueRecordedDesc', { header: getValue(headers[currentColumnIndex]) }),
     });
-    
+
     moveToNextCell();
   };
 
   function unlockSpeechIOS() {
-  if (!window.speechSynthesis) return;
-
+    if (!window.speechSynthesis) return;
     const utterance = new SpeechSynthesisUtterance('');
-    utterance.volume = 0; // silent
+    utterance.volume = 0;
     window.speechSynthesis.speak(utterance);
   }
+
   const startVoiceRecording = async () => {
     if (!isRecording) {
       console.log('Starting voice recording...');
       unlockSpeechIOS();
       await startRecording();
       toast({
-        title: "Recording Started",
-        description: "Speak now... Click Stop to finish.",
+        title: t('editor.recordingStarted'),
+        description: t('editor.recordingStartedDesc'),
       });
     }
   };
@@ -540,6 +548,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       await stopRecording();
     }
   };
+
   const [voices, setVoices] = useState([]);
 
   useEffect(() => {
@@ -548,7 +557,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       setVoices(allVoices);
     };
 
-    // Chrome fires voiceschanged async
     window.speechSynthesis.onvoiceschanged = loadVoices;
     loadVoices();
   }, []);
@@ -562,13 +570,12 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
 
-    // Try to find a Hebrew voice
-    const hebrewVoice = voices.find((v) => v.lang.startsWith("he"));
-    if (!hebrewVoice) {
+    const targetVoice = voices.find((v) => v.lang.startsWith(ttsLangPrefix));
+    if (!targetVoice) {
       if (onEndCallback) onEndCallback();
       return;
     }
-    utterance.voice = hebrewVoice;
+    utterance.voice = targetVoice;
 
     utterance.onstart = () => {
       if (isRecording || activateMic) {
@@ -607,7 +614,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         nextRow++;
         nextCol = minColIndex;
       } else {
-        // End of editable area
         return;
       }
     } while (sheetData.values[nextRow]?.[nextCol]?.original?.startsWith('='));
@@ -632,7 +638,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         prevRow--;
         prevCol = maxColIndex;
       } else {
-        // Start of editable area
         return;
       }
     } while (sheetData.values[prevRow]?.[prevCol]?.original?.startsWith('='));
@@ -646,7 +651,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
   const resetCurrentCell = () => {
     setCurrentValue("");
-    // Remove from modified data if it exists
     sheetData.values[currentRowIndex][currentColumnIndex] = setValue(sheetData.values[currentRowIndex][currentColumnIndex], null);
     handleSaveProgress();
     setUpdateCounter(prev => prev + 1);
@@ -673,7 +677,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     if (onFetchSheetData) {
       onFetchSheetData(fetchSheetData);
     }
-  }, [onSaveProgress, onSaveToNewSheet, onFetchSheetData,sheetData]);
+  }, [onSaveProgress, onSaveToNewSheet, onFetchSheetData, sheetData]);
 
   return (
     <div className="space-y-6">
@@ -702,7 +706,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       />
     </div>
   );
-  
+
 };
 
 export default SheetDataEditor;

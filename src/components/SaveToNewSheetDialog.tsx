@@ -2,14 +2,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
 } from "@/components/ui/dialog";
+import { useTranslation } from 'react-i18next';
 
 interface SaveToNewSheetDialogProps {
   open: boolean;
@@ -20,14 +21,15 @@ interface SaveToNewSheetDialogProps {
   isLoading?: boolean;
 }
 
-const SaveToNewSheetDialog = ({ 
-  open, 
-  onOpenChange, 
-  onConfirm, 
-  onCancel, 
+const SaveToNewSheetDialog = ({
+  open,
+  onOpenChange,
+  onConfirm,
+  onCancel,
   previousFileName,
   isLoading = false
 }: SaveToNewSheetDialogProps) => {
+  const { t } = useTranslation();
   const [fileName, setFileName] = useState(previousFileName);
 
   const handleConfirm = () => {
@@ -45,15 +47,15 @@ const SaveToNewSheetDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>שמור לקובץ חדש</DialogTitle>
+          <DialogTitle>{t('saveDialog.title')}</DialogTitle>
           <DialogDescription>
-            צור קובץ חדש באותו המיקום עם אותן הרשאות
+            {t('saveDialog.description')}
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="fileName">שם הקובץ</Label>
+            <Label htmlFor="fileName">{t('saveDialog.fileNameLabel')}</Label>
             <Input
               id="fileName"
               placeholder={previousFileName}
@@ -66,13 +68,13 @@ const SaveToNewSheetDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleCancel} disabled={isLoading}>
-            ביטול
+            {t('saveDialog.cancel')}
           </Button>
-          <Button dir="rtl"
-            onClick={handleConfirm} 
+          <Button
+            onClick={handleConfirm}
             disabled={!fileName.trim() || isLoading}
           >
-            {isLoading ? "יוצר..." : "צור קובץ חדש"}
+            {isLoading ? t('saveDialog.creating') : t('saveDialog.createNewFile')}
           </Button>
         </DialogFooter>
       </DialogContent>

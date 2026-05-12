@@ -6,6 +6,8 @@ import VoiceControls from "./VoiceControls";
 import SimpleDropdown from "./ui/simpleDropdown";
 import { useEffect, useState} from "react";
 import { ModifiedCell,isModified,getValue } from "@/types/cellTypes";
+import { useTranslation } from 'react-i18next';
+import { useLang } from '@/contexts/LanguageContext';
 
 interface CellEditorProps {
   currentRowIndex: number;
@@ -54,6 +56,8 @@ const CellEditor = ({
 }: CellEditorProps) => {
   try
   {
+    const { t } = useTranslation();
+    const { dir } = useLang();
     const isCurrentCellModified = isModified(dataRows[currentRowIndex][currentColumnIndex]);
     const [optionsHamama, setOptionsHamama] = useState([]);
     const [currentHamama, setCurrentHamama] = useState(null);
@@ -63,7 +67,7 @@ const CellEditor = ({
     const [dropDownValueOfHamama, setDropDownHamama] = useState(null);
     const [dropDownValueOfMagof, setDropDownMagof] = useState(null);
     const [dropDownValueOfGidul, setDropDownGidul] = useState(null);
-    
+
     const handleChangedRow = () => {
       let curHam = getValue(dataRows[currentRowIndex][0]).trim();
       let curMag = getValue(dataRows[currentRowIndex][1]).trim();
@@ -76,11 +80,11 @@ const CellEditor = ({
 
       while (optionsMagof.length != 0)
         optionsMagof.pop();
-      
+
       while (optionsGidul.length != 0)
         optionsGidul.pop();
 
-      
+
       for (let i = headersRowIndex; i < dataRows.length; i++)
       {
         if (dataRows[i][0] != null && getValue(dataRows[i][0]).trim() == curHam && dataRows[i][1] != null && !optionsMagof.includes(getValue(dataRows[i][1]).trim()))
@@ -170,7 +174,6 @@ const CellEditor = ({
     }, [currentMagof]);
 
     useEffect (() => {
-      // Reset all dropdown states when dataRows change
       setOptionsHamama([]);
       setCurrentHamama(null);
       setOptionsMagof([]);
@@ -180,7 +183,6 @@ const CellEditor = ({
       setDropDownMagof(null);
       setDropDownGidul(null);
 
-      // Recalculate hamama options
       const newOptionsHamama = [];
       for (let i = headersRowIndex; i < dataRows.length; i++)
       {
@@ -191,55 +193,54 @@ const CellEditor = ({
       }
       setOptionsHamama(newOptionsHamama);
 
-      // Update dropdowns based on current row
       handleChangedRow();
     }, [dataRows]);
-    
+
     useEffect (() => {
       handleChangedRow();
     }, [rowChangeCounter]);
-    
+
     return (
       <div className="bg-card border-2 border-border rounded-xl p-4 shadow-lg">
-        {/* Header Section - Consistent on mobile and desktop */}
+        {/* Header Section */}
         <div className="mb-4">
           <div className="flex flex-col space-y-3">
             <h3 className="text-lg font-semibold text-foreground">
               {getValue(headers[currentColumnIndex])}
-              {isCurrentCellModified && 
-                <span className="ml-2 text-sm text-green-600"> (ערוך)</span>
+              {isCurrentCellModified &&
+                <span className="ml-2 text-sm text-green-600"> {t('editor.edited')}</span>
               }
             </h3>
-            
-            {/* Dropdown Controls - Same layout on mobile */}
+
+            {/* Dropdown Controls */}
             <div className="grid grid-cols-1 gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground min-w-[60px]">חממה</span>
+                <span className="text-sm font-medium text-muted-foreground min-w-[60px]">{t('editor.greenhouse')}</span>
                 <SimpleDropdown options={optionsHamama} value={dropDownValueOfHamama} onSelect={handleSelectHamama} />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground min-w-[60px]">מגוף</span>
+                <span className="text-sm font-medium text-muted-foreground min-w-[60px]">{t('editor.valve')}</span>
                 <SimpleDropdown options={optionsMagof} value={dropDownValueOfMagof} onSelect={handleSelectMagof} />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground min-w-[60px]">גידול</span>
+                <span className="text-sm font-medium text-muted-foreground min-w-[60px]">{t('editor.crop')}</span>
                 <SimpleDropdown options={optionsGidul} value={dropDownValueOfGidul} onSelect={handleSelectGidul} />
               </div>
             </div>
           </div>
-          
-          {/* Top Action Buttons - Always visible */}
+
+          {/* Top Action Buttons */}
           <div className="mt-4 space-y-2">
             <div className="flex">
-            <Button
-              onClick={onResetCell}
-              variant="outline"
-              size="sm"
-              disabled={!isCurrentCellModified}
-              className="h-9 text-sm"
-            >
-              מחק
-            </Button>
+              <Button
+                onClick={onResetCell}
+                variant="outline"
+                size="sm"
+                disabled={!isCurrentCellModified}
+                className="h-9 text-sm"
+              >
+                {t('editor.delete')}
+              </Button>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -250,7 +251,7 @@ const CellEditor = ({
               className="h-9 px-4 text-sm"
             >
               <ChevronLeft className="mr-2 h-4 w-4" />
-              חזור
+              {t('editor.back')}
             </Button>
             <Button
               onClick={onSkipCurrent}
@@ -259,7 +260,7 @@ const CellEditor = ({
               className="text-orange-600 border-orange-300 hover:bg-orange-50 h-9 px-4 text-sm"
             >
               <SkipForward className="mr-2 h-4 w-4" />
-              דלג
+              {t('editor.skip')}
             </Button>
             <Button
               onClick={onRecordValue}
@@ -267,15 +268,15 @@ const CellEditor = ({
               className="bg-green-600 hover:bg-green-700 text-white h-9 px-4 text-sm"
             >
               <Type className="mr-2 h-4 w-4" />
-              שמור
+              {t('editor.save')}
             </Button>
-        </div>
+          </div>
         </div>
         {/* Input Section */}
-        <div className="mb-4">        
+        <div className="mb-4">
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-2">
-              Value:
+              {t('editor.valueLabel')}
             </label>
             <Input
               value={currentValue}
@@ -300,9 +301,11 @@ const CellEditor = ({
         </div>
       </div>
     );
-}
+  }
   catch (error) {
-    return <div dir="rtl">הפורמט של דף זה אינו נתמך</div>;
+    const { t } = useTranslation();
+    const { dir } = useLang();
+    return <div dir={dir}>{t('editor.unsupportedFormat')}</div>;
   }
 };
 

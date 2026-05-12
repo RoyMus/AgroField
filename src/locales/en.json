@@ -1,0 +1,105 @@
+{
+  "app": {
+    "title": "Orlomati",
+    "subtitle": "Connect to Google Drive, select a template or existing file, and start entering data"
+  },
+  "auth": {
+    "connecting": "Connecting",
+    "connectGoogleDrive": "Connect to Google Drive",
+    "loginFailed": "Login Failed",
+    "loginFailedDesc": "Failed to connect to Google Drive, please try again",
+    "disconnected": "Disconnected",
+    "disconnectedDesc": "Disconnected from Google Drive",
+    "retry": "Try Again"
+  },
+  "files": {
+    "selectFile": "Select a file to load",
+    "searchFiles": "Search files",
+    "loadingFiles": "Loading files",
+    "noFiles": "No files found",
+    "noFilesMatch": "No files matching {{query}}",
+    "fileSelected": "File selected",
+    "loadFile": "Load File",
+    "loadingFile": "Loading file data",
+    "fileLoadError": "File load error",
+    "fileLoadErrorDesc": "Failed to load the file, please try again",
+    "lastEdited": "Edited {{date}}",
+    "logout": "Logout",
+    "copyToNewFile": "Copy to new file",
+    "changesSaved": "Changes saved",
+    "changesSavedDesc": "Your edits to the file were saved successfully"
+  },
+  "topbar": {
+    "fetchApiData": "Fetch API Data",
+    "saveAndOpen": "Save & Open File Location",
+    "openFullEditor": "Open Full Sheet Editor",
+    "backToHome": "Back to Home"
+  },
+  "editor": {
+    "edited": "(edited)",
+    "greenhouse": "Greenhouse",
+    "valve": "Valve",
+    "crop": "Crop",
+    "delete": "Delete",
+    "back": "Back",
+    "skip": "Skip",
+    "save": "Save",
+    "valueLabel": "Value:",
+    "unsupportedFormat": "This page format is not supported",
+    "progressSaved": "Progress Saved",
+    "progressSavedDesc": "Modifications saved",
+    "valueRecorded": "Value Recorded",
+    "valueRecordedDesc": "Recorded value for {{header}}",
+    "recordingStarted": "Recording Started",
+    "recordingStartedDesc": "Speak now... Click Stop to finish."
+  },
+  "table": {
+    "addRow": "Add Row",
+    "deleteRow": "Delete Row",
+    "addColumn": "Add Column",
+    "deleteColumn": "Delete Column",
+    "saveChanges": "Save Changes",
+    "savedSuccess": "Saved successfully",
+    "savedSuccessDesc": "Changes saved successfully",
+    "copyFormat": "Copy Format",
+    "pasteFormat": "Paste Format",
+    "selectCellFirst": "Select a cell",
+    "selectCellFirstDesc": "Select a cell first to copy format",
+    "formatCopied": "Format Copied",
+    "formatCopiedDesc": "Cell format copied successfully",
+    "editSheet": "Edit Sheet: {{name}}"
+  },
+  "saveDialog": {
+    "title": "Save to New File",
+    "description": "Create a new file in the same location with the same permissions",
+    "fileNameLabel": "File name",
+    "cancel": "Cancel",
+    "creating": "Creating...",
+    "createNewFile": "Create New File"
+  },
+  "progressDialog": {
+    "title": "Save Current Progress?",
+    "description": "You have {{count}} unsaved changes. Would you like to save your progress before switching sheets?",
+    "dontSave": "Don't Save",
+    "saveProgress": "Save Progress"
+  },
+  "voice": {
+    "startVoice": "Click the microphone to start voice mode",
+    "stopVoice": "Click the square to stop voice mode",
+    "examples": ["Enter (value)", "Skip \\ Next", "Back \\ Previous", "Save", "Delete"]
+  },
+  "fetch": {
+    "errorTitle": "Error",
+    "noIdColumn": "ID column not found",
+    "noDataRow": "Data retrieval row not found",
+    "partialData": "Some data was not found",
+    "successTitle": "Data collected successfully",
+    "errorFetching": "Error collecting data",
+    "dataCollected": "Data collected: "
+  },
+  "noSheet": {
+    "title": "No Sheet Data Available",
+    "description": "Please select a Google Sheet first.",
+    "goHome": "Go to Home"
+  }
+}

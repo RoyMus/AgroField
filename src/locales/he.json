@@ -1,0 +1,105 @@
+{
+  "app": {
+    "title": "אורלומטי",
+    "subtitle": "התחבר לגוגל דרייב, בחר בטמפלייט או בקובץ קיים, והתחל להזין נתונים"
+  },
+  "auth": {
+    "connecting": "מתחבר",
+    "connectGoogleDrive": "התחבר לגוגל דרייב",
+    "loginFailed": "התחברות נכשלה",
+    "loginFailedDesc": "ההתחברות לגוגל דרייב נכשלה, אנא נסה שוב",
+    "disconnected": "מנותק",
+    "disconnectedDesc": "מנותק מגוגל דרייב",
+    "retry": "נסה שוב"
+  },
+  "files": {
+    "selectFile": "בחר קובץ לטעינה",
+    "searchFiles": "חפש קבצים",
+    "loadingFiles": "טוען קבצים",
+    "noFiles": "לא נמצאו קבצים",
+    "noFilesMatch": "לא נמצאו קבצים שתואמים ל {{query}}",
+    "fileSelected": "קובץ נבחר",
+    "loadFile": "טען קובץ",
+    "loadingFile": "טוען מידע מהקובץ",
+    "fileLoadError": "שגיאה בטעינת הקובץ",
+    "fileLoadErrorDesc": "טעינת הקובץ נכשלה, אנא נסה שוב",
+    "lastEdited": "ערוך {{date}}",
+    "logout": "התנתק",
+    "copyToNewFile": "העתק לקובץ חדש",
+    "changesSaved": "השינויים נשמרו",
+    "changesSavedDesc": "השינויים שערכת לקובץ נשמרו בהצלחה"
+  },
+  "topbar": {
+    "fetchApiData": "טען נתוני API",
+    "saveAndOpen": "שמור ופתח מיקום קובץ",
+    "openFullEditor": "פתח עורך גיליון מלא",
+    "backToHome": "חזור לדף הבית"
+  },
+  "editor": {
+    "edited": "(ערוך)",
+    "greenhouse": "חממה",
+    "valve": "מגוף",
+    "crop": "גידול",
+    "delete": "מחק",
+    "back": "חזור",
+    "skip": "דלג",
+    "save": "שמור",
+    "valueLabel": "ערך:",
+    "unsupportedFormat": "הפורמט של דף זה אינו נתמך",
+    "progressSaved": "ההתקדמות נשמרה",
+    "progressSavedDesc": "השינויים נשמרו",
+    "valueRecorded": "הערך נרשם",
+    "valueRecordedDesc": "נרשם ערך עבור {{header}}",
+    "recordingStarted": "ההקלטה התחילה",
+    "recordingStartedDesc": "דבר עכשיו... לחץ עצור כדי לסיים."
+  },
+  "table": {
+    "addRow": "הוסף שורה",
+    "deleteRow": "מחק שורה",
+    "addColumn": "הוסף עמודה",
+    "deleteColumn": "מחק עמודה",
+    "saveChanges": "שמור שינויים",
+    "savedSuccess": "נשמר בהצלחה",
+    "savedSuccessDesc": "השינויים נשמרו בהצלחה",
+    "copyFormat": "העתק פורמט",
+    "pasteFormat": "הדבק פורמט",
+    "selectCellFirst": "בחר תא",
+    "selectCellFirstDesc": "בחר תא קודם להעתקת הפורמט",
+    "formatCopied": "הפורמט הועתק",
+    "formatCopiedDesc": "הפורמט של התא הועתק בהצלחה",
+    "editSheet": "ערוך גיליון: {{name}}"
+  },
+  "saveDialog": {
+    "title": "שמור לקובץ חדש",
+    "description": "צור קובץ חדש באותו המיקום עם אותן הרשאות",
+    "fileNameLabel": "שם הקובץ",
+    "cancel": "ביטול",
+    "creating": "יוצר...",
+    "createNewFile": "צור קובץ חדש"
+  },
+  "progressDialog": {
+    "title": "שמור התקדמות נוכחית?",
+    "description": "יש לך {{count}} שינויים שלא נשמרו. האם ברצונך לשמור את ההתקדמות לפני מעבר לגיליון אחר?",
+    "dontSave": "אל תשמור",
+    "saveProgress": "שמור התקדמות"
+  },
+  "voice": {
+    "startVoice": "לחץ על המיקרופון כדי להתחיל מצב קולי",
+    "stopVoice": "לחץ על הריבוע כדי להפסיק מצב קולי",
+    "examples": ["(ערך) הזן", "דלג \\ הבא", "אחורה \\ חזור", "שמור", "מחק"]
+  },
+  "fetch": {
+    "errorTitle": "שגיאה",
+    "noIdColumn": "לא נמצאה עמודת מספר זיהוי",
+    "noDataRow": "לא נמצאה שורת שליפת נתונים",
+    "partialData": "חלק מהנתונים לא נמצאו",
+    "successTitle": "נתונים נאספו בהצלחה",
+    "errorFetching": "שגיאה באיסוף נתונים",
+    "dataCollected": "נתונים נאספו: "
+  },
+  "noSheet": {
+    "title": "אין נתוני גיליון זמינים",
+    "description": "אנא בחר גיליון גוגל תחילה.",
+    "goHome": "עבור לדף הבית"
+  }
+}
