@@ -266,7 +266,7 @@ const GoogleDriveFilePicker = () => {
             onClick={() => handleReadSheet()}
             disabled={isLoading || isReadingSheet}
             size="lg"
-            className="w-full bg-green-600 hover:bg-green-700 text-white"
+            className="w-full bg-green-600 hover:bg-green-700 text-white space-y-2"
           >
             {isLoading || isReadingSheet ? (
               <>
@@ -284,7 +284,7 @@ const GoogleDriveFilePicker = () => {
 
       </div>
 
-      <div className="flex items-center space-x-3 justify-center">
+      <div className="flex items-center space-x-3 justify-center mt-4">
         <Checkbox
           id="copy-sheet"
           checked={createNewFile}
