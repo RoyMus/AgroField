@@ -113,7 +113,8 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
 
   const translateWord = (word: string): string => {
     const trimmed = word.trim();
-    return configRef.current.numberWords[trimmed] ?? trimmed;
+    const lower = trimmed.toLowerCase();
+    return configRef.current.numberWords[lower] ?? configRef.current.numberWords[trimmed] ?? trimmed;
   };
 
   const processValue = (transcript: string): void => {
