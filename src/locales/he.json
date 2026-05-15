@@ -10,7 +10,8 @@
     "loginFailedDesc": "ההתחברות לגוגל דרייב נכשלה, אנא נסה שוב",
     "disconnected": "מנותק",
     "disconnectedDesc": "מנותק מגוגל דרייב",
-    "retry": "נסה שוב"
+    "retry": "נסה שוב",
+    "logout": "התנתק"
   },
   "files": {
     "selectFile": "בחר קובץ לטעינה",

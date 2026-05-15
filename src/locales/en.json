@@ -10,7 +10,8 @@
     "loginFailedDesc": "Failed to connect to Google Drive, please try again",
     "disconnected": "Disconnected",
     "disconnectedDesc": "Disconnected from Google Drive",
-    "retry": "Try Again"
+    "retry": "Try Again",
+    "logout": "Logout"
   },
   "files": {
     "selectFile": "Select a file to load",

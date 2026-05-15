@@ -10,7 +10,8 @@
     "loginFailedDesc": "ไม่สามารถเชื่อมต่อ Google Drive ได้ โปรดลองอีกครั้ง",
     "disconnected": "ตัดการเชื่อมต่อแล้ว",
     "disconnectedDesc": "ตัดการเชื่อมต่อจาก Google Drive แล้ว",
-    "retry": "ลองอีกครั้ง"
+    "retry": "ลองอีกครั้ง",
+    "logout": "ออกจากระบบ"
   },
   "files": {
     "selectFile": "เลือกไฟล์เพื่อโหลด",
