@@ -8,6 +8,12 @@ export interface VoiceRecordingConfig {
   numberWords: { [word: string]: string };
   decimalWord: string;
   allowedCharPattern: RegExp;
+  commands?: {
+    skip: string[];
+    back: string[];
+    delete: string[];
+    save: string[];
+  };
 }
 
 interface UseVoiceRecordingReturn {
@@ -24,6 +30,8 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const wordCallbackRef = useRef<((word: string) => void) | null>(null);
   const configRef = useRef(config);
+  // Tracks user intent so onend can distinguish "user stopped" from "utterance ended".
+  const wantsRecordingRef = useRef(false);
 
   // Keep configRef current so processTranscript always uses the latest config
   // without needing to re-create the recognition instance on every render
@@ -44,9 +52,16 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
 
     const recognition = new SpeechRecognition();
 
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    // continuous=false makes the engine finalize each utterance as soon as it
+    // detects end-of-speech, eliminating the lag caused by waiting for a long
+    // silence. onend auto-restarts the session so recording feels continuous.
+    recognition.continuous = false;
+    recognition.interimResults = false;
     recognition.lang = config.speechLang;
+    // Request multiple alternatives so we can scan all of them for command words
+    // before committing to the top result as a value.
+    // maxAlternatives is missing from TypeScript's SpeechRecognition types.
+    (recognition as any).maxAlternatives = 5;
 
     recognition.onstart = () => {
       setIsRecording(true);
@@ -54,18 +69,18 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     };
 
     recognition.onresult = (event) => {
-      let finalTranscript = '';
-
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript;
-        }
-      }
+        if (!event.results[i].isFinal) continue;
 
-      if (finalTranscript) {
-        console.log('Final transcript:', finalTranscript);
-        processTranscript(finalTranscript);
+        const alternatives: string[] = [];
+        for (let j = 0; j < event.results[i].length; j++) {
+          alternatives.push(event.results[i][j].transcript);
+        }
+
+        if (alternatives.length > 0) {
+          console.log('Final alternatives:', alternatives);
+          processTranscript(alternatives);
+        }
       }
     };
 
@@ -76,8 +91,17 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     };
 
     recognition.onend = () => {
-      setIsRecording(false);
-      console.log('Speech recognition ended');
+      if (wantsRecordingRef.current) {
+        // Utterance finished — restart immediately for the next one.
+        try {
+          recognition.start();
+        } catch {
+          // start() can throw if called while already active; safe to ignore.
+        }
+      } else {
+        setIsRecording(false);
+        console.log('Speech recognition ended');
+      }
     };
 
     recognitionRef.current = recognition;
@@ -92,12 +116,11 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     return configRef.current.numberWords[trimmed] ?? trimmed;
   };
 
-  const processTranscript = (transcript: string): void => {
-    if (!wordCallbackRef.current || !transcript.trim()) return;
+  const processValue = (transcript: string): void => {
+    if (!wordCallbackRef.current) return;
 
     const { allowedCharPattern, decimalWord } = configRef.current;
 
-    // Keep only characters valid for the current language
     const cleaned = transcript.replace(allowedCharPattern, '').trim();
     if (!cleaned) return;
 
@@ -106,11 +129,11 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
 
     // Check for decimal pattern (e.g. "one point two" / "אחת נקודה שתיים")
     const decimalMatch = cleaned.match(
-      new RegExp(`^(.+?)[\\s.]+${decEscaped}?[\\s.]+(.+)$|^(.+?)[\\s.]*\\.[\\s.]*(.+)$`)
+      new RegExp(`^(.+?)\\s+${decEscaped}\\s+(.+)$`)
     );
     if (decimalMatch) {
-      const firstPart = (decimalMatch[1] || decimalMatch[3])?.trim();
-      const secondPart = (decimalMatch[2] || decimalMatch[4])?.trim();
+      const firstPart = decimalMatch[1]?.trim();
+      const secondPart = decimalMatch[2]?.trim();
 
       if (firstPart && secondPart) {
         const firstNum = translateWord(firstPart);
@@ -123,19 +146,49 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       }
     }
 
-    // Process as individual words, filtering out the decimal separator word
+    // Translate all words and fire a single callback so a transcript like
+    // "skip fifteen" doesn't trigger two separate actions (command + value).
     const words = cleaned.split(/\s+/).filter(w => w && w !== decimalWord);
-    words.forEach(word => {
-      const translated = translateWord(word);
-      if (translated && wordCallbackRef.current) {
-        wordCallbackRef.current(translated);
+    const translated = words.map(w => translateWord(w)).filter(Boolean).join(' ');
+    if (translated && wordCallbackRef.current) {
+      wordCallbackRef.current(translated);
+    }
+  };
+
+  const processTranscript = (alternatives: string[]): void => {
+    if (!wordCallbackRef.current || alternatives.length === 0) return;
+
+    const { commands } = configRef.current;
+
+    // Scan every alternative for a command word before falling back to the
+    // top result as a value. This catches cases where the recognizer mishears
+    // the command (e.g. "ship" instead of "skip") but returns the correct word
+    // as a lower-ranked alternative.
+    if (commands) {
+      const allCommands = [
+        ...commands.skip,
+        ...commands.back,
+        ...commands.delete,
+        ...commands.save,
+      ];
+      for (const alt of alternatives) {
+        const lower = alt.toLowerCase().trim();
+        if (allCommands.some(cmd => lower.includes(cmd.toLowerCase()))) {
+          console.log('Command matched in alternative:', alt);
+          wordCallbackRef.current(alt);
+          return;
+        }
       }
-    });
+    }
+
+    // No command match — treat the highest-confidence alternative as a value.
+    processValue(alternatives[0]);
   };
 
   const startRecording = async () => {
     try {
       setError(null);
+      wantsRecordingRef.current = true;
       recognitionRef.current.start();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start speech recognition');
@@ -144,6 +197,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
   };
 
   const stopRecording = async (): Promise<void> => {
+    wantsRecordingRef.current = false;
     recognitionRef.current.stop();
   };
 
