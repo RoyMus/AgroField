@@ -57,7 +57,13 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       : speechLang.startsWith('th')
         ? /[^฀-๿0-9.\s]/g
         : /[^a-zA-Z0-9.\s]/g,
-  }), [speechLang, numberWords, commands.decimal]);
+    commands: {
+      skip: commands.skip,
+      back: commands.back,
+      delete: commands.delete,
+      save: commands.save,
+    },
+  }), [speechLang, numberWords, commands]);
 
   for (let i = 0; i < sheetData.values.length; i++) {
     if (sheetData.values[i][0] != null && getValue(sheetData.values[i][0]).trim() != "")
