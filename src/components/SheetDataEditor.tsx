@@ -577,11 +577,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     const utterance = new SpeechSynthesisUtterance(text);
 
     const targetVoice = voices.find((v) => v.lang.startsWith(ttsLangPrefix));
-    if (!targetVoice) {
-      if (onEndCallback) onEndCallback();
-      return;
+    if (targetVoice) {
+      utterance.voice = targetVoice;
     }
-    utterance.voice = targetVoice;
 
     utterance.onstart = () => {
       if (isRecording || activateMic) {

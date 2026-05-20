@@ -150,7 +150,8 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     // Translate all words and fire a single callback so a transcript like
     // "skip fifteen" doesn't trigger two separate actions (command + value).
     const words = cleaned.split(/\s+/).filter(w => w && w !== decimalWord);
-    const translated = words.map(w => translateWord(w)).filter(Boolean).join(' ');
+    const translated = words.map(w => translateWord(w)).filter(Boolean).join(' ')
+      .replace(/(\d+)\s+(\.\d+)/g, '$1$2');
     if (translated && wordCallbackRef.current) {
       wordCallbackRef.current(translated);
     }
