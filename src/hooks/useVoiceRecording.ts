@@ -114,7 +114,12 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
   const translateWord = (word: string): string => {
     const trimmed = word.trim();
     const lower = trimmed.toLowerCase();
-    return configRef.current.numberWords[lower] ?? configRef.current.numberWords[trimmed] ?? trimmed;
+    // iOS adds Hebrew niqqud (vowel marks U+05B0–U+05C7); strip them before lookup
+    const stripped = lower.replace(/[ְ-ׇ]/g, '');
+    return configRef.current.numberWords[stripped]
+      ?? configRef.current.numberWords[lower]
+      ?? configRef.current.numberWords[trimmed]
+      ?? trimmed;
   };
 
   const processValue = (transcript: string): void => {
