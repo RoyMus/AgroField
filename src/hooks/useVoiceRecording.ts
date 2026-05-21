@@ -112,7 +112,8 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
   }, [config.speechLang]); // Restart recognition instance when language changes
 
   const translateWord = (word: string): string => {
-    const trimmed = word.trim();
+    // Strip trailing punctuation so "אחת." looks up the same as "אחת"
+    const trimmed = word.trim().replace(/[.,!?;:]+$/, '');
     const lower = trimmed.toLowerCase();
     // iOS adds Hebrew niqqud (vowel marks U+05B0–U+05C7); strip them before lookup
     const stripped = lower.replace(/[ְ-ׇ]/g, '');
@@ -145,6 +146,22 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
         const firstNum = translateWord(firstPart);
         const secondNum = translateWord(secondPart);
 
+        if (/^\d+$/.test(firstNum) && /^\d+$/.test(secondNum)) {
+          wordCallbackRef.current(`${firstNum}.${secondNum}`);
+          return;
+        }
+      }
+    }
+
+    // Also handle when the speech recognizer uses a literal "." instead of the
+    // decimal word (e.g. Hebrew STT returns "אחת. 9" instead of "אחת נקודה תשע").
+    const dotDecimalMatch = cleaned.match(/^(.+?)\.\s*(.+)$/);
+    if (dotDecimalMatch) {
+      const firstPart = dotDecimalMatch[1]?.trim();
+      const secondPart = dotDecimalMatch[2]?.trim();
+      if (firstPart && secondPart) {
+        const firstNum = translateWord(firstPart);
+        const secondNum = translateWord(secondPart);
         if (/^\d+$/.test(firstNum) && /^\d+$/.test(secondNum)) {
           wordCallbackRef.current(`${firstNum}.${secondNum}`);
           return;
