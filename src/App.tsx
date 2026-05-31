@@ -8,7 +8,7 @@ import Index from "./pages/Index";
 import InteractivePage from "./pages/InteractivePage";
 import EditableSheetPage from "./pages/EditableSheetPage";
 import { LanguageProvider } from "./contexts/LanguageContext";
-import { SheetDataProvider } from "./contexts/SheetDataContext";
+import { GoogleDriveProvider } from "./contexts/GoogleDriveContext";
 
 const queryClient = new QueryClient();
 
@@ -16,7 +16,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <LanguageProvider>
-        <SheetDataProvider>
+        <GoogleDriveProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
@@ -28,7 +28,7 @@ const App = () => (
             <Route path="*" element={<Index />} />
           </Routes>
         </BrowserRouter>
-        </SheetDataProvider>
+        </GoogleDriveProvider>
       </LanguageProvider>
     </TooltipProvider>
   </QueryClientProvider>
