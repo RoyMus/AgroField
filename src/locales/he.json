@@ -28,7 +28,8 @@
     "logout": "התנתק",
     "copyToNewFile": "העתק לקובץ חדש",
     "changesSaved": "השינויים נשמרו",
-    "changesSavedDesc": "השינויים שערכת לקובץ נשמרו בהצלחה"
+    "changesSavedDesc": "השינויים שערכת לקובץ נשמרו בהצלחה",
+    "fileTooLargeToCache": "הקובץ גדול מדי לשמירה מקומית — יטען מחדש מהענן בכל כניסה"
   },
   "topbar": {
     "fetchApiData": "טען נתוני API",

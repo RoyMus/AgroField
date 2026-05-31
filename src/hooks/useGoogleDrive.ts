@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { ModifiedCell, ModifiedSheet,createModifiedSheet, getValue } from '@/types/cellTypes';
 import { format } from 'path';
@@ -31,6 +32,7 @@ interface UseGoogleDriveReturn {
 }
 
 export const useGoogleDrive = (): UseGoogleDriveReturn => {
+  const { t } = useTranslation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [files, setFiles] = useState<GoogleDriveFile[]>([]);
@@ -151,6 +153,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     }
   };
   const loadSheetByName = async (sheetName: string) => {
+    localStorage.setItem('google_drive_last_sheet_name', sheetName);
     const processedSheets = localStorage.getItem('google_drive_sheet_data');
     if (!processedSheets) {
       setError('No sheet data to load');
@@ -306,11 +309,12 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     console.log('Selecting file:', file);
     setSelectedFile(file);
     localStorage.setItem('google_drive_selected_file', JSON.stringify(file));
-    
+
     // Clear previous sheet data immediately when selecting a new file
     console.log('Clearing previous sheet data due to file selection');
     setSheetData(null);
     localStorage.removeItem('google_drive_sheet_data');
+    localStorage.removeItem('google_drive_last_sheet_name');
   };
 
   const readSheet = async (fileId: string, sheetName?: string) => {
@@ -353,7 +357,14 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
         });
 
         setSheetData(processedSheets[sheetName]);
-        localStorage.setItem('google_drive_sheet_data', JSON.stringify(processedSheets));
+        if (sheetName) {
+          localStorage.setItem('google_drive_last_sheet_name', sheetName);
+        }
+        try {
+          localStorage.setItem('google_drive_sheet_data', JSON.stringify(processedSheets));
+        } catch (storageError) {
+          toast.warning(t('files.fileTooLargeToCache'));
+        }
       
     });
   }
@@ -418,6 +429,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     console.log('Clearing sheet data manually');
     setSheetData(null);
     localStorage.removeItem('google_drive_sheet_data');
+    localStorage.removeItem('google_drive_last_sheet_name');
   };
 
   const logout = () => {
@@ -434,6 +446,7 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     localStorage.removeItem('google_drive_sheet_data');
     localStorage.removeItem('all_sheet_modifications');
     localStorage.removeItem('all_sheet_styles');
+    localStorage.removeItem('google_drive_last_sheet_name');
     sessionStorage.removeItem('google_auth_code_used');
   };
 
@@ -498,8 +511,16 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
   };
 
   useEffect(() => {
-    if (isAuthenticated && accessToken && files.length === 0) {
+    if (!isAuthenticated || !accessToken) return;
+    if (files.length === 0) {
       loadFiles();
+    }
+    // Re-fetch sheet data if it was too large to cache in localStorage (common on iPhone)
+    if (!sheetData && selectedFile) {
+      const lastSheetName = localStorage.getItem('google_drive_last_sheet_name');
+      if (lastSheetName) {
+        readSheet(selectedFile.id, lastSheetName);
+      }
     }
   }, [isAuthenticated, accessToken]);
 
@@ -532,7 +553,11 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
     }
     const parsedSheets = JSON.parse(processedSheets);
     parsedSheets[newData.sheetName] = newData;
-    localStorage.setItem('google_drive_sheet_data', JSON.stringify(parsedSheets));
+    try {
+      localStorage.setItem('google_drive_sheet_data', JSON.stringify(parsedSheets));
+    } catch (storageError) {
+      console.warn('Sheet data too large to cache locally (common on mobile):', storageError);
+    }
 
     if (selectedFile) {
       const fileId = selectedFile.id;
