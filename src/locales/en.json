@@ -28,7 +28,8 @@
     "logout": "Logout",
     "copyToNewFile": "Copy to new file",
     "changesSaved": "Changes saved",
-    "changesSavedDesc": "Your edits to the file were saved successfully"
+    "changesSavedDesc": "Your edits to the file were saved successfully",
+    "fileTooLargeToCache": "File too large to cache locally — will reload from cloud on each visit"
   },
   "topbar": {
     "fetchApiData": "Fetch API Data",
