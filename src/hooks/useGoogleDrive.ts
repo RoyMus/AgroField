@@ -34,7 +34,12 @@ interface UseGoogleDriveReturn {
 export const useGoogleDrive = (): UseGoogleDriveReturn => {
   const { t } = useTranslation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(() => {
+    const savedFile = localStorage.getItem('google_drive_selected_file');
+    const savedSheetData = localStorage.getItem('google_drive_sheet_data');
+    const lastSheetName = localStorage.getItem('google_drive_last_sheet_name');
+    return !savedSheetData && !!savedFile && !!lastSheetName;
+  });
   const [files, setFiles] = useState<GoogleDriveFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<GoogleDriveFile | null>(null);
   const [sheetData, setSheetData] = useState<ModifiedSheet | null>(null);
@@ -356,9 +361,12 @@ export const useGoogleDrive = (): UseGoogleDriveReturn => {
           processedSheets[sheet.sheetName] = newSheetData;
         });
 
-        setSheetData(processedSheets[sheetName]);
-        if (sheetName) {
-          localStorage.setItem('google_drive_last_sheet_name', sheetName);
+        const resolvedSheetName = (sheetName && processedSheets[sheetName])
+          ? sheetName
+          : Object.keys(processedSheets)[0];
+        setSheetData(processedSheets[resolvedSheetName]);
+        if (resolvedSheetName) {
+          localStorage.setItem('google_drive_last_sheet_name', resolvedSheetName);
         }
         try {
           localStorage.setItem('google_drive_sheet_data', JSON.stringify(processedSheets));
