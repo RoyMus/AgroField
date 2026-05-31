@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import InteractivePage from "./pages/InteractivePage";
 import EditableSheetPage from "./pages/EditableSheetPage";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { SheetDataProvider } from "./contexts/SheetDataContext";
 
 const queryClient = new QueryClient();
 
@@ -15,6 +16,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <LanguageProvider>
+        <SheetDataProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
@@ -26,6 +28,7 @@ const App = () => (
             <Route path="*" element={<Index />} />
           </Routes>
         </BrowserRouter>
+        </SheetDataProvider>
       </LanguageProvider>
     </TooltipProvider>
   </QueryClientProvider>
