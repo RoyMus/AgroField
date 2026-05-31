@@ -4,7 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { ChevronDown, Sheet, LogOut, Loader2, FileText, Search } from "lucide-react";
-import { useGoogleDrive } from "@/hooks/useGoogleDrive";
+import { useGoogleDriveContext } from "@/contexts/GoogleDriveContext";
 import { useToast } from "@/hooks/use-toast";
 import SaveProgressDialog from "./SaveProgressDialog";
 import { useNavigate } from "react-router-dom";
@@ -30,7 +30,7 @@ const GoogleDriveFilePicker = () => {
     selectFile,
     loadAndCopySheet,
     logout
-  } = useGoogleDrive();
+  } = useGoogleDriveContext();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [isReadingSheet, setIsReadingSheet] = useState(false);

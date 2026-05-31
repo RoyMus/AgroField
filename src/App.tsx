@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import InteractivePage from "./pages/InteractivePage";
 import EditableSheetPage from "./pages/EditableSheetPage";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { GoogleDriveProvider } from "./contexts/GoogleDriveContext";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +19,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <GoogleDriveProvider>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/page/:pageName" element={<InteractivePage />} />
@@ -25,6 +27,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<Index />} />
           </Routes>
+          </GoogleDriveProvider>
         </BrowserRouter>
       </LanguageProvider>
     </TooltipProvider>

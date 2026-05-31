@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useGoogleDrive } from "@/hooks/useGoogleDrive";
+import { useGoogleDriveContext } from "@/contexts/GoogleDriveContext";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import EditableSheetTable from "@/components/EditableSheetTable";
@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 const EditableSheetPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { sheetData, selectedFile, handleSaveProgress, loadSheetByName, isLoading } = useGoogleDrive();
+  const { sheetData, selectedFile, handleSaveProgress, loadSheetByName, isLoading } = useGoogleDriveContext();
 
   const handleBackToInteractive = () => {
     navigate(-1);
