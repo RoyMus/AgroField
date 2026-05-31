@@ -3,11 +3,11 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
 import SheetDataEditor from "@/components/SheetDataEditor";
 import TopBar from "@/components/TopBarr";
-import { useGoogleDrive } from "@/hooks/useGoogleDrive";
+import { useGoogleDriveContext } from "@/contexts/GoogleDriveContext";
 
 const InteractivePage = () => {
   const navigate = useNavigate();
-  const { sheetData, selectedFile, clearSheetData, loadSheetByName, isLoading, handleSaveProgress} = useGoogleDrive();
+  const { sheetData, selectedFile, clearSheetData, loadSheetByName, isLoading, handleSaveProgress} = useGoogleDriveContext();
   const [saveProgressFunc, setSaveProgressFunc] = useState<(() => void) | null>(null);
   const [saveToNewSheetFunc, setSaveToNewSheetFunc] = useState<(() => void) | null>(null);
   const [fetchSheetDataFunc, setFetchSheetDataFunc] = useState<(() => void) | null>(null);

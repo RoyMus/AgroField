@@ -1,31 +1,10 @@
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker";
-import SheetDataEditor from "@/components/SheetDataEditor";
-import { useGoogleDrive } from "@/hooks/useGoogleDrive";
-import { getData } from "@/hooks/getData";
-import { useState, useEffect } from "react";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 
 const Index = () => {
-  const navigate = useNavigate();
   const { t } = useTranslation();
-  const { sheetData, selectedFile, clearSheetData } = useGoogleDrive();
-  const [isTemplate, SetTemplate] = useState(false);
-  const [currentPlace, SetCurrentPlace] = useState("");
-  const [currentPlant, SetCurrentPlant] = useState("");
-  const [currentGrowerName, SetCurrentGrowerName] = useState("");
-  const [faucetConductivity, SetfaucetConductivity] = useState("");
-
-  useEffect(() => {
-    getData(true, isTemplate, currentPlant, currentGrowerName, currentPlace, faucetConductivity);
-  }, [isTemplate, currentPlace, currentPlant, currentGrowerName, faucetConductivity]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
