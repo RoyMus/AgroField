@@ -11,6 +11,17 @@ const corsHeaders = {
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Enforces a minimum gap
+function makeRateLimiter(minGapMs: number) {
+  let lastSentAt = 0;
+  return async () => {
+    const now = Date.now();
+    const wait = minGapMs - (now - lastSentAt);
+    if (wait > 0) await sleep(wait);
+    lastSentAt = Date.now();
+  };
+}
+
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -134,9 +145,10 @@ serve(async (req)=> {
         }
       }
       else if (platform === 'talgil') {
+        const throttle = makeRateLimiter(1000);
+        await throttle();
         const valvesMapping = await fetchValvesIds(externalIDs[0], APIKey);
         console.log(JSON.stringify(valvesMapping, null, 2));
-        await sleep(1000); // Ensure we respect any potential rate limits after fetching valve IDs
 
         // Store {globalIndex, programID, valveID} so results can be placed back in original row order
         const map = new Map<number, Array<{globalIndex: number, programID: number, valveID: any}>>();
@@ -154,17 +166,9 @@ serve(async (req)=> {
         // resultByIndex holds each result at its original row position
         const resultByIndex: ExtractedData[] = new Array(externalIDs.length).fill(null);
 
-        let shouldAwait = false;
         for (const externalID of map.keys())
         {
-          if (shouldAwait)
-          {
-            await sleep(1000);
-          }
-          else
-          {
-            shouldAwait = true;
-          }
+          await throttle();
           const url = `https://srv.talgil.com/api/targets/${externalID}/programs`;
 
           const response = await fetch(url,{
