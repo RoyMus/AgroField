@@ -385,9 +385,12 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     const sheetName = sheetData?.sheetName;
     if (!sheetName) return;
 
-    // Reset position to initial state when sheet changes
+    // Reset position to initial state when sheet changes, skipping hidden columns
     setCurrentRowIndex(headersRowIndex);
-    setCurrentColumnIndex(minColIndex);
+    const hiddenSet = new Set(sheetData.hiddenColumns ?? []);
+    let startCol = minColIndex;
+    while (hiddenSet.has(startCol) && startCol <= maxColIndex) startCol++;
+    setCurrentColumnIndex(startCol);
 
     if (hasInitialized.current) return;
 
@@ -607,6 +610,11 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     moveToNextCell();
   };
 
+  const hiddenColSet = useMemo(
+    () => new Set(sheetData.hiddenColumns ?? []),
+    [sheetData.hiddenColumns]
+  );
+
   const moveToNextCell = () => {
     let nextRow = currentRowIndex;
     let nextCol = currentColumnIndex;
@@ -620,7 +628,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       } else {
         return;
       }
-    } while (sheetData.values[nextRow]?.[nextCol]?.original?.startsWith('='));
+    } while (
+      sheetData.values[nextRow]?.[nextCol]?.original?.startsWith('=') ||
+      hiddenColSet.has(nextCol)
+    );
 
     if (currentRowIndex !== nextRow) {
       calcAverages();
@@ -644,7 +655,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       } else {
         return;
       }
-    } while (sheetData.values[prevRow]?.[prevCol]?.original?.startsWith('='));
+    } while (
+      sheetData.values[prevRow]?.[prevCol]?.original?.startsWith('=') ||
+      hiddenColSet.has(prevCol)
+    );
 
     if (currentRowIndex !== prevRow) {
       setRowChangeCounter(rowChangeCounter + 1);
