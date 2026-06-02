@@ -37,6 +37,7 @@ export interface SheetData {
     availableSheets?: SheetTab[];
   };
   formatting?: CellStyle[];
+  hiddenColumns?: number[];
 }
 
 export interface ModifiedCell {
@@ -54,6 +55,7 @@ export interface ModifiedSheet {
     availableSheets?: SheetTab[];
   };
   values: ModifiedCell[][];
+  hiddenColumns?: number[];
 }
 export function setFormat(cell: ModifiedCell, newFormat: CellFormat): ModifiedCell {
   return {
@@ -83,6 +85,7 @@ export function createModifiedSheet(sheetData: SheetData): ModifiedSheet {
   return {
     sheetName: sheetData.sheetName,
     metadata: sheetData.metadata,
+    hiddenColumns: sheetData.hiddenColumns,
     values: sheetData.values.map((row, rIdx) =>
       row.map((value, cIdx) => ({
         original: String(value),
