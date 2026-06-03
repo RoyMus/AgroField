@@ -22,6 +22,7 @@ interface CellEditorProps {
   onChangeToRow: (rowIndex: number) => void;
   onStartRecording: () => Promise<void>;
   onStopRecording: () => Promise<void>;
+  hiddenRows?: number[];
   onResetCell: () => void;
   onSaveProgress: () => void;
   onSaveToNewSheet?: () => void;
@@ -47,6 +48,7 @@ const CellEditor = ({
   onStopRecording,
   onResetCell,
   onSaveProgress,
+  hiddenRows,
   onSaveToNewSheet,
   onMovePrevious,
   onSkipCurrent,
@@ -68,6 +70,8 @@ const CellEditor = ({
     const [dropDownValueOfMagof, setDropDownMagof] = useState(null);
     const [dropDownValueOfGidul, setDropDownGidul] = useState(null);
 
+    const isHiddenRow = (i: number) => hiddenRows?.includes(i) ?? false;
+
     const handleChangedRow = () => {
       let curHam = getValue(dataRows[currentRowIndex][0]).trim();
       let curMag = getValue(dataRows[currentRowIndex][1]).trim();
@@ -87,14 +91,14 @@ const CellEditor = ({
 
       for (let i = headersRowIndex; i < dataRows.length; i++)
       {
-        if (dataRows[i][0] != null && getValue(dataRows[i][0]).trim() == curHam && dataRows[i][1] != null && !optionsMagof.includes(getValue(dataRows[i][1]).trim()))
+        if (!isHiddenRow(i) && dataRows[i][0] != null && getValue(dataRows[i][0]).trim() == curHam && dataRows[i][1] != null && !optionsMagof.includes(getValue(dataRows[i][1]).trim()))
           optionsMagof.push(getValue(dataRows[i][1]).trim());
       }
       setOptionsMagof([...optionsMagof]);
 
       for (let i = headersRowIndex; i < dataRows.length; i++)
       {
-        if (dataRows[i][0] != null && getValue(dataRows[i][0]).trim() == curHam && dataRows[i][1] != null && getValue(dataRows[i][1]).trim() == curMag)
+        if (!isHiddenRow(i) && dataRows[i][0] != null && getValue(dataRows[i][0]).trim() == curHam && dataRows[i][1] != null && getValue(dataRows[i][1]).trim() == curMag)
         {
           optionsGidul.push(getValue(dataRows[i][3]));
         }
@@ -108,7 +112,7 @@ const CellEditor = ({
 
       for (let i = headersRowIndex; i < dataRows.length; i++)
       {
-        if (dataRows[i][0] != null && getValue(dataRows[i][0]).trim() == selectedValue.trim() && dataRows[i][1] != null && !optionsMagof.includes(getValue(dataRows[i][1]).trim()))
+        if (!isHiddenRow(i) && dataRows[i][0] != null && getValue(dataRows[i][0]).trim() == selectedValue.trim() && dataRows[i][1] != null && !optionsMagof.includes(getValue(dataRows[i][1]).trim()))
         {
           optionsMagof.push(getValue(dataRows[i][1]).trim());
         }
@@ -124,7 +128,7 @@ const CellEditor = ({
 
       for (let i = headersRowIndex; i < dataRows.length; i++)
       {
-        if (dataRows[i][0] != null && getValue(dataRows[i][0]).trim() == dropDownValueOfHamama.trim() && dataRows[i][1] != null && getValue(dataRows[i][1]).trim() == selectedValue.trim())
+        if (!isHiddenRow(i) && dataRows[i][0] != null && getValue(dataRows[i][0]).trim() == dropDownValueOfHamama.trim() && dataRows[i][1] != null && getValue(dataRows[i][1]).trim() == selectedValue.trim())
         {
           optionsGidul.push(getValue(dataRows[i][3]));
         }
@@ -144,7 +148,7 @@ const CellEditor = ({
     const handleSelectGidul = (selectedValue) => {
       for (let i = headersRowIndex; i < dataRows.length; i++)
       {
-        if (dataRows[i][0] != null && getValue(dataRows[i][0]).trim() == dropDownValueOfHamama.trim() && getValue(dataRows[i][1]).trim() == dropDownValueOfMagof.trim() && getValue(dataRows[i][3]).trim() == selectedValue)
+        if (!isHiddenRow(i) && dataRows[i][0] != null && getValue(dataRows[i][0]).trim() == dropDownValueOfHamama.trim() && getValue(dataRows[i][1]).trim() == dropDownValueOfMagof.trim() && getValue(dataRows[i][3]).trim() == selectedValue)
         {
           onChangeToRow(i);
           break;
@@ -186,7 +190,7 @@ const CellEditor = ({
       const newOptionsHamama = [];
       for (let i = headersRowIndex; i < dataRows.length; i++)
       {
-        if (dataRows[i][0] != null && getValue(dataRows[i][0]) != "" && !newOptionsHamama.includes(getValue(dataRows[i][0]).trim()))
+        if (!isHiddenRow(i) && dataRows[i][0] != null && getValue(dataRows[i][0]) != "" && !newOptionsHamama.includes(getValue(dataRows[i][0]).trim()))
         {
           newOptionsHamama.push(getValue(dataRows[i][0]).trim());
         }

@@ -705,6 +705,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         rowChangeCounter={rowChangeCounter}
         headers={headers}
         dataRows={dataRows}
+        hiddenRows={sheetData.hiddenRows}
         headersRowIndex={headersRowIndex}
         currentValue={currentValue}
         isRecording={isRecording}
