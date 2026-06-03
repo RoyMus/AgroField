@@ -494,7 +494,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         speak(value, false, () => {
           if (currentRowIndex === rowIndex && currentColumnIndex === colIndex) {
             recordCurrentValue(value);
-            setCurrentValue("");
           }
         });
       }
@@ -528,7 +527,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       title: t('editor.valueRecorded'),
       description: t('editor.valueRecordedDesc', { header: getValue(headers[currentColumnIndex]) }),
     });
-
+    setCurrentValue("");
     moveToNextCell();
   };
 
@@ -585,14 +584,14 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     }
 
     utterance.onstart = () => {
-      if (isRecording || activateMic) {
+      if (isRecording) {
         stopRecording();
         isSpeakingState = true;
       }
     };
 
     utterance.onend = () => {
-      if (isSpeakingState && activateMic) {
+      if (isSpeakingState) {
         startRecording();
       }
       isSpeakingState = false;
