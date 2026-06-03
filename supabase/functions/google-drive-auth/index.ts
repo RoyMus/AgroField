@@ -660,9 +660,9 @@ serve(async (req)=>{
           );
           const data = await dataResponse.json();
 
-          // Fetch formatting + column visibility for this sheet in one request
+          // Fetch formatting + column/row visibility for this sheet in one request
           const formattingResponse = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${fileId}?ranges=${encodeURIComponent(sheetName)}&fields=sheets(data(startRow,startColumn,columnMetadata(hiddenByUser),rowData(values(userEnteredFormat))))`,
+            `https://sheets.googleapis.com/v4/spreadsheets/${fileId}?ranges=${encodeURIComponent(sheetName)}&fields=sheets(data(startRow,startColumn,columnMetadata(hiddenByUser),rowMetadata(hiddenByUser),rowData(values(userEnteredFormat))))`,
             {
               headers: { 'Authorization': `Bearer ${accessToken}` }
             }
@@ -771,12 +771,18 @@ serve(async (req)=>{
             .map((col: any, idx: number) => col.hiddenByUser ? idx + sheetFmtColOffset : -1)
             .filter((idx: number) => idx !== -1);
 
+          // Extract hidden rows from rowMetadata
+          const hiddenRows: number[] = (sheetData?.rowMetadata || [])
+            .map((row: any, idx: number) => row.hiddenByUser ? idx + sheetFmtRowOffset : -1)
+            .filter((idx: number) => idx !== -1);
+
           sheets.push({
             sheetName,
             sheetId: sheet.properties.sheetId,
             values: data.values || [[]],
             formatting,
             hiddenColumns,
+            hiddenRows,
             properties: sheet.properties,
             metadata: {
               title: metadata.properties.title,
