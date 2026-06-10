@@ -15,6 +15,7 @@ interface GoogleDriveContextType {
   allSheets: Record<string, ModifiedSheet> | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isInitializing: boolean;
   files: GoogleDriveFile[];
   selectedFile: GoogleDriveFile | null;
   error: string | null;
@@ -38,6 +39,7 @@ export const GoogleDriveProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [allSheets, setAllSheets] = useState<Record<string, ModifiedSheet> | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [files, setFiles] = useState<GoogleDriveFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<GoogleDriveFile | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,58 +49,62 @@ export const GoogleDriveProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   useEffect(() => {
     const init = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-      const usedCode = sessionStorage.getItem('google_auth_code_used');
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const usedCode = sessionStorage.getItem('google_auth_code_used');
 
-      if (code && !isAuthenticated && code !== usedCode) {
-        sessionStorage.setItem('google_auth_code_used', code);
-        handleAuthCode(code);
-        return;
-      }
-
-      const savedToken = localStorage.getItem('google_drive_token');
-      const savedRefreshToken = localStorage.getItem('google_drive_refresh_token');
-      const tokenExpiresAt = parseInt(localStorage.getItem('google_drive_token_expires') || '0');
-      const savedFileRaw = localStorage.getItem('google_drive_selected_file');
-      const lastSheetName = localStorage.getItem('google_drive_last_sheet_name') || undefined;
-
-      let parsedFile: GoogleDriveFile | null = null;
-      if (savedFileRaw) {
-        try {
-          parsedFile = JSON.parse(savedFileRaw);
-          setSelectedFile(parsedFile);
-        } catch {
-          localStorage.removeItem('google_drive_selected_file');
-        }
-      }
-
-      if (savedRefreshToken) {
-        setRefreshToken(savedRefreshToken);
-        const isExpired = !savedToken || tokenExpiresAt < Date.now() + 5 * 60 * 1000;
-        if (isExpired) {
-          try {
-            const { data, error } = await supabase.functions.invoke('google-drive-auth', {
-              body: { action: 'refreshToken', refreshToken: savedRefreshToken }
-            });
-            if (!error && data?.access_token) {
-              setAccessToken(data.access_token);
-              setIsAuthenticated(true);
-              localStorage.setItem('google_drive_token', data.access_token);
-              localStorage.setItem('google_drive_token_expires', String(Date.now() + 3590 * 1000));
-              if (parsedFile) setPendingRefetch({ fileId: parsedFile.id, sheetName: lastSheetName });
-            }
-          } catch (err) {
-            console.error('Startup token refresh failed:', err);
-          }
+        if (code && !isAuthenticated && code !== usedCode) {
+          sessionStorage.setItem('google_auth_code_used', code);
+          handleAuthCode(code);
           return;
         }
-      }
 
-      if (savedToken) {
-        setAccessToken(savedToken);
-        setIsAuthenticated(true);
-        if (parsedFile) setPendingRefetch({ fileId: parsedFile.id, sheetName: lastSheetName });
+        const savedToken = localStorage.getItem('google_drive_token');
+        const savedRefreshToken = localStorage.getItem('google_drive_refresh_token');
+        const tokenExpiresAt = parseInt(localStorage.getItem('google_drive_token_expires') || '0');
+        const savedFileRaw = localStorage.getItem('google_drive_selected_file');
+        const lastSheetName = localStorage.getItem('google_drive_last_sheet_name') || undefined;
+
+        let parsedFile: GoogleDriveFile | null = null;
+        if (savedFileRaw) {
+          try {
+            parsedFile = JSON.parse(savedFileRaw);
+            setSelectedFile(parsedFile);
+          } catch {
+            localStorage.removeItem('google_drive_selected_file');
+          }
+        }
+
+        if (savedRefreshToken) {
+          setRefreshToken(savedRefreshToken);
+          const isExpired = !savedToken || tokenExpiresAt < Date.now() + 5 * 60 * 1000;
+          if (isExpired) {
+            try {
+              const { data, error } = await supabase.functions.invoke('google-drive-auth', {
+                body: { action: 'refreshToken', refreshToken: savedRefreshToken }
+              });
+              if (!error && data?.access_token) {
+                setAccessToken(data.access_token);
+                setIsAuthenticated(true);
+                localStorage.setItem('google_drive_token', data.access_token);
+                localStorage.setItem('google_drive_token_expires', String(Date.now() + 3590 * 1000));
+                if (parsedFile) setPendingRefetch({ fileId: parsedFile.id, sheetName: lastSheetName });
+              }
+            } catch (err) {
+              console.error('Startup token refresh failed:', err);
+            }
+            return;
+          }
+        }
+
+        if (savedToken) {
+          setAccessToken(savedToken);
+          setIsAuthenticated(true);
+          if (parsedFile) setPendingRefetch({ fileId: parsedFile.id, sheetName: lastSheetName });
+        }
+      } finally {
+        setIsInitializing(false);
       }
     };
 
@@ -480,6 +486,7 @@ export const GoogleDriveProvider: React.FC<{ children: React.ReactNode }> = ({ c
       allSheets,
       isAuthenticated,
       isLoading,
+      isInitializing,
       files,
       selectedFile,
       error,

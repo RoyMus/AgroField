@@ -22,6 +22,7 @@ const GoogleDriveFilePicker = () => {
   const {
     isAuthenticated,
     isLoading,
+    isInitializing,
     files,
     selectedFile,
     sheetData,
@@ -156,11 +157,11 @@ const GoogleDriveFilePicker = () => {
     return (
       <Button
         onClick={handleAuthenticate}
-        disabled={isLoading}
+        disabled={isLoading || isInitializing}
         size="lg"
         className="bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-300 shadow-lg text-lg px-8 py-6 rounded-xl transition-all duration-300 hover:shadow-xl"
       >
-        {isLoading ? (
+        {isLoading || isInitializing ? (
           <>
             <Loader2 className="mr-3 h-5 w-5 animate-spin" />
             {t('auth.connecting')}
@@ -261,7 +262,7 @@ const GoogleDriveFilePicker = () => {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {selectedFile && !sheetData && (
+        {selectedFile && (!sheetData || isReadingSheet) && (
           <Button
             onClick={() => handleReadSheet()}
             disabled={isLoading || isReadingSheet}
