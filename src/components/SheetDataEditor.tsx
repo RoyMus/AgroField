@@ -385,8 +385,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     const sheetName = sheetData?.sheetName;
     if (!sheetName) return;
 
-    // Reset position to initial state when sheet changes, skipping hidden columns
-    setCurrentRowIndex(headersRowIndex);
+    // Reset position to initial state when sheet changes, skipping hidden rows and columns
+    let startRow = headersRowIndex;
+    while (hiddenRowSet.has(startRow) && startRow < dataRows.length - 3) startRow++;
+    setCurrentRowIndex(startRow);
     const hiddenSet = new Set(sheetData.hiddenColumns ?? []);
     let startCol = minColIndex;
     while (hiddenSet.has(startCol) && startCol <= maxColIndex) startCol++;
@@ -614,6 +616,11 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     [sheetData.hiddenColumns]
   );
 
+  const hiddenRowSet = useMemo(
+    () => new Set(sheetData.hiddenRows ?? []),
+    [sheetData.hiddenRows]
+  );
+
   const moveToNextCell = () => {
     let nextRow = currentRowIndex;
     let nextCol = currentColumnIndex;
@@ -629,7 +636,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       }
     } while (
       sheetData.values[nextRow]?.[nextCol]?.original?.startsWith('=') ||
-      hiddenColSet.has(nextCol)
+      hiddenColSet.has(nextCol) ||
+      hiddenRowSet.has(nextRow)
     );
 
     if (currentRowIndex !== nextRow) {
@@ -656,7 +664,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       }
     } while (
       sheetData.values[prevRow]?.[prevCol]?.original?.startsWith('=') ||
-      hiddenColSet.has(prevCol)
+      hiddenColSet.has(prevCol) ||
+      hiddenRowSet.has(prevRow)
     );
 
     if (currentRowIndex !== prevRow) {
