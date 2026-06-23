@@ -16,16 +16,35 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           FUNCTION_URL="$SUPABASE_URL/functions/v1/create-google-sheet"
+          echo "Pinging $FUNCTION_URL"
 
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-            -X OPTIONS
-            -H "Authorization: Bearer $SUPABASE_KEY" \
-            "$FUNCTION_URL")
-          echo "$SUPABASE_URL"
-          echo "$FUNCTION_URL"
-          if [ "$RESPONSE" -eq 200 ]; then
-            echo "Supabase Edge Function ping successful."
-          else
-            echo "Supabase Edge Function ping failed with status code $RESPONSE."
-            exit 1
-          fi
+          MAX_ATTEMPTS=5
+          attempt=1
+
+          while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
+            # GET actually executes the function (returns 200 "ok"), unlike an
+            # OPTIONS preflight which only exercises the CORS handler.
+            BODY=$(curl -s -m 30 -w "\n%{http_code}" \
+              -X GET \
+              -H "Authorization: Bearer $SUPABASE_KEY" \
+              "$FUNCTION_URL")
+
+            STATUS=$(echo "$BODY" | tail -n1)
+            CONTENT=$(echo "$BODY" | sed '$d')
+
+            echo "Attempt $attempt/$MAX_ATTEMPTS -> HTTP $STATUS, body: $CONTENT"
+
+            # Require both a 200 status AND the expected body, so a platform
+            # gateway response (cold start, 401/5xx) doesn't read as success.
+            if [ "$STATUS" = "200" ] && [ "$CONTENT" = "ok" ]; then
+              echo "Supabase Edge Function ping successful."
+              exit 0
+            fi
+
+            echo "Ping not healthy yet; retrying in $((attempt * 10))s..."
+            sleep $((attempt * 10))
+            attempt=$((attempt + 1))
+          done
+
+          echo "Supabase Edge Function ping failed after $MAX_ATTEMPTS attempts."
+          exit 1
