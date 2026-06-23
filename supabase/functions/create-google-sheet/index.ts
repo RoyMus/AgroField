@@ -246,7 +246,9 @@ serve(async (req)=>{
     // If originalFileId is provided, copy permissions from the original file
     if (originalFileId) {
       try {
-        const permissionsResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${originalFileId}/permissions`, {
+        // Explicitly request emailAddress/domain — the default fields response only
+        // returns id/type/role, which is not enough to recreate user/group shares.
+        const permissionsResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${originalFileId}/permissions?fields=permissions(id,type,role,emailAddress,domain,allowFileDiscovery)&supportsAllDrives=true`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`
           }
@@ -256,7 +258,7 @@ serve(async (req)=>{
           // Copy each permission to the new file (skip owner permission)
           for (const permission of permissions.permissions || []){
             if (permission.role !== 'owner') {
-              await fetch(`https://www.googleapis.com/drive/v3/files/${newSpreadsheetId}/permissions`, {
+              const createPermissionResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${newSpreadsheetId}/permissions?sendNotificationEmail=false&supportsAllDrives=true`, {
                 method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${accessToken}`,
@@ -270,11 +272,21 @@ serve(async (req)=>{
                   },
                   ...permission.domain && {
                     domain: permission.domain
+                  },
+                  ...permission.type === 'domain' && {
+                    allowFileDiscovery: permission.allowFileDiscovery ?? false
                   }
                 })
               });
+              if (!createPermissionResponse.ok) {
+                const errorText = await createPermissionResponse.text();
+                console.error(`Failed to copy permission (type=${permission.type}, role=${permission.role}, email=${permission.emailAddress || 'n/a'}):`, errorText);
+              }
             }
           }
+        } else {
+          const errorText = await permissionsResponse.text();
+          console.error('Failed to list original file permissions:', errorText);
         }
       } catch (permissionError) {
         console.error('Failed to copy permissions:', permissionError);
