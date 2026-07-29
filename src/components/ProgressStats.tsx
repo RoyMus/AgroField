@@ -1,4 +1,4 @@
-import { Progress } from "@/components/ui/progress";
+import LinearProgress from "@mui/material/LinearProgress";
 import { cn } from "@/lib/utils";
 
 interface ProgressStatsProps {
@@ -26,7 +26,11 @@ const ProgressStats = ({ modifiedCount, currentPosition, totalCells }: ProgressS
           <span>{percentage}%</span>
         </div>
         <div className="relative">
-          <Progress value={percentage} className="h-3" />
+          <LinearProgress
+            variant="determinate"
+            value={percentage}
+            className="h-3 w-full overflow-hidden rounded-full bg-secondary"
+          />
           <div 
             className={cn(
               "absolute top-0 left-0 h-full rounded-full transition-all duration-300",

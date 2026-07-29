@@ -1,3 +1,5 @@
+import { makeAutoObservable } from 'mobx';
+
 export interface CellFormat {
   backgroundColor?: string;
   textColor?: string;
@@ -11,7 +13,7 @@ export interface CellFormat {
     left?: { style: string; color: string; width: number };
     right?: { style: string; color: string; width: number };
   };
-  type? : 'number' | 'currency' | 'date' | 'percent' | 'duration' | 'text';
+  type?: 'number' | 'currency' | 'date' | 'percent' | 'duration' | 'text';
   pattern?: string;
 }
 
@@ -21,84 +23,141 @@ export interface CellStyle {
   format: CellFormat;
 }
 
-
 export interface SheetTab {
   id: number;
   title: string;
   index: number;
 }
 
+export interface SheetMetadata {
+  title: string;
+  sheetCount: number;
+  availableSheets?: SheetTab[];
+}
+
+/** Raw wire format returned by the readAllSheets edge function. */
 export interface SheetData {
   values: string[][];
   sheetName: string;
-  metadata?: {
-    title: string;
-    sheetCount: number;
-    availableSheets?: SheetTab[];
-  };
+  metadata?: SheetMetadata;
   formatting?: CellStyle[];
   hiddenColumns?: number[];
   hiddenRows?: number[];
 }
 
-export interface ModifiedCell {
+export class Cell {
   original: string;
-  modified: string | null;
-  formatting: CellFormat;
-  saved: boolean;
+  modified: string | null = null;
+  formatting: CellFormat = {};
+  saved = true;
+
+  constructor(original: unknown = '', formatting: CellFormat = {}, saved = true) {
+    this.original = String(original ?? '');
+    this.formatting = formatting;
+    this.saved = saved;
+    makeAutoObservable(this);
+  }
+
+  get value(): string {
+    return String(this.modified ?? this.original ?? '');
+  }
+
+  get isModified(): boolean {
+    return this.modified !== null;
+  }
+
+  get isFormula(): boolean {
+    return this.original.startsWith('=');
+  }
+
+  setValue(value: string | null) {
+    this.modified = value;
+    this.saved = false;
+  }
+
+  setFormat(format: CellFormat) {
+    this.formatting = format;
+    this.saved = false;
+  }
+
+  /** Merge keys into the existing format instead of replacing it. */
+  mergeFormat(format: CellFormat) {
+    this.setFormat({ ...this.formatting, ...format });
+  }
+
+  markSaved() {
+    this.saved = true;
+  }
 }
 
-export interface ModifiedSheet {
+export class Sheet {
   sheetName: string;
-  metadata?: {
-    title: string;
-    sheetCount: number;
-    availableSheets?: SheetTab[];
-  };
-  values: ModifiedCell[][];
-  hiddenColumns?: number[];
-  hiddenRows?: number[];
-}
-export function setFormat(cell: ModifiedCell, newFormat: CellFormat): ModifiedCell {
-  return {
-    ...cell,
-    formatting: newFormat,
-    saved: false
-  };
-}
-export function setValue(cell: ModifiedCell, newValue: string): ModifiedCell {
-  return {
-    ...cell,
-    modified: newValue,
-    saved: false
-  };
-}
-export function getValue(cell: ModifiedCell | null | undefined): string {
-  if (!cell) return String('');
-  const value = cell.modified ?? cell.original ?? '';
-  return String(value);
-}
+  metadata?: SheetMetadata;
+  values: Cell[][];
+  hiddenColumns: number[];
+  hiddenRows: number[];
 
-export function isModified(cell: ModifiedCell): boolean {
-  return cell.modified !== null;
-}
+  constructor(data: SheetData) {
+    this.sheetName = data.sheetName;
+    this.metadata = data.metadata;
+    this.hiddenColumns = data.hiddenColumns ?? [];
+    this.hiddenRows = data.hiddenRows ?? [];
+    this.values = data.values.map((row, r) =>
+      row.map((value, c) =>
+        new Cell(
+          value,
+          data.formatting?.find(s => s.rowIndex === r && s.columnIndex === c)?.format ?? {}
+        )
+      )
+    );
+    makeAutoObservable(this);
+  }
 
-export function createModifiedSheet(sheetData: SheetData): ModifiedSheet {
-  return {
-    sheetName: sheetData.sheetName,
-    metadata: sheetData.metadata,
-    hiddenColumns: sheetData.hiddenColumns,
-    hiddenRows: sheetData.hiddenRows,
-    values: sheetData.values.map((row, rIdx) =>
-      row.map((value, cIdx) => ({
-        original: String(value),
-        modified: null,
-        saved : true,
-        formatting:
-          sheetData.formatting?.find(
-            s => s.rowIndex === rIdx && s.columnIndex === cIdx
-          )?.format || {}
-      }))
-    )
-  };
+  get hiddenColumnSet(): Set<number> {
+    return new Set(this.hiddenColumns);
+  }
+
+  get hiddenRowSet(): Set<number> {
+    return new Set(this.hiddenRows);
+  }
+
+  cell(row: number, col: number): Cell | undefined {
+    return this.values[row]?.[col];
+  }
+
+  /** Value of a cell, empty string when out of bounds. */
+  valueAt(row: number, col: number): string {
+    return this.values[row]?.[col]?.value ?? '';
+  }
+
+  get maxCols(): number {
+    return this.values.reduce((max, row) => Math.max(max, row.length), 0);
+  }
+
+  setRows(rows: Cell[][]) {
+    this.values = rows;
+  }
+
+  insertRow(at: number) {
+    this.values.splice(at, 0, Array.from({ length: this.maxCols }, () => new Cell('', {}, false)));
+  }
+
+  removeRow(at: number) {
+    this.values.splice(at, 1);
+  }
+
+  insertColumn(at: number) {
+    this.values.forEach(row => row.splice(at, 0, new Cell('', {}, false)));
+  }
+
+  removeColumn(at: number) {
+    this.values.forEach(row => row.splice(at, 1));
+  }
+
+  /** Grows the grid so (row, col) exists, then returns that cell. */
+  ensureCell(row: number, col: number): Cell {
+    while (this.values.length <= row) this.values.push([]);
+    while (this.values[row].length <= col) this.values[row].push(new Cell('', {}, false));
+    return this.values[row][col];
+  }
 }

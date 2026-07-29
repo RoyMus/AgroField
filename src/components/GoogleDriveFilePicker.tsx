@@ -1,23 +1,23 @@
 import { useState } from "react";
+import { observer } from "mobx-react-lite";
+import { Menu, MenuItem } from "@mui/material";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { ChevronDown, Sheet, LogOut, Loader2, FileText, Search } from "lucide-react";
-import { useGoogleDrive } from "@/hooks/useGoogleDrive";
+import { drive, lang } from "@/stores";
 import { useToast } from "@/hooks/use-toast";
 import SaveProgressDialog from "./SaveProgressDialog";
 import { useNavigate } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "./ui/label";
 import { useTranslation } from 'react-i18next';
-import { useLang } from '@/contexts/LanguageContext';
 
 
 const GoogleDriveFilePicker = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { locale } = useLang();
+  const { locale } = lang;
 
   const {
     isAuthenticated,
@@ -25,15 +25,11 @@ const GoogleDriveFilePicker = () => {
     isInitializing,
     files,
     selectedFile,
-    sheetData,
+    sheet: sheetData,
     error,
-    authenticate,
-    selectFile,
-    loadAndCopySheet,
-    logout
-  } = useGoogleDrive();
+  } = drive;
   const { toast } = useToast();
-  const [isOpen, setIsOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [isReadingSheet, setIsReadingSheet] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [pendingFile, setPendingFile] = useState<any>(null);
@@ -42,7 +38,7 @@ const GoogleDriveFilePicker = () => {
 
   const handleAuthenticate = async () => {
     try {
-      await authenticate();
+      await drive.authenticate();
     } catch (err) {
       toast({
         title: t('auth.loginFailed'),
@@ -63,12 +59,12 @@ const GoogleDriveFilePicker = () => {
     if (sheetData && modifiedCount > 0 && file.id !== selectedFile?.id) {
       setPendingFile(file);
       setShowSaveDialog(true);
-      setIsOpen(false);
+      setAnchorEl(null);
       return;
     }
 
-    selectFile(file);
-    setIsOpen(false);
+    drive.selectFile(file);
+    setAnchorEl(null);
     toast({
       title: t('files.fileSelected'),
       description: `${file.name}`,
@@ -96,7 +92,7 @@ const GoogleDriveFilePicker = () => {
 
   const proceedWithFileSelection = () => {
     if (pendingFile) {
-      selectFile(pendingFile);
+      drive.selectFile(pendingFile);
       localStorage.removeItem('all_sheet_modifications');
       toast({
         title: t('files.fileSelected'),
@@ -112,7 +108,7 @@ const GoogleDriveFilePicker = () => {
       try {
         setIsReadingSheet(true);
         console.log('Starting to load and copy sheet for file:', selectedFile.id, 'sheet:', sheetName);
-        await loadAndCopySheet(sheetName, createNewFile);
+        await drive.loadAndCopySheet(sheetName, createNewFile);
         console.log('Sheet load and copy completed successfully');
         navigate("/page/workspace");
       } catch (err) {
@@ -129,8 +125,8 @@ const GoogleDriveFilePicker = () => {
   };
 
   const handleLogout = () => {
-    logout();
-    setIsOpen(false);
+    drive.logout();
+    setAnchorEl(null);
     setSearchQuery("");
     toast({
       title: t('auth.disconnected'),
@@ -185,27 +181,31 @@ const GoogleDriveFilePicker = () => {
   return (
     <>
       <div className="space-y-4">
-        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="lg"
-              className="bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-300 shadow-lg text-lg px-8 py-6 rounded-xl transition-all duration-300 hover:shadow-xl min-w-[300px]"
-            >
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center space-x-3">
-                  <Sheet className="h-5 w-5 text-green-600" />
-                  <span className="truncate">
-                    {selectedFile ? selectedFile.name : t('files.selectFile')}
-                  </span>
-                </div>
-                <ChevronDown className="ml-2 h-5 w-5 flex-shrink-0" />
-              </div>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="min-w-80 max-w-lg w-max bg-white border-2 border-gray-200 rounded-xl shadow-2xl max-h-96 overflow-hidden"
-            align="center"
-          >
+        <Button
+          size="lg"
+          onClick={(e) => setAnchorEl(e.currentTarget)}
+          className="bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-300 shadow-lg text-lg px-8 py-6 rounded-xl transition-all duration-300 hover:shadow-xl min-w-[300px]"
+        >
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center space-x-3">
+              <Sheet className="h-5 w-5 text-green-600" />
+              <span className="truncate">
+                {selectedFile ? selectedFile.name : t('files.selectFile')}
+              </span>
+            </div>
+            <ChevronDown className="ml-2 h-5 w-5 flex-shrink-0" />
+          </div>
+        </Button>
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={() => setAnchorEl(null)}
+          autoFocus={false}
+          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+          transformOrigin={{ vertical: "top", horizontal: "center" }}
+          slotProps={{ paper: { className: "min-w-80 max-w-lg w-max bg-white border-2 border-gray-200 rounded-xl shadow-2xl max-h-96 overflow-hidden" } }}
+        >
+          <li className="list-none">
             <div className="p-3 border-b border-gray-200">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -218,6 +218,8 @@ const GoogleDriveFilePicker = () => {
                 />
               </div>
             </div>
+          </li>
+          <li className="list-none">
             <ScrollArea className="h-48 overflow auto w-full">
               <div className="p-2">
                 {isLoading ? (
@@ -231,8 +233,10 @@ const GoogleDriveFilePicker = () => {
                   </div>
                 ) : (
                   filteredFiles.map((file) => (
-                    <DropdownMenuItem
+                    <MenuItem
                       key={file.id}
+                      component="div"
+                      disableRipple
                       onClick={() => handleFileSelect(file)}
                       className="text-gray-800 hover:bg-blue-50 cursor-pointer py-3 px-4 text-base rounded-lg mx-1 my-1 transition-all duration-200"
                     >
@@ -245,22 +249,21 @@ const GoogleDriveFilePicker = () => {
                           </div>
                         </div>
                       </div>
-                    </DropdownMenuItem>
+                    </MenuItem>
                   ))
                 )}
               </div>
             </ScrollArea>
-            <div className="border-t border-gray-200">
-              <DropdownMenuItem
-                onClick={handleLogout}
-                className="text-red-600 hover:bg-red-50 cursor-pointer py-3 px-4 text-base rounded-lg mx-1 my-1 transition-all duration-200"
-              >
-                <LogOut className="mr-3 h-4 w-4" />
-                {t('auth.logout')}
-              </DropdownMenuItem>
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </li>
+          <MenuItem
+            disableRipple
+            onClick={handleLogout}
+            className="text-red-600 hover:bg-red-50 cursor-pointer py-3 px-4 text-base rounded-lg mx-1 my-1 transition-all duration-200 border-t border-gray-200"
+          >
+            <LogOut className="mr-3 h-4 w-4" />
+            {t('auth.logout')}
+          </MenuItem>
+        </Menu>
 
         {selectedFile && (!sheetData || isReadingSheet) && (
           <Button
@@ -311,4 +314,4 @@ const GoogleDriveFilePicker = () => {
   );
 };
 
-export default GoogleDriveFilePicker;
+export default observer(GoogleDriveFilePicker);

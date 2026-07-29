@@ -2,15 +2,11 @@
 import { Button } from "@/components/ui/button";
 import { Mic, Square} from "lucide-react";
 import { useState, useEffect } from "react";
+import { observer } from 'mobx-react-lite';
 import { useTranslation } from 'react-i18next';
+import { editor, voice } from "@/stores";
 
-interface VoiceControlsProps {
-  isRecording: boolean;
-  onStartRecording: () => Promise<void>;
-  onStopRecording: () => Promise<void>;
-}
-
-const VoiceControls = ({ isRecording, onStartRecording, onStopRecording }: VoiceControlsProps) => {
+const VoiceControls = () => {
   const { t } = useTranslation();
   const phrases: string[] = t('voice.examples', { returnObjects: true }) as string[];
   const [currentExample, setCurrentExample] = useState(phrases[0]);
@@ -21,7 +17,7 @@ const VoiceControls = ({ isRecording, onStartRecording, onStopRecording }: Voice
   }, [phrases[0]]);
 
   useEffect(() => {
-    if (!isRecording) return;
+    if (!voice.isRecording) return;
 
     const intervalId = setInterval(() => {
       const randomIndex = Math.floor(Math.random() * phrases.length);
@@ -29,39 +25,39 @@ const VoiceControls = ({ isRecording, onStartRecording, onStopRecording }: Voice
     }, 5000);
 
     return () => clearInterval(intervalId);
-  }, [isRecording, phrases]);
+  }, [voice.isRecording, phrases]);
 
   return (
     <div className="p-4 bg-gray-50 rounded-lg">
       <div className="flex flex-col items-center space-y-4">
         <Button
-          onClick={isRecording ? onStopRecording : onStartRecording}
+          onClick={() => voice.isRecording ? editor.stopRecording() : editor.startRecording()}
           className={`w-20 h-20 rounded-full transition-all duration-300 transform hover:scale-105 ${
-            isRecording
+            voice.isRecording
               ? 'bg-red-500 hover:bg-red-600 animate-pulse'
               : 'bg-blue-500 hover:bg-blue-600'
           }`}
           size="lg"
         >
-          {isRecording ? (
+          {voice.isRecording ? (
             <Square className="w-8 h-8 text-white" />
           ) : (
             <Mic className="w-8 h-8 text-white" />
           )}
         </Button>
 
-        {isRecording && (
+        {voice.isRecording && (
           <div className="text-center animate-fade-in">
             <div className="text-gray-500 font-medium">{currentExample}</div>
           </div>
         )}
 
         <div className="text-center text-gray-600 text-sm max-w-xs">
-          {isRecording ? t('voice.stopVoice') : t('voice.startVoice')}
+          {voice.isRecording ? t('voice.stopVoice') : t('voice.startVoice')}
         </div>
       </div>
     </div>
   );
 };
 
-export default VoiceControls;
+export default observer(VoiceControls);

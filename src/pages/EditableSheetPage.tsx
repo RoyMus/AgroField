@@ -1,34 +1,28 @@
 import { useNavigate } from "react-router-dom";
-import { useGoogleDrive } from "@/hooks/useGoogleDrive";
+import { observer } from "mobx-react-lite";
+import { drive } from "@/stores";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import EditableSheetTable from "@/components/EditableSheetTable";
 import SheetSelector from "@/components/SheetSelector";
-import { useCallback } from "react";
-import { ModifiedCell } from "@/types/cellTypes";
 import { useTranslation } from 'react-i18next';
 
 const EditableSheetPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { sheetData, selectedFile, handleSaveProgress, loadSheetByName, isLoading } = useGoogleDrive();
+  const { sheet, selectedFile, isLoading } = drive;
 
   const handleBackToInteractive = () => {
     navigate(-1);
   };
 
-  const handleSheetChange = useCallback(async (sheetName: string) => {
+  const handleSheetChange = async (sheetName: string) => {
     if (selectedFile) {
-      await loadSheetByName(sheetName);
+      await drive.loadSheetByName(sheetName);
     }
-  }, [selectedFile]);
+  };
 
-  async function handleLocalDataSave(localData: ModifiedCell[][]) {
-    sheetData.values = [...localData];
-    await handleSaveProgress(sheetData, true);
-  }
-
-  if (!sheetData || !selectedFile) {
+  if (!sheet || !selectedFile) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
         <div className="container mx-auto px-6 py-8">
@@ -65,10 +59,10 @@ const EditableSheetPage = () => {
                   <h1 className="text-lg sm:text-xl font-semibold text-gray-800 truncate">
                     {t('table.editSheet', { name: selectedFile.name })}
                   </h1>
-                  {sheetData.metadata?.availableSheets && (
+                  {sheet.metadata?.availableSheets && (
                     <SheetSelector
-                      availableSheets={sheetData.metadata.availableSheets}
-                      currentSheet={sheetData.sheetName}
+                      availableSheets={sheet.metadata.availableSheets}
+                      currentSheet={sheet.sheetName}
                       onSheetSelect={handleSheetChange}
                       isLoading={isLoading}
                       disabled={isLoading}
@@ -79,11 +73,11 @@ const EditableSheetPage = () => {
             </div>
           </div>
           {/* Editable Table */}
-          <EditableSheetTable sheetData={sheetData} onSaveProgress={handleLocalDataSave} />
+          <EditableSheetTable />
         </div>
       </div>
     </div>
   );
 };
 
-export default EditableSheetPage;
+export default observer(EditableSheetPage);

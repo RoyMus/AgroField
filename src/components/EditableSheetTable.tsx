@@ -1,92 +1,47 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { observer } from "mobx-react-lite";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Save, Plus, Minus, Copy, Clipboard } from "lucide-react";
-import { toast, useToast } from "@/hooks/use-toast";
-import { ModifiedSheet, ModifiedCell, getValue, CellFormat } from "@/types/cellTypes";
+import { toast } from "@/hooks/use-toast";
+import { CellFormat } from "@/types/cellTypes";
+import { drive } from "@/stores";
 import { useTranslation } from 'react-i18next';
 
-interface EditableSheetTableProps {
-  sheetData: ModifiedSheet;
-  onSaveProgress: (newData: ModifiedCell[][]) => void;
-}
-
-const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTableProps) => {
+const EditableSheetTable = () => {
   const { t } = useTranslation();
   const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
-  const [localData, setLocalData] = useState<ModifiedCell[][]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [copiedFormat, setCopiedFormat] = useState<CellFormat | null>(null);
 
-  // Initialize local data from sheet data and apply modifications
-  useEffect(() => {
-    if (sheetData?.values) {
-      const baseData = sheetData.values.map(row => [...row]); // Deep copy
-      setLocalData(baseData);
-    }
-  }, [sheetData.sheetName]);
+  const sheet = drive.sheet;
+  if (!sheet) return null;
 
-  // Handle cell value changes and sync with localStorage
-  const handleCellChange = useCallback((rowIndex: number, colIndex: number, value: string) => {
-    setLocalData(prev => {
-      const newData = prev.map(row => [...row]);
-
-      while (newData.length <= rowIndex) {
-        newData.push([]);
-      }
-
-      while (newData[rowIndex].length <= colIndex) {
-        newData[rowIndex].push({ original: "", modified: null, formatting: {}, saved: false });
-      }
-      newData[rowIndex][colIndex].modified = value;
-      return newData;
-    });
-  }, [sheetData]);
+  const handleCellChange = (rowIndex: number, colIndex: number, value: string) => {
+    sheet.ensureCell(rowIndex, colIndex).setValue(value);
+  };
 
   const handleCellFocus = (rowIndex: number, colIndex: number) => {
     setSelectedCell({ rowIndex, colIndex });
   };
 
   const addRow = () => {
-    const newRow = Array.from({ length: maxCols }, () => ({ original: "", modified: null, formatting: {}, saved: false }));
-    const insertIndex = selectedCell ? selectedCell.rowIndex + 1 : localData.length;
-    setLocalData(prev => {
-      const updated = [...prev];
-      updated.splice(insertIndex, 0, newRow);
-      return updated;
-    });
+    sheet.insertRow(selectedCell ? selectedCell.rowIndex + 1 : sheet.values.length);
   };
 
   const removeRow = () => {
-    if (localData.length > 1 && selectedCell) {
-      const removeIndex = selectedCell.rowIndex;
-      setLocalData(prev => {
-        const updated = [...prev];
-        updated.splice(removeIndex, 1);
-        return updated;
-      });
+    if (sheet.values.length > 1 && selectedCell) {
+      sheet.removeRow(selectedCell.rowIndex);
     }
   };
 
   const addColumn = () => {
-    const insertIndex = selectedCell ? selectedCell.colIndex + 1 : maxCols;
-    setLocalData(prev => {
-      const updated = [...prev];
-      updated.forEach(row => {
-        row.splice(insertIndex, 0, { original: "", modified: null, formatting: {}, saved: false });
-      });
-      return updated;
-    });
+    sheet.insertColumn(selectedCell ? selectedCell.colIndex + 1 : sheet.maxCols);
   };
 
   const removeColumn = () => {
-    if (maxCols > 0 && selectedCell) {
-      const removeIndex = selectedCell.colIndex;
-      setLocalData(prev => prev.map(row => {
-        const newRow = [...row];
-        newRow.splice(removeIndex, 1);
-        return newRow;
-      }));
+    if (sheet.maxCols > 0 && selectedCell) {
+      sheet.removeColumn(selectedCell.colIndex);
     }
   };
 
@@ -94,7 +49,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
     if (isSaving) return;
     setIsSaving(true);
     try {
-      onSaveProgress(localData);
+      await drive.saveProgress(true);
     }
     finally {
       toast({ title: t('table.savedSuccess'), description: t('table.savedSuccessDesc') });
@@ -107,7 +62,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
       toast({ title: t('table.selectCellFirst'), description: t('table.selectCellFirstDesc') });
       return;
     }
-    const format = localData[selectedCell.rowIndex]?.[selectedCell.colIndex]?.formatting;
+    const format = sheet.values[selectedCell.rowIndex]?.[selectedCell.colIndex]?.formatting;
     if (format) {
       setCopiedFormat(format);
       toast({ title: t('table.formatCopied'), description: t('table.formatCopiedDesc') });
@@ -115,14 +70,11 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
   };
 
   const pasteFormat = () => {
-    setLocalData(prev => {
-      const newData = prev.map(row => [...row]);
-      newData[selectedCell.rowIndex][selectedCell.colIndex].formatting = { ...copiedFormat };
-      return newData;
-    });
+    if (!selectedCell || !copiedFormat) return;
+    sheet.cell(selectedCell.rowIndex, selectedCell.colIndex)?.setFormat({ ...copiedFormat });
   };
 
-  const maxCols = Math.max(...localData.map(row => row.length), 0);
+  const maxCols = sheet.maxCols;
 
   const getBorderStyle = (borders?: { top?: { style: string; color: string; width: number }; bottom?: { style: string; color: string; width: number }; left?: { style: string; color: string; width: number }; right?: { style: string; color: string; width: number } }) => {
     if (!borders) return {};
@@ -148,7 +100,7 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
             onClick={removeRow}
             variant="outline"
             size="sm"
-            disabled={localData.length <= 1 || !selectedCell}
+            disabled={sheet.values.length <= 1 || !selectedCell}
             className="h-10 text-sm"
           >
             <Minus className="w-4 h-4 mr-1" />
@@ -227,19 +179,19 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
               </tr>
             </thead>
             <tbody>
-              {localData.map((row, rowIndex) => (
+              {sheet.values.map((row, rowIndex) => (
                 <tr key={rowIndex} className="hover:bg-gray-50">
                   <td className="w-12 px-2 py-1 text-xs text-gray-500 text-center border-r bg-gray-50 font-medium">
                     {rowIndex + 1}
                   </td>
                   {Array.from({ length: maxCols }, (_, colIndex) => {
-                    const cellCssStyle = localData?.[rowIndex]?.[colIndex]?.formatting;
+                    const cellCssStyle = sheet.values[rowIndex]?.[colIndex]?.formatting;
                     const borderStyles = getBorderStyle(cellCssStyle?.borders);
 
                     return (
                       <td key={colIndex} className="border-r border-b p-0">
                         <Input
-                          value={row[colIndex] ? getValue(row[colIndex]) : ""}
+                          value={row[colIndex]?.value ?? ""}
                           onFocus={() => handleCellFocus(rowIndex, colIndex)}
                           onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
                           className={`rounded-none focus:ring-2 focus:ring-blue-500 focus:ring-inset h-8 text-sm ${
@@ -271,4 +223,4 @@ const EditableSheetTable = ({ sheetData, onSaveProgress }: EditableSheetTablePro
   );
 };
 
-export default EditableSheetTable;
+export default observer(EditableSheetTable);

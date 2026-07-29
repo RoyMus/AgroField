@@ -1,63 +1,30 @@
+import { observer } from "mobx-react-lite";
 import { Button } from "@/components/ui/button";
-import { getData } from "@/hooks/getData";
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Edit, Save, Download } from "lucide-react";
 import SheetSelector from "./SheetSelector";
-import { useGoogleDrive } from "@/hooks/useGoogleDrive";
-import { useToast } from "@/hooks/use-toast";
-import { getValue } from "@/types/cellTypes";
+import { drive, editor, settings } from "@/stores";
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from "./LanguageSwitcher";
 
-const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProgress, onSaveToNewSheet, onFetchSheetData, loadSheetByName, isLoading}) => {
+const TopBar = ({ handleGoHome, onOpenEditor }) => {
     const { t } = useTranslation();
-    const { toast } = useToast();
-    const{
-    isTemplate,
-    plant,
-    grower,
-    place,
-    faucetConductivity
-    } = getData(false, null, null, null, null, null);
-
-    const [topBar, setTopBar] = useState("");
     const [fetchDataButtonDisabled, setFetchDataButtonDisabled] = useState(false);
 
-    useEffect(()=>{
-        const topBarRowIndex = 0;
-        const topBarRow = sheetData.values[topBarRowIndex];
-        let topBarIndex = 0;
-        for (let i = 0; i < topBarRow.length; i++) {
-            if (getValue(topBarRow[i]).trim() != "")
-            {
-                topBarIndex = i;
-                break;
-            }
-        }
-        if (isTemplate)
-        {
-            setTopBar(`${place} - ${plant} - ${grower}`);
-        }
-        else
-        {
-            setTopBar(getValue(sheetData.values[topBarRowIndex][topBarIndex]));
-        }
-    }, []);
+    const sheet = drive.sheet;
+    if (!sheet) return null;
 
-    const handleSheetChange = async (sheetName) => {
-        if (selectedFile) {
-            await loadSheetByName(sheetName);
-        }
-    };
+    const topBarRow = sheet.values[0] ?? [];
+    const topBarIndex = Math.max(0, topBarRow.findIndex(cell => cell.value.trim() !== ""));
+    const topBar = settings.isTemplate
+        ? `${settings.place} - ${settings.plant} - ${settings.grower}`
+        : sheet.valueAt(0, topBarIndex);
 
     const handleClickFetchData = () => {
-        if(fetchDataButtonDisabled)
-            return;
+        if (fetchDataButtonDisabled) return;
         setFetchDataButtonDisabled(true);
-        setTimeout(() => {
-            setFetchDataButtonDisabled(false);
-        }, 5000);
-        onFetchSheetData();
+        setTimeout(() => setFetchDataButtonDisabled(false), 5000);
+        editor.fetchApiData();
     };
 
     return (
@@ -66,15 +33,15 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-4 mb-2">
                         <h1 className="text-xl sm:text-2xl font-bold text-gray-800 truncate">
-                            {selectedFile?.name}
+                            {drive.selectedFile?.name}
                         </h1>
-                        {sheetData.metadata?.availableSheets && (
+                        {sheet.metadata?.availableSheets && (
                             <SheetSelector
-                                availableSheets={sheetData.metadata.availableSheets}
-                                currentSheet={sheetData.sheetName}
-                                onSheetSelect={handleSheetChange}
-                                isLoading={isLoading}
-                                disabled={isLoading}
+                                availableSheets={sheet.metadata.availableSheets}
+                                currentSheet={sheet.sheetName}
+                                onSheetSelect={(name) => drive.loadSheetByName(name)}
+                                isLoading={drive.isLoading}
+                                disabled={drive.isLoading}
                             />
                         )}
                     </div>
@@ -84,29 +51,25 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     <LanguageSwitcher />
-                    {onFetchSheetData && (
-                        <Button
-                            onClick={handleClickFetchData}
-                            variant="default"
-                            size="sm"
-                            className="bg-purple-600 hover:bg-purple-700 h-9 text-sm"
-                            disabled={fetchDataButtonDisabled}
-                        >
-                            <Download className="mr-1 h-4 w-4" />
-                            <span>{t('topbar.fetchApiData')}</span>
-                        </Button>
-                    )}
-                    {onSaveToNewSheet && (
-                        <Button
-                            onClick={onSaveToNewSheet}
-                            variant="default"
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700 h-9 text-sm"
-                        >
-                            <Save className="mr-1 h-4 w-4" />
-                            <span>{t('topbar.saveAndOpen')}</span>
-                        </Button>
-                    )}
+                    <Button
+                        onClick={handleClickFetchData}
+                        variant="default"
+                        size="sm"
+                        className="bg-purple-600 hover:bg-purple-700 h-9 text-sm"
+                        disabled={fetchDataButtonDisabled}
+                    >
+                        <Download className="mr-1 h-4 w-4" />
+                        <span>{t('topbar.fetchApiData')}</span>
+                    </Button>
+                    <Button
+                        onClick={() => editor.saveAndOpenSheet()}
+                        variant="default"
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 h-9 text-sm"
+                    >
+                        <Save className="mr-1 h-4 w-4" />
+                        <span>{t('topbar.saveAndOpen')}</span>
+                    </Button>
                     <Button
                         onClick={onOpenEditor}
                         variant="default"
@@ -127,4 +90,5 @@ const TopBar = ({sheetData, handleGoHome, selectedFile, onOpenEditor, onSaveProg
         </div>
     );
 };
-export default TopBar;
+
+export default observer(TopBar);

@@ -1,33 +1,48 @@
+import Snackbar from "@mui/material/Snackbar"
+import IconButton from "@mui/material/IconButton"
+import { X } from "lucide-react"
+
 import { useToast } from "@/hooks/use-toast"
-import {
-  Toast,
-  ToastClose,
-  ToastDescription,
-  ToastProvider,
-  ToastTitle,
-  ToastViewport,
-} from "@/components/ui/toast"
+import { toastVariants } from "@/components/ui/toast"
+import { cn } from "@/lib/utils"
 
 export function Toaster() {
-  const { toasts } = useToast()
+  const { toasts, dismiss } = useToast()
 
   return (
-    <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
-        return (
-          <Toast key={id} {...props}>
+    <>
+      {toasts.map(({ id, title, description, action, variant, open, duration }) => (
+        <Snackbar
+          key={id}
+          open={open}
+          autoHideDuration={duration ?? null}
+          onClose={(_, reason) => {
+            if (reason !== "clickaway") dismiss(id)
+          }}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          className="md:max-w-[420px]"
+        >
+          <div className={cn(toastVariants({ variant }))}>
             <div className="grid gap-1">
-              {title && <ToastTitle>{title}</ToastTitle>}
+              {title && <div className="text-sm font-semibold">{title}</div>}
               {description && (
-                <ToastDescription>{description}</ToastDescription>
+                <div className="text-sm opacity-90 whitespace-pre-line">
+                  {description}
+                </div>
               )}
             </div>
             {action}
-            <ToastClose />
-          </Toast>
-        )
-      })}
-      <ToastViewport />
-    </ToastProvider>
+            <IconButton
+              size="small"
+              disableRipple
+              onClick={() => dismiss(id)}
+              className="absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none group-hover:opacity-100"
+            >
+              <X className="h-4 w-4" />
+            </IconButton>
+          </div>
+        </Snackbar>
+      ))}
+    </>
   )
 }
