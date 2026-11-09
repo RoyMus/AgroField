@@ -36,6 +36,20 @@ interface UseVoiceRecordingReturn {
 const FATAL_ERRORS = ['not-allowed', 'service-not-allowed', 'audio-capture', 'language-not-supported'];
 // Results arriving this soon after TTS ends are likely the TTS echo.
 const ECHO_GUARD_MS = 350;
+// iOS splits one utterance into several final segments ("אחת." + "שלוש").
+// Wait this long after the last final segment before treating the utterance
+// as complete, so the segments are parsed together.
+const UTTERANCE_SETTLE_MS = 800;
+
+interface Segment { transcripts: string[]; isFinal: boolean; }
+
+/** Merges a session's segments into one list of alternatives. */
+export const joinSegments = (segments: Segment[]): string[] => {
+  const parts = segments.filter(s => s.transcripts[0]?.trim());
+  if (parts.length === 0) return [];
+  if (parts.length === 1) return parts[0].transcripts;
+  return [parts.map(p => p.transcripts[0].trim()).join(' ').replace(/\s+/g, ' ')];
+};
 
 /** Classifies a final result (with its alternatives) into command / number / text. */
 export const classifyTranscript = (
@@ -82,8 +96,10 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
   const [interim, setInterim] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [lastHeard, setLastHeard] = useState<{ text: string; at: number } | null>(null);
-  // Latest interim text not yet followed by a final result.
-  const pendingInterimRef = useRef('');
+  // Segments of the current session, and how many were already delivered.
+  const segmentsRef = useRef<Segment[]>([]);
+  const deliveredCountRef = useRef(0);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const resultCallbackRef = useRef<((result: VoiceResult) => void) | null>(null);
   const configRef = useRef(config);
@@ -112,6 +128,27 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
   const clearRestartTimer = () => {
     if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
     restartTimerRef.current = null;
+  };
+
+  const clearSettleTimer = () => {
+    if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = null;
+  };
+
+  const resetSegments = () => {
+    clearSettleTimer();
+    segmentsRef.current = [];
+    deliveredCountRef.current = 0;
+  };
+
+  /** Delivers everything heard since the last delivery as one utterance. */
+  const flushUtterance = () => {
+    clearSettleTimer();
+    const pending = segmentsRef.current.slice(deliveredCountRef.current);
+    deliveredCountRef.current = segmentsRef.current.length;
+    setInterim('');
+    const alternatives = joinSegments(pending);
+    if (alternatives.length) deliver(alternatives);
   };
 
   const deliver = (alternatives: string[]) => {
@@ -160,7 +197,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     recognition.onstart = () => {
       lastEventRef.current = Date.now();
       runningRef.current = true;
-      pendingInterimRef.current = '';
+      resetSegments();
       setIsRecording(true);
       if (!pausedRef.current) setIsListening(true);
     };
@@ -169,20 +206,25 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       lastEventRef.current = Date.now();
       if (pausedRef.current || Date.now() < ignoreUntilRef.current) return;
 
-      let interimText = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
+      // Snapshot every segment of the session. resultIndex is unreliable on
+      // iOS, so always read the full list.
+      const segments: Segment[] = [];
+      for (let i = 0; i < event.results.length; i++) {
         const result = event.results[i];
-        if (!result.isFinal) {
-          interimText += result[0]?.transcript ?? '';
-          continue;
-        }
-        const alternatives: string[] = [];
-        for (let j = 0; j < result.length; j++) alternatives.push(result[j].transcript);
-        pendingInterimRef.current = '';
-        deliver(alternatives);
+        const transcripts: string[] = [];
+        for (let j = 0; j < result.length; j++) transcripts.push(result[j].transcript);
+        segments.push({ transcripts, isFinal: result.isFinal });
       }
-      if (interimText.trim()) pendingInterimRef.current = interimText.trim();
-      setInterim(interimText.trim());
+      segmentsRef.current = segments;
+      if (deliveredCountRef.current > segments.length) deliveredCountRef.current = 0;
+
+      const pending = segments.slice(deliveredCountRef.current);
+      setInterim(pending.map(s => s.transcripts[0]?.trim() ?? '').join(' ').trim());
+
+      clearSettleTimer();
+      if (pending.length > 0 && pending.every(s => s.isFinal)) {
+        settleTimerRef.current = setTimeout(flushUtterance, UTTERANCE_SETTLE_MS);
+      }
     };
 
     recognition.onerror = (event) => {
@@ -199,17 +241,13 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     recognition.onend = () => {
       lastEventRef.current = Date.now();
       runningRef.current = false;
-      setInterim('');
       setIsListening(false);
 
-      // Android Chrome sometimes ends a session after interim results without
-      // ever sending a final one; don't throw away what the user said.
-      const orphan = pendingInterimRef.current;
-      pendingInterimRef.current = '';
-      if (orphan && wantsRecordingRef.current && !pausedRef.current) {
-        console.log('Promoting unfinalized interim result:', orphan);
-        deliver([orphan]);
-      }
+      // Session over: deliver whatever is left, including segments that were
+      // never marked final (Android Chrome sometimes skips the final result).
+      if (wantsRecordingRef.current && !pausedRef.current) flushUtterance();
+      else resetSegments();
+      setInterim('');
 
       if (!wantsRecordingRef.current) {
         setIsRecording(false);
@@ -250,6 +288,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     return () => {
       clearInterval(watchdog);
       clearRestartTimer();
+      clearSettleTimer();
       recognition.onend = null;
       recognition.abort();
       runningRef.current = false;
@@ -271,7 +310,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     wantsRecordingRef.current = false;
     pausedRef.current = false;
     clearRestartTimer();
-    pendingInterimRef.current = '';
+    resetSegments();
     setInterim('');
     setIsRecording(false);
     setIsListening(false);
@@ -282,7 +321,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     if (!wantsRecordingRef.current) return;
     pausedRef.current = true;
     clearRestartTimer();
-    pendingInterimRef.current = '';
+    resetSegments();
     setInterim('');
     setIsListening(false);
     // abort() discards any pending result so TTS isn't captured as input.

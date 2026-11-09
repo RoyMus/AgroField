@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { matchCommand, CommandWords } from './commands';
-import { classifyTranscript } from '@/hooks/useVoiceRecording';
+import { classifyTranscript, joinSegments } from '@/hooks/useVoiceRecording';
 
 const he: CommandWords = {
   skip: ['דלג', 'הבא'],
@@ -60,5 +60,25 @@ describe('classifyTranscript', () => {
   });
   it('text', () => {
     expect(classifyTranscript(['עלה צהוב'], config)).toEqual({ kind: 'text', text: 'עלה צהוב' });
+  });
+});
+
+describe('joinSegments (iOS splits one utterance into several results)', () => {
+  const config = { speechLang: 'he-IL', numberWords: {}, decimalWord: 'נקודה', commands: he };
+  const seg = (t: string, isFinal = true) => ({ transcripts: [t], isFinal });
+
+  it('"אחת." + "שלוש" → 1.3', () => {
+    expect(classifyTranscript(joinSegments([seg('אחת.'), seg(' שלוש')]), config))
+      .toEqual({ kind: 'number', value: '1.3' });
+  });
+  it('"עשרים ושלוש" + "נקודה חמש" → 23.5', () => {
+    expect(classifyTranscript(joinSegments([seg('עשרים ושלוש'), seg('נקודה חמש')]), config))
+      .toEqual({ kind: 'number', value: '23.5' });
+  });
+  it('single segment keeps its alternatives', () => {
+    expect(joinSegments([{ transcripts: ['שבוע', 'שבע'], isFinal: true }])).toEqual(['שבוע', 'שבע']);
+  });
+  it('empty segments are ignored', () => {
+    expect(joinSegments([seg(''), seg('  ')])).toEqual([]);
   });
 });

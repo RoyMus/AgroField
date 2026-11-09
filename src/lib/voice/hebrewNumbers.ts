@@ -7,8 +7,14 @@ const NIQQUD = /[֑-ֽֿ-ׇ]/g;
 // Geresh / gershayim and ASCII quotes used in Hebrew abbreviations.
 const QUOTES = /[׳״"'`]/g;
 
+// Invisible bidi/direction marks (iOS inserts these around Hebrew words).
+const BIDI_MARKS = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\u061C\uFEFF]/g;
+
 export const normalizeHebrew = (text: string): string =>
   text
+    .replace(BIDI_MARKS, '')
+    .replace(/[\u00A0\u2007\u202F]/g, ' ') // non-breaking spaces
+    .replace(/[\u3002\u2024\uFF0E]/g, '.') // other "dot" characters
     .replace(NIQQUD, '')
     .replace(/־/g, ' ') // maqaf (Hebrew hyphen)
     .replace(QUOTES, '')
@@ -82,6 +88,12 @@ const splitWords = (text: string): string[] => {
 
   raw.forEach((w, i) => {
     const isLast = i === raw.length - 1;
+    // A word ending in a comma, followed by more words, is a spoken decimal
+    // separator on iOS ("אחת, שלוש" → 1.3)
+    if (/[^\d,],$/.test(w) && !isLast) {
+      const bare = w.replace(/,+$/, '');
+      if (bare) { words.push(bare, '.'); return; }
+    }
     // Strip edge commas/dashes
     const word = w.replace(/^[,\-–]+|[,\-–]+$/g, '');
     if (!word) return;
@@ -139,6 +151,8 @@ const evalInteger = (tokens: Token[]): IntResult | null => {
         lastUnit = null;
         break;
       case 'unit':
+        // Two units in a row ("אחת שלוש") is not a Hebrew number
+        if (lastUnit !== null) return null;
         current += tok.value;
         lastUnit = tok.value;
         break;
