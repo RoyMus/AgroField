@@ -18,6 +18,10 @@ interface CellEditorProps {
   headersRowIndex: number;
   currentValue: string;
   isRecording: boolean;
+  interimTranscript?: string;
+  isDraft?: boolean;
+  isListening?: boolean;
+  lastHeard?: { text: string; at: number } | null;
   onInputChange: (value: string) => void;
   onChangeToRow: (rowIndex: number) => void;
   onStartRecording: () => Promise<void>;
@@ -42,6 +46,10 @@ const CellEditor = ({
   headersRowIndex,
   currentValue,
   isRecording,
+  interimTranscript,
+  isDraft,
+  isListening,
+  lastHeard,
   onInputChange,
   onChangeToRow,
   onStartRecording,
@@ -299,6 +307,10 @@ const CellEditor = ({
         <div className="mb-4">
           <VoiceControls
             isRecording={isRecording}
+            interimTranscript={interimTranscript}
+            isDraft={isDraft}
+            isListening={isListening}
+            lastHeard={lastHeard}
             onStartRecording={onStartRecording}
             onStopRecording={onStopRecording}
           />

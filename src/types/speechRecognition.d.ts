@@ -3,12 +3,14 @@ interface SpeechRecognition {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
-  onstart: () => void;
-  onresult: (event: SpeechRecognitionEvent) => void;
-  onerror: (event: SpeechRecognitionErrorEvent) => void;
-  onend: () => void;
+  maxAlternatives: number;
+  onstart: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
   start(): void;
   stop(): void;
+  abort(): void;
 }
 
 interface SpeechRecognitionEvent {
@@ -27,6 +29,7 @@ interface SpeechRecognitionResultList {
 
 interface SpeechRecognitionResult {
   isFinal: boolean;
+  length: number;
   [index: number]: SpeechRecognitionAlternative;
 }
 

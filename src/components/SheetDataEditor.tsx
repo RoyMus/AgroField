@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useVoiceRecording } from "@/hooks/useVoiceRecording";
+import { useVoiceRecording, VoiceResult } from "@/hooks/useVoiceRecording";
+import { parseNumber } from "@/lib/voice/hebrewNumbers";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { getData } from "@/hooks/getData";
 import ProgressStats from "./ProgressStats";
@@ -52,16 +53,13 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     speechLang,
     numberWords,
     decimalWord: commands.decimal,
-    allowedCharPattern: speechLang.startsWith('he')
-      ? /[^֐-׿0-9.\s]/g
-      : speechLang.startsWith('th')
-        ? /[^฀-๿0-9.\s]/g
-        : /[^a-zA-Z0-9.\s]/g,
     commands: {
       skip: commands.skip,
       back: commands.back,
       delete: commands.delete,
       save: commands.save,
+      stop: commands.stop,
+      exactOnly: commands.exactOnly,
     },
   }), [speechLang, numberWords, commands]);
 
@@ -119,9 +117,22 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const [currentCount, setCurrentCount] = useState(1);
   const [currentValue, setCurrentValue] = useState<string>("");
   const { toast } = useToast();
-  const { isRecording, startRecording, stopRecording, error: recordingError, onWordRecognized } = useVoiceRecording(voiceConfig);
+  const { isRecording, startRecording, stopRecording, pause: pauseRecording, resume: resumeRecording, error: recordingError, interim, isListening, lastHeard, onResult } = useVoiceRecording(voiceConfig);
   const dataRows = sheetData.values.slice(0, commentIndex);
-  var isSpeakingState = false;
+  // Latest values for use inside timers / TTS callbacks.
+  const currentValueRef = useRef(currentValue);
+  currentValueRef.current = currentValue;
+  const positionRef = useRef({ row: currentRowIndex, col: currentColumnIndex });
+  positionRef.current = { row: currentRowIndex, col: currentColumnIndex };
+  // Dictated free text waits here until silence or "שמור".
+  const [isDraft, setIsDraftState] = useState(false);
+  const isDraftRef = useRef(false);
+  const setIsDraft = (value: boolean) => {
+    isDraftRef.current = value;
+    setIsDraftState(value);
+  };
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const commitDraftRef = useRef<() => void>(() => {});
   const{
     isTemplate,
     plant,
@@ -460,46 +471,130 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     }
   };
 
+  const DRAFT_SILENCE_MS = 3000;
+
+  const clearDraftTimer = () => {
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = null;
+  };
+
+  const startDraftTimer = () => {
+    clearDraftTimer();
+    draftTimerRef.current = setTimeout(() => commitDraftRef.current(), DRAFT_SILENCE_MS);
+  };
+
+  const discardDraft = () => {
+    clearDraftTimer();
+    setIsDraft(false);
+  };
+
   useEffect(() => {
-    // Only set current cell value when position changes
-    speak(getValue(headers[currentColumnIndex]),true, () => {
+    // Moving to another cell drops any pending dictation
+    discardDraft();
+    speak(getValue(headers[currentColumnIndex]), () => {
       setCurrentValue("");
     });
   }, [currentRowIndex, currentColumnIndex]);
 
-  onWordRecognized((word: string) => {
-      handleInputChange(word,true);
-  });
+  useEffect(() => () => clearDraftTimer(), []);
 
-  const handleInputChange = (value: string, from_voice?: boolean) => {
-    console.log('Recognized word:', value);
-    const lower = value.toLowerCase();
+  // Keep waiting while the user is still talking
+  useEffect(() => {
+    if (interim && draftTimerRef.current) startDraftTimer();
+  }, [interim]);
 
-    if (commands.skip.some(cmd => lower.includes(cmd.toLowerCase()))) {
-      skipCurrentValue();
-      setCurrentValue("");
-    } else if (commands.back.some(cmd => lower.includes(cmd.toLowerCase()))) {
-      moveToPreviousCell();
-      setCurrentValue("");
-    } else if (commands.delete.some(cmd => lower.includes(cmd.toLowerCase()))) {
-      resetCurrentCell();
-    } else if (commands.save.some(cmd => lower.includes(cmd.toLowerCase()))) {
-      if (currentValue) {
-        recordCurrentValue(currentValue);
-        setCurrentValue("");
+  const setValueNow = (value: string) => {
+    currentValueRef.current = value;
+    setCurrentValue(value);
+  };
+
+  /** Reads the value back, then records it if the user is still on the same cell. */
+  const commitVoiceValue = (value: string) => {
+    discardDraft();
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    setValueNow(trimmed);
+    const { row, col } = positionRef.current;
+    speak(trimmed, () => {
+      if (positionRef.current.row === row && positionRef.current.col === col) {
+        recordCurrentValue(trimmed);
       }
-    } else {
-      setCurrentValue(value);
-      if (from_voice) {
-        const rowIndex = currentRowIndex;
-        const colIndex = currentColumnIndex;
-        speak(value, false, () => {
-          if (currentRowIndex === rowIndex && currentColumnIndex === colIndex) {
-            recordCurrentValue(value);
+    });
+  };
+
+  // Always use the latest render's closure when the silence timer fires
+  commitDraftRef.current = () => commitVoiceValue(currentValueRef.current);
+
+  const appendToDraft = (text: string) => {
+    const base = isDraftRef.current ? currentValueRef.current : "";
+    setValueNow(base ? `${base} ${text}` : text);
+    setIsDraft(true);
+    startDraftTimer();
+  };
+
+  const handleVoiceResult = (result: VoiceResult) => {
+    if (result.kind === 'command') {
+      switch (result.command) {
+        case 'skip':
+          discardDraft();
+          skipCurrentValue();
+          setValueNow("");
+          break;
+        case 'back':
+          discardDraft();
+          moveToPreviousCell();
+          setValueNow("");
+          break;
+        case 'delete':
+          // Act immediately, and confirm out loud
+          if (isDraftRef.current) {
+            discardDraft();
+            setValueNow("");
+          } else {
+            resetCurrentCell();
           }
-        });
+          speak(t('voice.deleting'));
+          break;
+        case 'stop':
+          // Keep any dictated text in the input (unsaved) so it can be saved by hand
+          clearDraftTimer();
+          setIsDraft(false);
+          stopVoiceRecording();
+          speak(t('voice.stopping'));
+          break;
+        case 'save': {
+          let value: string;
+          if (isDraftRef.current) {
+            value = [currentValueRef.current, result.rest].filter(Boolean).join(' ');
+          } else if (result.rest) {
+            // e.g. "שבע שמור"
+            value = parseNumber(result.rest, speechLang, numberWords, commands.decimal) ?? result.rest;
+          } else {
+            value = currentValueRef.current;
+          }
+          if (value.trim()) commitVoiceValue(value);
+          break;
+        }
       }
+      return;
     }
+
+    if (result.kind === 'number' && !isDraftRef.current) {
+      // A plain number is saved right away
+      commitVoiceValue(result.value);
+      return;
+    }
+
+    // Free text (or a number spoken in the middle of dictation) accumulates
+    appendToDraft(result.kind === 'number' ? result.value : result.text);
+  };
+
+  onResult(handleVoiceResult);
+
+  const handleInputChange = (value: string) => {
+    // Typing takes over from any pending dictation
+    discardDraft();
+    setCurrentValue(value);
   };
 
   const handleChangeToNewRow = (value: number) => {
@@ -560,6 +655,8 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   };
 
   const [voices, setVoices] = useState([]);
+  const activeSpeechRef = useRef<((runCallback: boolean) => void) | null>(null);
+  const speakingUtterancesRef = useRef(new Set<SpeechSynthesisUtterance>());
 
   useEffect(() => {
     const loadVoices = () => {
@@ -571,36 +668,67 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     loadVoices();
   }, []);
 
-  const speak = async (text, activateMic: boolean, onEndCallback?) => {
+  const speak = (text: string, onEndCallback?: () => void) => {
     if (!("speechSynthesis" in window)) {
       if (onEndCallback) onEndCallback();
       return;
     }
 
+    // Settle the previous utterance (its end/error events are not always delivered)
+    activeSpeechRef.current?.(false);
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
 
-    const targetVoice = voices.find((v) => v.lang.startsWith(ttsLangPrefix));
+    // Slightly faster read-back = shorter time with the mic closed
+    utterance.rate = 1.15;
+
+    // Always declare the language so the engine never falls back to its default (English) voice
+    utterance.lang = speechLang;
+
+    // Read the voice list fresh (the cached state may still be empty on first use).
+    // Android reports Hebrew with the legacy code "iw".
+    const available = window.speechSynthesis.getVoices();
+    const voiceList = available.length ? available : voices;
+    const prefixes = ttsLangPrefix === 'he' ? ['he', 'iw'] : [ttsLangPrefix];
+    const normalizedLang = (v: SpeechSynthesisVoice) => v.lang.replace('_', '-').toLowerCase();
+    const targetVoice =
+      voiceList.find((v) => normalizedLang(v) === speechLang.toLowerCase()) ??
+      voiceList.find((v) => prefixes.some((p) => normalizedLang(v).startsWith(p)));
     if (targetVoice) {
       utterance.voice = targetVoice;
     }
 
+    // Browsers sometimes never fire onend/onerror, which used to leave the mic
+    // paused and the value unsaved. finish() runs exactly once, from whichever
+    // comes first: end, error, a replacement utterance, or the safety timeout.
+    let finished = false;
+    const finish = (runCallback: boolean) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(safetyTimer);
+      if (activeSpeechRef.current === finish) activeSpeechRef.current = null;
+      speakingUtterancesRef.current.delete(utterance);
+      resumeRecording();
+      if (runCallback && onEndCallback) onEndCallback();
+    };
+    // Generous upper bound on speaking time, so the mic never reopens mid-speech
+    const safetyTimer = setTimeout(() => finish(true), 4000 + text.length * 150);
+    activeSpeechRef.current = finish;
+    // Holding a reference stops Chrome from garbage-collecting the utterance
+    // (a known cause of onend never firing)
+    speakingUtterancesRef.current.add(utterance);
+
+    // Stop listening while speaking so the read-back isn't captured as input
     utterance.onstart = () => {
-      if (isRecording) {
-        stopRecording();
-        isSpeakingState = true;
-      }
+      if (!finished) pauseRecording();
     };
 
-    utterance.onend = () => {
-      if (isSpeakingState) {
-        startRecording();
-      }
-      isSpeakingState = false;
+    utterance.onend = () => finish(true);
 
-      if (onEndCallback) {
-        onEndCallback();
-      }
+    utterance.onerror = (event) => {
+      // "interrupted"/"canceled" means another utterance replaced this one
+      // (e.g. the cell changed); otherwise TTS failed and we still proceed.
+      finish(event.error !== 'interrupted' && event.error !== 'canceled');
     };
 
     window.speechSynthesis.speak(utterance);
@@ -718,6 +846,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         headersRowIndex={headersRowIndex}
         currentValue={currentValue}
         isRecording={isRecording}
+        interimTranscript={interim}
+        isDraft={isDraft}
+        isListening={isListening}
+        lastHeard={lastHeard}
         onInputChange={handleInputChange}
         onChangeToRow={handleChangeToNewRow}
         onStartRecording={startVoiceRecording}

@@ -6,14 +6,29 @@ import { useTranslation } from 'react-i18next';
 
 interface VoiceControlsProps {
   isRecording: boolean;
+  interimTranscript?: string;
+  isDraft?: boolean;
+  isListening?: boolean;
+  lastHeard?: { text: string; at: number } | null;
   onStartRecording: () => Promise<void>;
   onStopRecording: () => Promise<void>;
 }
 
-const VoiceControls = ({ isRecording, onStartRecording, onStopRecording }: VoiceControlsProps) => {
+const LAST_HEARD_VISIBLE_MS = 4000;
+
+const VoiceControls = ({ isRecording, interimTranscript, isDraft, isListening, lastHeard, onStartRecording, onStopRecording }: VoiceControlsProps) => {
   const { t } = useTranslation();
   const phrases: string[] = t('voice.examples', { returnObjects: true }) as string[];
   const [currentExample, setCurrentExample] = useState(phrases[0]);
+  const [showLastHeard, setShowLastHeard] = useState(false);
+
+  // Briefly show what was heard so misrecognitions are visible
+  useEffect(() => {
+    if (!lastHeard) return;
+    setShowLastHeard(true);
+    const id = setTimeout(() => setShowLastHeard(false), LAST_HEARD_VISIBLE_MS);
+    return () => clearTimeout(id);
+  }, [lastHeard]);
 
   // Reset to first phrase when language changes
   useEffect(() => {
@@ -51,6 +66,37 @@ const VoiceControls = ({ isRecording, onStartRecording, onStopRecording }: Voice
         </Button>
 
         {isRecording && (
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <span
+              className={`inline-block w-2.5 h-2.5 rounded-full ${
+                isListening ? 'bg-green-500 animate-pulse' : 'bg-amber-400'
+              }`}
+            />
+            <span className={isListening ? 'text-green-700' : 'text-amber-700'}>
+              {isListening ? t('voice.listening') : t('voice.wait')}
+            </span>
+          </div>
+        )}
+
+        {isRecording && !interimTranscript && showLastHeard && lastHeard && (
+          <div className="text-center text-gray-600 text-sm max-w-xs" dir="auto">
+            {t('voice.heard')}: <span className="font-semibold">{lastHeard.text}</span>
+          </div>
+        )}
+
+        {isRecording && interimTranscript && (
+          <div className="text-center text-gray-400 italic max-w-xs" dir="auto">
+            {interimTranscript}…
+          </div>
+        )}
+
+        {isRecording && isDraft && (
+          <div className="text-center text-amber-600 text-sm font-medium max-w-xs">
+            {t('voice.draftHint')}
+          </div>
+        )}
+
+        {isRecording && !interimTranscript && !isDraft && (
           <div className="text-center animate-fade-in">
             <div className="text-gray-500 font-medium">{currentExample}</div>
           </div>

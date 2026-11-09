@@ -10,7 +10,10 @@ export interface VoiceCommands {
   back: string[];
   delete: string[];
   save: string[];
+  stop: string[];
   decimal: string;
+  /** Common mis-recognitions accepted only when they are the whole utterance. */
+  exactOnly?: Partial<Record<'skip' | 'back' | 'delete' | 'save' | 'stop', string[]>>;
 }
 
 export interface LanguageConfig {
@@ -52,17 +55,20 @@ const NUMBER_WORDS: Record<SupportedLang, NumberWordMap> = {
 
 const COMMANDS: Record<SupportedLang, VoiceCommands> = {
   he: {
-    skip:    ["דלג", "הבא", "אבא", "דלק", "דלת"],
+    skip:    ["דלג", "הבא"],
     back:    ["חזור", "אחורה"],
-    delete:  ["מחק"],
-    save:    ["שמור"],
+    delete:  ["מחק", "נקה"],
+    save:    ["שמור", "סיום", "סיימתי"],
+    stop:    ["עצור", "הפסק", "תפסיק", "תעצור"],
     decimal: "נקודה",
+    exactOnly: { skip: ["אבא", "דלק", "דלת"], stop: ["די"] },
   },
   en: {
     skip:    ["skip", "next"],
     back:    ["back", "previous"],
     delete:  ["delete", "clear"],
-    save:    ["save", "record"],
+    save:    ["save", "record", "done"],
+    stop:    ["stop"],
     decimal: "point",
   },
   th: {
@@ -70,6 +76,7 @@ const COMMANDS: Record<SupportedLang, VoiceCommands> = {
     back:    ["ย้อนกลับ", "กลับ"],
     delete:  ["ลบ"],
     save:    ["บันทึก"],
+    stop:    ["หยุด"],
     decimal: "จุด",
   },
 };
