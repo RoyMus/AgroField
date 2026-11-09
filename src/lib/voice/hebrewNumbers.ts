@@ -78,9 +78,18 @@ const lookupHebrew = (word: string): Lex | undefined => {
 };
 
 /** Splits a transcript into raw words, turning literal decimal dots into a marker. */
+// Speech engines write "שתיים וחצי" as a clock time ("2:30"). Turn :30/:15/:45
+// back into a fraction marker so "שמונים ו2:30" → 82.5.
+const TIME_FRACTIONS: Record<string, string> = { '30': '0.5', '15': '0.25', '45': '0.75' };
+const FRACTION_MARKER = '__frac';
+
 const splitWords = (text: string): string[] => {
   const words: string[] = [];
   const raw = text
+    .replace(
+      /(^|\s)ו?-?(\d{1,2}):(15|30|45)(?=$|[\s.,])/g,
+      (_m, pre, hour, minutes) => `${pre}${parseInt(hour, 10)} ${FRACTION_MARKER}${TIME_FRACTIONS[minutes]}`,
+    )
     .replace(/(\d),(\d)/g, '$1.$2') // "2,5" → "2.5"
     .replace(/[!?;:()]/g, ' ')
     .split(/\s+/)
@@ -98,6 +107,9 @@ const splitWords = (text: string): string[] => {
     const word = w.replace(/^[,\-–]+|[,\-–]+$/g, '');
     if (!word) return;
     if (word === '.') { words.push('.'); return; }
+    // Conjunction before digits: "ו2", "ו-2"
+    const vavDigits = word.match(/^ו-?(\d+)$/);
+    if (vavDigits) { words.push(vavDigits[1]); return; }
     // A pure numeric token (possibly with a decimal point) stays intact.
     if (/^\d+(\.\d+)?$/.test(word)) { words.push(word); return; }
     if (/^\d+\.$/.test(word)) {
@@ -125,6 +137,10 @@ const tokenizeHebrew = (text: string): Token[] | null => {
   const tokens: Token[] = [];
   for (const word of splitWords(normalizeHebrew(text))) {
     if (word === '.') { tokens.push({ kind: 'decimal' }); continue; }
+    if (word.startsWith(FRACTION_MARKER)) {
+      tokens.push({ kind: 'fraction', value: parseFloat(word.slice(FRACTION_MARKER.length)) });
+      continue;
+    }
     if (/^\d+(\.\d+)?$/.test(word)) { tokens.push({ kind: 'digits', text: word }); continue; }
     const lex = lookupHebrew(word);
     if (!lex) return null; // a non-number word → not a number utterance
@@ -142,33 +158,45 @@ const evalInteger = (tokens: Token[]): IntResult | null => {
   let current = 0;   // value below 1000
   let lastUnit: number | null = null;
   let fraction = 0;
+  // Place-value check: the next unit/digits must be smaller than this
+  // (after "שמונים"/"80" only 1–9 fits; after "מאה" only 1–99; after "שלוש"
+  // or "23" nothing does, so "אחת שלוש" and "9 30" are rejected).
+  let addLimit = Infinity;
 
   for (const tok of tokens) {
     switch (tok.kind) {
-      case 'digits':
+      case 'digits': {
         if (tok.text.includes('.')) return null;
-        current += parseInt(tok.text, 10);
+        const n = parseInt(tok.text, 10);
+        if (n >= addLimit) return null;
+        current += n;
         lastUnit = null;
+        addLimit = n > 0 && n % 100 === 0 ? 100 : n >= 10 && n % 10 === 0 ? 10 : 1;
         break;
+      }
       case 'unit':
         // Two units in a row ("אחת שלוש") is not a Hebrew number
-        if (lastUnit !== null) return null;
+        if (lastUnit !== null || tok.value >= addLimit) return null;
         current += tok.value;
         lastUnit = tok.value;
+        addLimit = 1;
         break;
       case 'add':
         current += tok.value;
         lastUnit = null;
+        addLimit = tok.value >= 100 ? 100 : 10;
         break;
       case 'hundreds':
         if (lastUnit === null) return null;
         current += lastUnit * 100 - lastUnit;
         lastUnit = null;
+        addLimit = 100;
         break;
       case 'thousands':
         total += (current || 1) * 1000;
         current = 0;
         lastUnit = null;
+        addLimit = 1000;
         break;
       case 'fraction':
         fraction += tok.value;
