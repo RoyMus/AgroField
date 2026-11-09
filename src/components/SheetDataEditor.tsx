@@ -679,9 +679,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
 
-    // Slightly faster read-back = shorter time with the mic closed
-    utterance.rate = 1.15;
-
     // Always declare the language so the engine never falls back to its default (English) voice
     utterance.lang = speechLang;
 
