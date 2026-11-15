@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import VoiceDebugPanel from '@/components/VoiceDebugPanel';
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecording, VoiceResult } from "@/hooks/useVoiceRecording";
 import { parseNumber } from "@/lib/voice/hebrewNumbers";
@@ -638,7 +639,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   // Without this, a blocked microphone or disabled Dictation on iOS fails silently.
   useEffect(() => {
     if (!recordingError) return;
-    const known = ['unsupported', 'not-allowed', 'service-not-allowed', 'audio-capture', 'network', 'language-not-supported'];
+    const known = ['unsupported', 'not-allowed', 'service-not-allowed', 'audio-capture', 'network', 'language-not-supported', 'stalled'];
     const key = known.includes(recordingError) ? recordingError : 'generic';
     toast({
       variant: 'destructive',
@@ -844,6 +845,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
   return (
     <div className="space-y-6">
+      <VoiceDebugPanel />
       {/* Current Cell Editor */}
       <CellEditor
         currentRowIndex={currentRowIndex}
