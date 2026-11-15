@@ -638,7 +638,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   // Without this, a blocked microphone or disabled Dictation on iOS fails silently.
   useEffect(() => {
     if (!recordingError) return;
-    const known = ['unsupported', 'not-allowed', 'service-not-allowed', 'audio-capture', 'network', 'language-not-supported'];
+    const known = ['unsupported', 'not-allowed', 'service-not-allowed', 'audio-capture', 'network', 'language-not-supported', 'stalled'];
     const key = known.includes(recordingError) ? recordingError : 'generic';
     toast({
       variant: 'destructive',
