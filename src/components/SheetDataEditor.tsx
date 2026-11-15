@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import VoiceDebugPanel from '@/components/VoiceDebugPanel';
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecording, VoiceResult } from "@/hooks/useVoiceRecording";
 import { parseNumber } from "@/lib/voice/hebrewNumbers";
@@ -844,6 +845,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
   return (
     <div className="space-y-6">
+      <VoiceDebugPanel />
       {/* Current Cell Editor */}
       <CellEditor
         currentRowIndex={currentRowIndex}

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { parseNumber, normalizeHebrew } from '@/lib/voice/hebrewNumbers';
+import { voiceLog } from '@/lib/voice/debugLog';
 import { matchCommand, tokenize, CommandName, CommandWords, SHORT_UTTERANCE_WORDS } from '@/lib/voice/commands';
 
 export interface VoiceRecordingConfig {
@@ -183,8 +184,10 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       // Mark as running right away so the watchdog doesn't double-start
       // before onstart arrives; onend/onerror clear it.
       runningRef.current = true;
+      voiceLog('start()');
       recognition.start();
-    } catch {
+    } catch (e) {
+      voiceLog(`start() threw: ${e instanceof Error ? e.message : String(e)}`);
       // start() throws if already started; onend (or the watchdog) will retry.
       runningRef.current = false;
     }
@@ -192,6 +195,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
 
   useEffect(() => {
     const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    voiceLog(`init lang=${config.speechLang} supported=${!!SpeechRecognitionCtor}`);
     if (!SpeechRecognitionCtor) {
       setError('unsupported');
       return;
@@ -206,7 +210,13 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     recognition.lang = config.speechLang;
     recognition.maxAlternatives = 5;
 
+    recognition.onaudiostart = () => voiceLog('audiostart');
+    recognition.onsoundstart = () => voiceLog('soundstart');
+    recognition.onspeechstart = () => voiceLog('speechstart');
+    recognition.onnomatch = () => voiceLog('nomatch');
+
     recognition.onstart = () => {
+      voiceLog('onstart');
       lastEventRef.current = Date.now();
       runningRef.current = true;
       resetSegments();
@@ -217,6 +227,10 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     recognition.onresult = (event) => {
       lastEventRef.current = Date.now();
       transientErrorsRef.current = 0;
+      {
+        const last = event.results[event.results.length - 1];
+        voiceLog(`result${last?.isFinal ? ' (final)' : ''}: "${last?.[0]?.transcript ?? ''}"`);
+      }
       if (pausedRef.current || Date.now() < ignoreUntilRef.current) return;
 
       // Snapshot every segment of the session. resultIndex is unreliable on
@@ -241,6 +255,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     };
 
     recognition.onerror = (event) => {
+      voiceLog(`error: ${event.error}${event.message ? ` (${event.message})` : ''}`);
       if (FATAL_ERRORS.includes(event.error)) {
         console.error('Speech recognition error:', event.error);
         wantsRecordingRef.current = false;
@@ -258,6 +273,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     };
 
     recognition.onend = () => {
+      voiceLog(`onend after ${Date.now() - lastStartRef.current}ms`);
       lastEventRef.current = Date.now();
       runningRef.current = false;
       setIsListening(false);
@@ -339,6 +355,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     // gesture), so check the microphone permission alongside it, not before.
     navigator.permissions?.query({ name: 'microphone' as PermissionName })
       .then(status => {
+        voiceLog(`mic permission: ${status.state}`);
         if (status.state !== 'denied' || !wantsRecordingRef.current) return;
         wantsRecordingRef.current = false;
         clearRestartTimer();
