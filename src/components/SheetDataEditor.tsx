@@ -635,6 +635,18 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     window.speechSynthesis.speak(utterance);
   }
 
+  // Without this, a blocked microphone or disabled Dictation on iOS fails silently.
+  useEffect(() => {
+    if (!recordingError) return;
+    const known = ['unsupported', 'not-allowed', 'service-not-allowed', 'audio-capture', 'network', 'language-not-supported'];
+    const key = known.includes(recordingError) ? recordingError : 'generic';
+    toast({
+      variant: 'destructive',
+      title: t('voiceErrors.title'),
+      description: t(`voiceErrors.${key}`, { code: recordingError }),
+    });
+  }, [recordingError]);
+
   const startVoiceRecording = async () => {
     if (!isRecording) {
       console.log('Starting voice recording...');

@@ -94,7 +94,15 @@
     "listening": "Listening – speak now",
     "wait": "Wait...",
     "heard": "Heard",
-    "examples": ["Enter (value)", "twelve point five", "Skip \\ Next", "Back \\ Previous", "Save \\ Done", "Delete", "Stop"]
+    "examples": [
+      "Enter (value)",
+      "twelve point five",
+      "Skip \\ Next",
+      "Back \\ Previous",
+      "Save \\ Done",
+      "Delete",
+      "Stop"
+    ]
   },
   "fetch": {
     "errorTitle": "Error",
@@ -109,5 +117,15 @@
     "title": "No Sheet Data Available",
     "description": "Please select a Google Sheet first.",
     "goHome": "Go to Home"
+  },
+  "voiceErrors": {
+    "title": "Voice input isn't working",
+    "unsupported": "This browser doesn't support voice input. On iPhone, open the site in Safari (not inside another app or a home-screen shortcut).",
+    "not-allowed": "Microphone access was blocked. On iPhone: Settings → Apps → Safari → Microphone → Allow (or tap \"aA\" in the address bar → Website Settings → Microphone → Allow), then reload the page.",
+    "service-not-allowed": "Speech recognition is turned off on this device. On iPhone: Settings → General → Keyboard → turn on Enable Dictation, and Settings → Screen Time → Content & Privacy Restrictions → Allowed Apps → allow Siri & Dictation. Then reload the page.",
+    "audio-capture": "No microphone was found, or another app is using it. Close other apps that use the microphone (calls, recorders) and try again.",
+    "network": "Can't reach the speech recognition service. Check the internet connection and try again.",
+    "language-not-supported": "Voice input in this language isn't available on this device. On iPhone, add the language's keyboard (Settings → General → Keyboard → Keyboards) and enable Dictation.",
+    "generic": "Speech recognition error: {{code}}"
   }
 }

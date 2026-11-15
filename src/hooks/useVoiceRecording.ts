@@ -22,6 +22,10 @@ interface UseVoiceRecordingReturn {
   pause: () => void;
   /** Resume listening after pause(); no-op if voice mode was turned off. */
   resume: () => void;
+  /**
+   * Error code: a SpeechRecognition error ('not-allowed', 'service-not-allowed',
+   * 'network', ...) or 'unsupported' when the browser has no speech API.
+   */
   error: string | null;
   /** Live, not-yet-final transcript. */
   interim: string;
@@ -36,6 +40,8 @@ interface UseVoiceRecordingReturn {
 const FATAL_ERRORS = ['not-allowed', 'service-not-allowed', 'audio-capture', 'language-not-supported'];
 // Results arriving this soon after TTS ends are likely the TTS echo.
 const ECHO_GUARD_MS = 350;
+// Transient errors in a row before we tell the user something is wrong.
+const MAX_TRANSIENT_ERRORS = 3;
 // iOS splits one utterance into several final segments ("אחת." + "שלוש").
 // Wait this long after the last final segment before treating the utterance
 // as complete, so the segments are parsed together.
@@ -116,6 +122,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
   const lastEventRef = useRef(0);
   const quickEndsRef = useRef(0);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const transientErrorsRef = useRef(0);
 
   useEffect(() => {
     configRef.current = config;
@@ -181,7 +188,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
   useEffect(() => {
     const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognitionCtor) {
-      setError('Speech Recognition is not supported in this browser. Please use Chrome or Safari.');
+      setError('unsupported');
       return;
     }
 
@@ -204,6 +211,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
 
     recognition.onresult = (event) => {
       lastEventRef.current = Date.now();
+      transientErrorsRef.current = 0;
       if (pausedRef.current || Date.now() < ignoreUntilRef.current) return;
 
       // Snapshot every segment of the session. resultIndex is unreliable on
@@ -231,10 +239,14 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       if (FATAL_ERRORS.includes(event.error)) {
         console.error('Speech recognition error:', event.error);
         wantsRecordingRef.current = false;
-        setError(`Speech recognition error: ${event.error}`);
+        setError(event.error);
         setIsRecording(false);
       } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
         console.warn('Speech recognition transient error:', event.error);
+        // e.g. 'network' when the device can't reach the speech service:
+        // keep retrying, but let the user know after a few failures.
+        transientErrorsRef.current += 1;
+        if (transientErrorsRef.current === MAX_TRANSIENT_ERRORS) setError(event.error);
       }
     };
 
@@ -300,9 +312,14 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
 
   const startRecording = useCallback(async () => {
     setError(null);
+    if (!recognitionRef.current) {
+      setError('unsupported');
+      return;
+    }
     wantsRecordingRef.current = true;
     pausedRef.current = false;
     quickEndsRef.current = 0;
+    transientErrorsRef.current = 0;
     safeStart();
   }, [safeStart]);
 
