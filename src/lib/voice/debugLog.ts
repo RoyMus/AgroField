@@ -1,13 +1,18 @@
 /**
  * Voice diagnostics log, shown on screen for debugging devices we can't attach
- * a console to. Hidden by default: tapping the voice hint text 5 times toggles it.
+ * a console to. Hidden by default: tapping the voice hint text 5 times toggles
+ * it, as does opening the app with "voicedebug" in the URL.
  */
 const STORAGE_KEY = 'voiceDebug';
 const MAX_ENTRIES = 150;
 
 let entries: string[] = [];
 let enabled = (() => {
-  try { return localStorage.getItem(STORAGE_KEY) === '1'; } catch { return false; }
+  try {
+    // Opening any page with "voicedebug" in the URL also turns it on.
+    if (window.location.href.toLowerCase().includes('voicedebug')) localStorage.setItem(STORAGE_KEY, '1');
+    return localStorage.getItem(STORAGE_KEY) === '1';
+  } catch { return false; }
 })();
 const listeners = new Set<() => void>();
 const t0 = Date.now();

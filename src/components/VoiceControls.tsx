@@ -26,7 +26,9 @@ const VoiceControls = ({ isRecording, interimTranscript, isDraft, isListening, l
   const [currentExample, setCurrentExample] = useState(phrases[0]);
   const [showLastHeard, setShowLastHeard] = useState(false);
 
-  // Hidden: 5 quick taps on the listening indicator or the hint text toggle the voice log.
+  // Hidden: 5 quick taps on the listening indicator, the hint text or the build
+  // id toggle the voice log. Counted on pointerdown with touch-action:
+  // manipulation, because iOS turns quick taps into double-tap zoom and drops clicks.
   const tapsRef = useRef<number[]>([]);
   const handleDebugTap = () => {
     const now = Date.now();
@@ -81,7 +83,7 @@ const VoiceControls = ({ isRecording, interimTranscript, isDraft, isListening, l
         </Button>
 
         {isRecording && (
-          <div className="flex items-center gap-2 text-sm font-medium select-none" onClick={handleDebugTap}>
+          <div className="flex items-center gap-2 text-sm font-medium select-none touch-manipulation" onPointerDown={handleDebugTap}>
             <span
               className={`inline-block w-2.5 h-2.5 rounded-full ${
                 isListening ? 'bg-green-500 animate-pulse' : 'bg-amber-400'
@@ -117,8 +119,12 @@ const VoiceControls = ({ isRecording, interimTranscript, isDraft, isListening, l
           </div>
         )}
 
-        <div className="text-center text-gray-600 text-sm max-w-xs select-none" onClick={handleDebugTap}>
+        <div className="text-center text-gray-600 text-sm max-w-xs select-none touch-manipulation" onPointerDown={handleDebugTap}>
           {isRecording ? t('voice.stopVoice') : t('voice.startVoice')}
+        </div>
+
+        <div className="text-[10px] text-gray-300 select-none touch-manipulation" dir="ltr" onPointerDown={handleDebugTap}>
+          build {typeof __BUILD_ID__ === 'string' ? __BUILD_ID__ : 'dev'}
         </div>
 
         <VoiceDebugPanel />
