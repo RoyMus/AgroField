@@ -47,18 +47,13 @@ interface UseVoiceRecordingReturn {
  * ------------
  * Every listening session uses a brand-new recognizer. Its event handlers
  * only act while it is still the current one, so we never wait for an engine
- * to confirm a start or a stop.
+ * to confirm a start or a stop (Android Chrome and iOS Safari sometimes never
+ * do, which used to leave voice input stuck). To stop or pause we simply drop
+ * the current recognizer; to start or resume we create a new one.
  *
  * A session ends after one utterance (or silence, or an error); if voice mode
  * is still on, the next session starts right away. A once-a-second check
- * replaces sessions that hang.
- *
- * Before a read-back (TTS) we never stop or abort a running session: on iOS
- * Safari, interrupting the mic and then speaking leaves every later session
- * deaf (onstart/audiostart, never speechstart) until the page is reloaded.
- * Instead the session is "ignored": it keeps running, whatever it hears
- * (including the read-back) is discarded, and when it ends by itself the
- * next session starts.
+ * restarts anything that went quiet.
  */
 
 // Errors after which retrying is pointless.
@@ -77,9 +72,8 @@ const RESUME_DELAY_MS = 300;
 // Gap between one session ending and the next starting, so the engine can
 // release the mic first.
 const RESTART_DELAY_MS = 150;
-// After a read-back, how long we wait for the ignored session to end by
-// itself before dropping it.
-const IGNORED_END_TIMEOUT_MS = 5000;
+// Longest we wait for a recording session to release the mic before a read-back.
+const PAUSE_STOP_TIMEOUT_MS = 1000;
 // iOS confirms an utterance ~2s after the user stops talking. When the
 // not-yet-confirmed text is a number or command and hasn't changed for this
 // long, take it right away.
@@ -174,8 +168,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     paused: false,      // suspended while TTS speaks
     rec: null as SpeechRecognition | null, // the current session's recognizer
     session: 0,         // number of the current session (for the debug log)
-    ignoring: false,    // current session is still running but its output is discarded
-    ignoreDeadline: 0,  // when to stop waiting for an ignored session to end (0 = not waiting)
+    releasing: null as Promise<void> | null, // a paused session still releasing the mic
     startedAt: 0,       // when the current session was created
     lastEventAt: 0,     // last event from the current session
     confirmed: false,   // current session fired onstart
@@ -220,37 +213,23 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       if (alternatives.length) deliver(alternatives);
     };
 
-    /**
-     * Drops the current recognizer immediately (abort). Only for sessions
-     * that are over, hung, or failing — never right before a read-back.
-     */
-    const kill = (reason: string) => {
+    /** Drops the current recognizer without waiting for it; discards unsent speech. */
+    const kill = (reason: string, graceful = false) => {
       clearSettle();
       const rec = s.rec;
-      if (rec && reason !== 'ended') voiceLog(`#${s.session} kill (${reason})`);
+      if (rec) voiceLog(`#${s.session} kill (${reason})`);
       s.rec = null;
-      s.ignoring = false;
       setInterim('');
       setIsListening(false);
       if (!rec) return;
       rec.onstart = rec.onresult = rec.onerror = rec.onend = null;
+      if (graceful) {
+        // Let it release the mic properly (see pause()); abort if it doesn't.
+        try { rec.stop(); } catch { /* ignore */ }
+        setTimeout(() => { try { rec.abort(); } catch { /* ignore */ } }, PAUSE_STOP_TIMEOUT_MS);
+        return;
+      }
       try { rec.abort(); } catch { /* already stopped */ }
-    };
-
-    /**
-     * Stops using the current session without interrupting it: it keeps
-     * running, everything it hears is discarded, and when it ends by itself
-     * the next session starts. Interrupting a session (stop/abort) and then
-     * speaking leaves iOS Safari's mic deaf until the page is reloaded.
-     */
-    const ignoreCurrent = (reason: string) => {
-      clearSettle();
-      setInterim('');
-      setIsListening(false);
-      if (!s.rec || s.ignoring) return;
-      voiceLog(`#${s.session} ignoring the rest of this session (${reason})`);
-      s.ignoring = true;
-      s.ignoreDeadline = 0;
     };
 
     const scheduleRestart = (delay: number) => {
@@ -274,38 +253,47 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       if (!s.rec) return;
       const lived = Date.now() - s.startedAt;
       const gotResult = s.gotResult;
-      const ignored = s.ignoring;
-      voiceLog(`#${s.session} ended after ${lived}ms${ignored ? ' (ignored)' : gotResult ? '' : ' (heard nothing)'}`);
+      voiceLog(`#${s.session} ended after ${lived}ms${gotResult ? '' : ' (heard nothing)'}`);
       kill('ended'); // before delivering: the result may trigger a read-back (pause)
-      if (!ignored) flush();
+      flush();
       if (!s.wanted || s.paused) return;
 
-      if (!ignored) {
-        s.quickEnds = lived < QUICK_END_MS ? s.quickEnds + 1 : 0;
-        if (!s.everWorked) {
-          if (s.quickEnds >= MAX_QUICK_ENDS) return fail('stalled');
-          if (!gotResult && lived >= QUICK_END_MS && ++s.emptySessions === MAX_EMPTY_SESSIONS) setError('no-input');
-        }
+      s.quickEnds = lived < QUICK_END_MS ? s.quickEnds + 1 : 0;
+      if (!s.everWorked) {
+        if (s.quickEnds >= MAX_QUICK_ENDS) return fail('stalled');
+        if (!gotResult && lived >= QUICK_END_MS && ++s.emptySessions === MAX_EMPTY_SESSIONS) setError('no-input');
       }
       // Back off if the engine keeps ending instantly.
       scheduleRestart(s.quickEnds ? Math.min(2000, 100 * 2 ** s.quickEnds) : RESTART_DELAY_MS);
     };
 
     /**
-     * Takes the current, not yet confirmed number/command as final. The
-     * session is left to finish by itself (its remaining output is ignored).
+     * Takes the current, not yet confirmed number/command as final: ends the
+     * session gracefully, delivers, and listens again once the mic is free.
      */
     const acceptEarly = () => {
-      if (!s.rec || s.ignoring) return;
-      voiceLog(`#${s.session} accepting early (stable ${EARLY_ACCEPT_MS}ms)`);
+      const rec = s.rec;
+      if (!rec) return;
+      const id = s.session;
+      voiceLog(`#${id} accepting early (stable ${EARLY_ACCEPT_MS}ms)`);
+      s.rec = null;
+      rec.onstart = rec.onresult = rec.onerror = rec.onend = null;
+      setIsListening(false);
+      const released = release(rec, id);
       s.segments = s.segments.map(seg => ({ ...seg, isFinal: true }));
-      ignoreCurrent('accepted early');
-      flush();
+      flush(); // usually triggers a read-back, which pauses and waits for the release
+      if (!s.wanted || s.paused) return;
+      released.then(() => scheduleRestart(RESTART_DELAY_MS));
     };
 
     const startSession = () => {
       clearRestart();
       if (!s.wanted || s.paused || s.rec) return;
+      // Never start while the previous recognizer is still releasing the mic.
+      if (s.releasing) {
+        s.releasing.then(() => scheduleRestart(0));
+        return;
+      }
       const Ctor = getRecognitionCtor();
       if (!Ctor) return fail('unsupported');
 
@@ -318,7 +306,6 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       rec.maxAlternatives = 5;
 
       s.rec = rec;
-      s.ignoring = false;
       s.session += 1;
       const id = s.session;
       const log = (m: string) => voiceLog(`#${id} ${m}`);
@@ -335,7 +322,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
         if (!current()) return;
         s.confirmed = true;
         s.lastEventAt = Date.now();
-        if (!s.ignoring) setIsListening(true);
+        setIsListening(true);
       };
 
       rec.onaudiostart = () => log('audiostart');
@@ -346,12 +333,12 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       rec.onnomatch = () => log('nomatch');
 
       rec.onresult = (event) => {
-        const last = event.results[event.results.length - 1];
-        const ignored = !current() || s.ignoring;
-        log(`result${last?.isFinal ? ' FINAL' : ''}: "${last?.[0]?.transcript ?? ''}"${ignored ? ' (ignored)' : ''}`);
+        {
+          const last = event.results[event.results.length - 1];
+          log(`result${last?.isFinal ? ' FINAL' : ''}: "${last?.[0]?.transcript ?? ''}"${current() ? '' : ' (stale)'}`);
+        }
         if (!current()) return;
         s.lastEventAt = Date.now();
-        if (s.ignoring) return;
         s.gotResult = s.everWorked = true;
         s.emptySessions = 0;
         s.transientErrors = 0;
@@ -384,12 +371,10 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
         log(`error: ${event.error}${event.message ? ` (${event.message})` : ''}${current() ? '' : ' (stale)'}`);
         if (!current()) return;
         const code = event.error;
-        if (!s.ignoring) {
-          if (FATAL_ERRORS.includes(code) || (FATAL_UNTIL_WORKING.includes(code) && !s.everWorked)) return fail(code);
-          if (!SILENT_ERRORS.includes(code)) {
-            console.warn('Speech recognition error:', code);
-            if (++s.transientErrors === MAX_TRANSIENT_ERRORS) setError(code);
-          }
+        if (FATAL_ERRORS.includes(code) || (FATAL_UNTIL_WORKING.includes(code) && !s.everWorked)) return fail(code);
+        if (!SILENT_ERRORS.includes(code)) {
+          console.warn('Speech recognition error:', code);
+          if (++s.transientErrors === MAX_TRANSIENT_ERRORS) setError(code);
         }
         // Don't rely on onend following an error.
         endSession();
@@ -410,24 +395,14 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       }
     };
 
-    /** Replaces sessions that hang; restarts if nothing is running. */
+    /** Replaces a session that never started or went silent; restarts if none is running. */
     const watchdog = () => {
-      const now = Date.now();
-      if (s.rec && s.ignoring) {
-        // An ignored session normally ends within seconds of the read-back.
-        // If we're waiting on it to listen again and it doesn't, drop it.
-        const waitingOnIt = s.wanted && !s.paused;
-        if ((waitingOnIt && s.ignoreDeadline && now > s.ignoreDeadline) || now - s.lastEventAt > SILENCE_TIMEOUT_MS) {
-          kill('ignored session did not end');
-          if (waitingOnIt) startSession();
-        }
-        return;
-      }
       if (!s.wanted || s.paused) return;
       if (!s.rec) {
-        if (!s.restartTimer) startSession();
+        if (!s.restartTimer && !s.releasing) startSession();
         return;
       }
+      const now = Date.now();
       const dead = (!s.confirmed && now - s.startedAt > START_TIMEOUT_MS)
         || now - s.lastEventAt > SILENCE_TIMEOUT_MS;
       if (dead) {
@@ -435,17 +410,6 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
         kill(s.confirmed ? 'watchdog: silent 15s' : 'watchdog: never started');
         startSession();
       }
-    };
-
-    /** Listen again: right away, or once an ignored session has finished. */
-    const listenAgain = (delay: number) => {
-      if (s.rec && s.ignoring) {
-        voiceLog(`waiting for #${s.session} to finish before listening`);
-        s.ignoreDeadline = Date.now() + IGNORED_END_TIMEOUT_MS;
-        return; // endSession() restarts
-      }
-      if (s.rec) return; // already listening
-      scheduleRestart(delay);
     };
 
     const start = () => {
@@ -456,6 +420,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       }
       voiceLog('== mic tapped: voice mode ON');
       clearRestart();
+      kill('tap'); // a tap always starts fresh
       Object.assign(s, { wanted: true, paused: false, everWorked: false, quickEnds: 0, emptySessions: 0, transientErrors: 0 });
       setIsRecording(true);
       // start() must run synchronously in the tap handler (iOS needs the user
@@ -463,8 +428,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       navigator.permissions?.query({ name: 'microphone' as PermissionName })
         .then(status => { voiceLog(`mic permission: ${status.state}`); if (status.state === 'denied' && s.wanted && !s.everWorked) fail('not-allowed'); })
         .catch(() => { /* Permissions API or 'microphone' not supported */ });
-      if (s.rec && s.ignoring) listenAgain(0);
-      else startSession();
+      startSession();
     };
 
     const stop = () => {
@@ -472,19 +436,69 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       s.paused = false;
       voiceLog('== voice mode OFF');
       clearRestart();
-      // Not interrupted: a "stop" voice command is followed by speech.
-      ignoreCurrent('voice mode off');
+      kill('stop', true);
       setIsRecording(false);
     };
 
-    /** Stops listening before a read-back, without interrupting the mic. */
+    /**
+     * Stops listening before a read-back. If a session is recording, it is
+     * stopped gracefully and we wait until it has released the mic: aborting
+     * it and playing speech right away leaves iOS delivering only silence to
+     * every later session (seen in the field: audiostart, never soundstart).
+     */
     const pause = (): Promise<void> => {
       if (!s.wanted) return Promise.resolve();
       s.paused = true;
-      voiceLog('pause (read-back)');
       clearRestart();
-      ignoreCurrent('read-back');
-      return Promise.resolve();
+      clearSettle();
+      setInterim('');
+      setIsListening(false);
+      const rec = s.rec;
+      s.rec = null;
+      if (!rec) {
+        voiceLog('pause (read-back)');
+        // A previous pause may still be waiting for the mic.
+        return s.releasing ?? Promise.resolve();
+      }
+      const id = s.session;
+      // Ignore anything it still says; just wait for it to finish.
+      rec.onstart = rec.onresult = rec.onerror = null;
+      if (!s.confirmed) {
+        voiceLog(`pause (read-back): #${id} not started yet, aborting`);
+        try { rec.abort(); } catch { /* ignore */ }
+        rec.onend = null;
+        return Promise.resolve();
+      }
+      voiceLog(`pause (read-back): stopping #${id} and waiting for the mic`);
+      return release(rec, id);
+    };
+
+    /**
+     * Stops a recognizer gracefully (its handlers already detached) and
+     * resolves once it has released the mic, or after a timeout (then abort).
+     */
+    const release = (rec: SpeechRecognition, id: number): Promise<void> => {
+      const startedAt = Date.now();
+      const releasing = new Promise<void>(resolve => {
+        let done = false;
+        const finish = (how: string) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          rec.onend = null;
+          if (s.releasing === releasing) s.releasing = null;
+          voiceLog(`#${id} released (${how}) after ${Date.now() - startedAt}ms`);
+          resolve();
+        };
+        const timer = setTimeout(() => {
+          try { rec.abort(); } catch { /* ignore */ }
+          finish('timeout');
+        }, PAUSE_STOP_TIMEOUT_MS);
+        rec.onend = () => finish('onend');
+        try { rec.stop(); } catch { finish('stop threw'); }
+      });
+      s.releasing = releasing;
+      return releasing;
     };
 
     const resume = () => {
@@ -493,12 +507,12 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       if (!s.wanted) return;
       s.quickEnds = 0;
       voiceLog('resume');
-      listenAgain(RESUME_DELAY_MS); // cancelled if pause() comes first
+      scheduleRestart(RESUME_DELAY_MS); // cancelled if pause() comes first
     };
 
     /** Language changed: restart the running session with the new language. */
     const restartIfRunning = () => {
-      if (!s.rec || s.ignoring) return;
+      if (!s.rec) return;
       kill('language changed');
       startSession();
     };
