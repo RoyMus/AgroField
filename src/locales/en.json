@@ -104,7 +104,9 @@
       "Stop"
     ],
     "ttsUnavailable": "Read-back isn't playing",
-    "ttsUnavailableDesc": "Voice input still works. To hear values read back, check the volume and, on iPhone, that silent mode is off."
+    "ttsUnavailableDesc": "Voice input still works. To hear values read back, check the volume and, on iPhone, that silent mode is off.",
+    "readBackOn": "Reading values aloud",
+    "readBackOff": "Read-back off (use if voice stops in silent mode)"
   },
   "fetch": {
     "errorTitle": "Error",

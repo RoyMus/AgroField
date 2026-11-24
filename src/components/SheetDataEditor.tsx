@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { isReadBackEnabled } from '@/lib/voice/readBack';
 import { voiceLog } from '@/lib/voice/debugLog';
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecording, VoiceResult } from "@/hooks/useVoiceRecording";
@@ -704,6 +705,11 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   isRecordingRef.current = isRecording;
 
   const speak = (text: string, onEndCallback?: () => void) => {
+    if (!isReadBackEnabled()) {
+      voiceLog(`read-back off, not speaking "${text}"`);
+      if (onEndCallback) onEndCallback();
+      return;
+    }
     voiceLog(`TTS speak "${text}"`);
     if (!("speechSynthesis" in window)) {
       if (onEndCallback) onEndCallback();
