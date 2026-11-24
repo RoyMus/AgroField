@@ -156,75 +156,103 @@ describe('useVoiceRecording', () => {
     expect(hook.isListening).toBe(true);
   });
 
-  it('can be re-activated right after stop', async () => {
-    await run(() => { hook.startRecording(); });
-    await speakValue();
-    await run(() => { hook.stopRecording(); });
-    expect(hook.isRecording).toBe(false);
-    await run(() => { hook.startRecording(); });
-    await advance(50);
-    expect(rec().running).toBe(true);
-    expect(hook.isListening).toBe(true);
-  });
-
-  it('listens again right after the read-back', async () => {
-    await run(() => { hook.startRecording(); });
-    await speakValue();
-    await run(() => hook.pause());
-    expect(hook.isListening).toBe(false);
-    await advance(1000);
-    await run(() => hook.resume());
-    await advance(400);
-    expect(rec().running).toBe(true);
-    expect(hook.isListening).toBe(true);
-  });
-
-  it('pause stops a recording session gracefully and resolves once the mic is released', async () => {
+  it('never interrupts the mic for a read-back (iOS goes deaf otherwise)', async () => {
     await run(() => { hook.startRecording(); });
     await advance(700);
     const live = rec();
     const stopSpy = vi.spyOn(live, 'stop');
     const abortSpy = vi.spyOn(live, 'abort');
-    let released = false;
-    await run(() => { hook.pause().then(() => { released = true; }); });
-    expect(stopSpy).toHaveBeenCalled();
+    let paused = false;
+    await run(() => { hook.pause().then(() => { paused = true; }); });
+    expect(paused).toBe(true);          // read-back can start right away
+    expect(hook.isListening).toBe(false);
+    expect(stopSpy).not.toHaveBeenCalled();
     expect(abortSpy).not.toHaveBeenCalled();
-    expect(released).toBe(false);   // still releasing the mic
-    await advance(20);              // engine fires onend
-    expect(released).toBe(true);
-    // A second pause while nothing runs resolves right away.
-    let second = false;
-    await run(() => { hook.pause().then(() => { second = true; }); });
-    expect(second).toBe(true);
+    expect(live.running).toBe(true);    // still running, just ignored
   });
 
-  it('pause falls back to abort when the engine never ends', async () => {
+  it('discards what the ignored session hears and listens again once it ends', async () => {
     await run(() => { hook.startRecording(); });
     await advance(700);
     const live = rec();
-    live.stop = () => { /* never ends */ };
-    const abortSpy = vi.spyOn(live, 'abort');
-    let released = false;
-    await run(() => { hook.pause().then(() => { released = true; }); });
-    await advance(900);
-    expect(released).toBe(false);
+    await run(() => hook.pause());
+    await advance(1500);                // read-back playing
+    await run(() => hook.resume());
+    await advance(400);
+    expect(rec()).toBe(live);           // waits for it to finish by itself
+    expect(hook.isListening).toBe(false);
+    await run(() => { live.say('one point two'); live.stop(); }); // it heard the read-back
     await advance(200);
-    expect(released).toBe(true);
-    expect(abortSpy).toHaveBeenCalled();
+    expect(results).toHaveLength(0);
+    expect(rec()).not.toBe(live);
+    expect(rec().running).toBe(true);
+    expect(hook.isListening).toBe(true);
+    await speakValue();
+    expect(results).toEqual([{ kind: 'number', value: '5' }]);
   });
 
-  it('accepts a stable, unconfirmed number early and listens again', async () => {
+  it('drops an ignored session that does not end after the read-back', async () => {
+    await run(() => { hook.startRecording(); });
+    await advance(700);
+    const live = rec();
+    await run(() => hook.pause());
+    await advance(1500);
+    await run(() => hook.resume());
+    await advance(4000);
+    expect(rec()).toBe(live);
+    await advance(2000);
+    expect(rec()).not.toBe(live);
+    expect(rec().running).toBe(true);
+    expect(hook.isListening).toBe(true);
+  });
+
+  it('listens again shortly after a read-back when no session was running', async () => {
+    await run(() => { hook.startRecording(); });
+    await advance(700);
+    await run(() => { rec().say('five'); rec().stop(); }); // ends by itself, then read-back
+    await advance(20);
+    await run(() => hook.pause());
+    const count = FakeRecognition.instances.length;
+    await advance(1500);
+    expect(FakeRecognition.instances.length).toBe(count);
+    await run(() => hook.resume());
+    await advance(400);
+    expect(FakeRecognition.instances.length).toBe(count + 1);
+    expect(hook.isListening).toBe(true);
+  });
+
+  it('can be re-activated right after stop', async () => {
+    await run(() => { hook.startRecording(); });
+    await speakValue();
+    const live = rec();
+    await run(() => { hook.stopRecording(); });
+    expect(hook.isRecording).toBe(false);
+    expect(live.running).toBe(true);    // left to finish by itself
+    await run(() => { hook.startRecording(); });
+    expect(hook.isRecording).toBe(true);
+    await run(() => live.stop());       // it ends
+    await advance(200);
+    expect(rec()).not.toBe(live);
+    expect(hook.isListening).toBe(true);
+  });
+
+  it('accepts a stable, unconfirmed number early without interrupting the mic', async () => {
     await run(() => { hook.startRecording(); });
     await advance(700);
     const first = rec();
     const stopSpy = vi.spyOn(first, 'stop');
+    const abortSpy = vi.spyOn(first, 'abort');
     await run(() => first.sayInterim('five'));
     await advance(500);
     expect(results).toHaveLength(0);
     await advance(500);
     expect(results).toEqual([{ kind: 'number', value: '5' }]);
-    expect(stopSpy).toHaveBeenCalled();
-    await advance(300);
+    expect(stopSpy).not.toHaveBeenCalled();
+    expect(abortSpy).not.toHaveBeenCalled();
+    // Its confirmation arrives later and is not delivered twice.
+    await run(() => { first.say('five'); first.stop(); });
+    await advance(200);
+    expect(results).toHaveLength(1);
     expect(rec()).not.toBe(first);
     expect(rec().running).toBe(true);
   });
@@ -240,22 +268,6 @@ describe('useVoiceRecording', () => {
     await run(() => { rec().say('hello there'); rec().stop(); });
     await advance(100);
     expect(results).toEqual([{ kind: 'text', text: 'hello there' }]);
-  });
-
-  it('does not start and abort a session between back-to-back read-backs', async () => {
-    await run(() => { hook.startRecording(); });
-    await speakValue();
-    await run(() => hook.pause());   // read the value back
-    await run(() => hook.resume());
-    await advance(20);
-    await run(() => hook.pause());   // then the next column's name
-    const count = FakeRecognition.instances.length;
-    await advance(1000);
-    expect(FakeRecognition.instances.length).toBe(count);
-    await run(() => hook.resume());
-    await advance(400);
-    expect(FakeRecognition.instances.length).toBe(count + 1);
-    expect(rec().running).toBe(true);
   });
 
   it('ignores late events from a dropped session', async () => {
@@ -306,13 +318,16 @@ describe('useVoiceRecording', () => {
     expect(rec().running).toBe(true);
   });
 
-  it('does not deliver speech after stop', async () => {
+  it('does not deliver speech after stop, and starts nothing new', async () => {
     await run(() => { hook.startRecording(); });
     await advance(700);
     await run(() => rec().say('five')); // waiting to settle
+    const count = FakeRecognition.instances.length;
     await run(() => { hook.stopRecording(); });
     await advance(2000);
     expect(results).toHaveLength(0);
+    expect(FakeRecognition.instances.length).toBe(count);
+    await advance(16000);               // a session that never ends is dropped eventually
     expect(FakeRecognition.instances.every(r => !r.running)).toBe(true);
   });
 });
