@@ -39,6 +39,11 @@ const VoiceControls = ({ isRecording, interimTranscript, isDraft, isListening, l
     }
   };
 
+  // TEMPORARY: upload the voice log to Supabase while we debug voice input.
+  useEffect(() => {
+    import('@/lib/voice/voiceLogUpload').then(m => m.startVoiceLogUpload()).catch(() => {});
+  }, []);
+
   // Briefly show what was heard so misrecognitions are visible
   useEffect(() => {
     if (!lastHeard) return;
