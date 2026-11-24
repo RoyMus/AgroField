@@ -55,6 +55,9 @@ describe('classifyTranscript', () => {
     expect(classifyTranscript(['העלים בחלק הצפוני צהובים', 'העלים הבא צהובים דלג'], config))
       .toEqual({ kind: 'text', text: 'העלים בחלק הצפוני צהובים' });
   });
+  it('a recognized number is not hijacked by a command in an alternative', () => {
+    expect(classifyTranscript(['שמונה', 'שמונה.', 'הבא'], config)).toEqual({ kind: 'number', value: '8' });
+  });
   it('number from an alternative for a short utterance', () => {
     expect(classifyTranscript(['שבוע', 'שבע'], config)).toEqual({ kind: 'number', value: '7' });
   });

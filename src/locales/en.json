@@ -123,10 +123,11 @@
     "unsupported": "This browser doesn't support voice input. On iPhone, open the site in Safari (not inside another app or a home-screen shortcut).",
     "not-allowed": "Microphone access is blocked. On iPhone: tap \"aA\" in the address bar → Website Settings → Microphone → Allow (or Settings → Apps → Safari → Microphone → Allow). Then reload the page — Safari won't ask again until you do.",
     "service-not-allowed": "Speech recognition is turned off on this device. On iPhone: Settings → General → Keyboard → turn on Enable Dictation, and Settings → Screen Time → Content & Privacy Restrictions → Allowed Apps → allow Siri & Dictation. Then reload the page.",
-    "audio-capture": "No microphone was found, or another app is using it. Close other apps that use the microphone (calls, recorders) and try again.",
+    "audio-capture": "The microphone is unavailable — another app may be using it (a call, voice recorder, or assistant). Close it and tap the mic again.",
     "network": "Can't reach the speech recognition service. Check the internet connection and try again.",
     "language-not-supported": "Voice input in this language isn't available on this device. On iPhone, add the language's keyboard (Settings → General → Keyboard → Keyboards) and enable Dictation.",
     "generic": "Speech recognition error: {{code}}",
-    "stalled": "Voice input keeps stopping. This usually means microphone access was declined: reload the page and tap Allow when asked. If it still fails, check that Dictation is on (Settings → General → Keyboard) and the internet connection."
+    "stalled": "Voice input keeps stopping. This usually means microphone access was declined: reload the page and tap Allow when asked. If it still fails, check that Dictation is on (Settings → General → Keyboard) and the internet connection.",
+    "no-input": "We can't hear you. Make sure no Bluetooth headset or car audio is connected (the mic may be routed there) and that no other app is using the microphone. On iPhone, also check Settings → General → Keyboard → Enable Dictation."
   }
 }
