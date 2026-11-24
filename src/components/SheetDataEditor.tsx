@@ -698,6 +698,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
 
   const TTS_START_TIMEOUT_MS = 1200;
   const ttsWarnedRef = useRef(false);
+  // Read-backs in a row that never started while voice mode was on.
+  const ttsFailuresRef = useRef(0);
+  const isRecordingRef = useRef(isRecording);
+  isRecordingRef.current = isRecording;
 
   const speak = (text: string, onEndCallback?: () => void) => {
     voiceLog(`TTS speak "${text}"`);
@@ -750,7 +754,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     // (a known cause of onend never firing)
     speakingUtterancesRef.current.add(utterance);
 
-    utterance.onstart = () => { started = true; voiceLog('TTS onstart'); };
+    utterance.onstart = () => { started = true; ttsFailuresRef.current = 0; voiceLog('TTS onstart'); };
     utterance.onend = () => { voiceLog('TTS onend'); finish(true); };
 
     utterance.onerror = (event) => {
@@ -770,7 +774,11 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       startTimer = setTimeout(() => {
         if (started || window.speechSynthesis.speaking) return;
         voiceLog('TTS did not start within timeout');
-        if (!ttsWarnedRef.current) {
+        // Speech before the first tap is always blocked on iOS (e.g. the column
+        // name read when the page opens), so only warn about repeated failures
+        // in voice mode.
+        if (isRecordingRef.current) ttsFailuresRef.current += 1;
+        if (ttsFailuresRef.current >= 2 && !ttsWarnedRef.current) {
           ttsWarnedRef.current = true;
           toast({ title: t('voice.ttsUnavailable'), description: t('voice.ttsUnavailableDesc') });
         }
