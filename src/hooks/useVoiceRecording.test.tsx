@@ -174,6 +174,40 @@ describe('useVoiceRecording', () => {
     expect(hook.isListening).toBe(true);
   });
 
+  it('pause stops a recording session gracefully and resolves once the mic is released', async () => {
+    await run(() => { hook.startRecording(); });
+    await advance(700);
+    const live = rec();
+    const stopSpy = vi.spyOn(live, 'stop');
+    const abortSpy = vi.spyOn(live, 'abort');
+    let released = false;
+    await run(() => { hook.pause().then(() => { released = true; }); });
+    expect(stopSpy).toHaveBeenCalled();
+    expect(abortSpy).not.toHaveBeenCalled();
+    expect(released).toBe(false);   // still releasing the mic
+    await advance(20);              // engine fires onend
+    expect(released).toBe(true);
+    // A second pause while nothing runs resolves right away.
+    let second = false;
+    await run(() => { hook.pause().then(() => { second = true; }); });
+    expect(second).toBe(true);
+  });
+
+  it('pause falls back to abort when the engine never ends', async () => {
+    await run(() => { hook.startRecording(); });
+    await advance(700);
+    const live = rec();
+    live.stop = () => { /* never ends */ };
+    const abortSpy = vi.spyOn(live, 'abort');
+    let released = false;
+    await run(() => { hook.pause().then(() => { released = true; }); });
+    await advance(900);
+    expect(released).toBe(false);
+    await advance(200);
+    expect(released).toBe(true);
+    expect(abortSpy).toHaveBeenCalled();
+  });
+
   it('does not start and abort a session between back-to-back read-backs', async () => {
     await run(() => { hook.startRecording(); });
     await speakValue();

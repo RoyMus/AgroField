@@ -727,20 +727,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       if (runCallback && onEndCallback) onEndCallback();
     };
     // Generous upper bound on speaking time, so the mic never reopens mid-speech
-    const safetyTimer = setTimeout(() => { voiceLog('TTS safety timeout'); finish(true); }, 4000 + text.length * 150);
-    // If speech hasn't started shortly after asking, TTS isn't working on this
-    // device: don't keep the mic off waiting for it.
+    const safetyTimer = setTimeout(() => { voiceLog('TTS safety timeout'); finish(true); }, 5000 + text.length * 150);
     let started = false;
-    const startTimer = setTimeout(() => {
-      if (started || window.speechSynthesis.speaking) return;
-      voiceLog('TTS did not start within timeout');
-      console.warn('Speech synthesis did not start; continuing without read-back');
-      if (!ttsWarnedRef.current) {
-        ttsWarnedRef.current = true;
-        toast({ title: t('voice.ttsUnavailable'), description: t('voice.ttsUnavailableDesc') });
-      }
-      finish(true);
-    }, TTS_START_TIMEOUT_MS);
+    let startTimer: ReturnType<typeof setTimeout> | undefined;
     activeSpeechRef.current = finish;
     // Holding a reference stops Chrome from garbage-collecting the utterance
     // (a known cause of onend never firing)
@@ -756,10 +745,24 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       finish(event.error !== 'interrupted' && event.error !== 'canceled');
     };
 
-    // Stop listening while speaking so the read-back isn't captured as input.
-    // Done here rather than in utterance.onstart, which iOS doesn't always fire.
-    pauseRecording();
-    window.speechSynthesis.speak(utterance);
+    // Stop listening before speaking so the read-back isn't captured as
+    // input, and wait until the mic is released: speaking while iOS is still
+    // tearing down the recording leaves the mic deaf afterwards.
+    pauseRecording().then(() => {
+      if (finished) return; // replaced or timed out meanwhile
+      // If speech hasn't started shortly after asking, TTS isn't working on
+      // this device: don't keep the mic off waiting for it.
+      startTimer = setTimeout(() => {
+        if (started || window.speechSynthesis.speaking) return;
+        voiceLog('TTS did not start within timeout');
+        if (!ttsWarnedRef.current) {
+          ttsWarnedRef.current = true;
+          toast({ title: t('voice.ttsUnavailable'), description: t('voice.ttsUnavailableDesc') });
+        }
+        finish(true);
+      }, TTS_START_TIMEOUT_MS);
+      window.speechSynthesis.speak(utterance);
+    });
   };
 
 
