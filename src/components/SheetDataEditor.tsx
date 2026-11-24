@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { voiceLog } from '@/lib/voice/debugLog';
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecording, VoiceResult } from "@/hooks/useVoiceRecording";
 import { parseNumber } from "@/lib/voice/hebrewNumbers";
@@ -684,6 +685,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const ttsWarnedRef = useRef(false);
 
   const speak = (text: string, onEndCallback?: () => void) => {
+    voiceLog(`TTS speak "${text}"`);
     if (!("speechSynthesis" in window)) {
       if (onEndCallback) onEndCallback();
       return;
@@ -725,12 +727,13 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       if (runCallback && onEndCallback) onEndCallback();
     };
     // Generous upper bound on speaking time, so the mic never reopens mid-speech
-    const safetyTimer = setTimeout(() => finish(true), 4000 + text.length * 150);
+    const safetyTimer = setTimeout(() => { voiceLog('TTS safety timeout'); finish(true); }, 4000 + text.length * 150);
     // If speech hasn't started shortly after asking, TTS isn't working on this
     // device: don't keep the mic off waiting for it.
     let started = false;
     const startTimer = setTimeout(() => {
       if (started || window.speechSynthesis.speaking) return;
+      voiceLog('TTS did not start within timeout');
       console.warn('Speech synthesis did not start; continuing without read-back');
       if (!ttsWarnedRef.current) {
         ttsWarnedRef.current = true;
@@ -743,10 +746,11 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     // (a known cause of onend never firing)
     speakingUtterancesRef.current.add(utterance);
 
-    utterance.onstart = () => { started = true; };
-    utterance.onend = () => finish(true);
+    utterance.onstart = () => { started = true; voiceLog('TTS onstart'); };
+    utterance.onend = () => { voiceLog('TTS onend'); finish(true); };
 
     utterance.onerror = (event) => {
+      voiceLog(`TTS error: ${event.error}`);
       // "interrupted"/"canceled" means another utterance replaced this one
       // (e.g. the cell changed); otherwise TTS failed and we still proceed.
       finish(event.error !== 'interrupted' && event.error !== 'canceled');

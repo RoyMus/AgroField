@@ -8,6 +8,12 @@ interface SpeechRecognition {
   onresult: ((event: SpeechRecognitionEvent) => void) | null;
   onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
   onend: (() => void) | null;
+  onaudiostart: (() => void) | null;
+  onsoundstart: (() => void) | null;
+  onspeechstart: (() => void) | null;
+  onspeechend: (() => void) | null;
+  onaudioend: (() => void) | null;
+  onnomatch: (() => void) | null;
   start(): void;
   stop(): void;
   abort(): void;
@@ -20,6 +26,7 @@ interface SpeechRecognitionEvent {
 
 interface SpeechRecognitionErrorEvent {
   error: string;
+  message?: string;
 }
 
 interface SpeechRecognitionResultList {

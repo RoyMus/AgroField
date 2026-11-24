@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { parseNumber, normalizeHebrew } from '@/lib/voice/hebrewNumbers';
+import { voiceLog } from '@/lib/voice/debugLog';
 import { matchCommand, tokenize, CommandName, CommandWords, SHORT_UTTERANCE_WORDS } from '@/lib/voice/commands';
 
 export interface VoiceRecordingConfig {
@@ -157,6 +158,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     wanted: false,      // voice mode is on (user intent)
     paused: false,      // suspended while TTS speaks
     rec: null as SpeechRecognition | null, // the current session's recognizer
+    session: 0,         // number of the current session (for the debug log)
     startedAt: 0,       // when the current session was created
     lastEventAt: 0,     // last event from the current session
     confirmed: false,   // current session fired onstart
@@ -182,6 +184,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     };
 
     const deliver = (alternatives: string[]) => {
+      voiceLog(`deliver: ${JSON.stringify(alternatives.slice(0, 3))}`);
       if (alternatives[0]?.trim()) setLastHeard({ text: alternatives[0].trim(), at: Date.now() });
       const classified = classifyTranscript(alternatives, configRef.current);
       if (classified) resultCallbackRef.current?.(classified);
@@ -198,9 +201,10 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     };
 
     /** Drops the current recognizer without waiting for it; discards unsent speech. */
-    const kill = () => {
+    const kill = (reason: string) => {
       clearSettle();
       const rec = s.rec;
+      if (rec) voiceLog(`#${s.session} kill (${reason})`);
       s.rec = null;
       setInterim('');
       setIsListening(false);
@@ -217,9 +221,10 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     /** Turns voice mode off and shows an error. */
     const fail = (code: string) => {
       console.error('Speech recognition stopped:', code);
+      voiceLog(`FAIL: ${code} (voice mode off)`);
       s.wanted = false;
       clearRestart();
-      kill();
+      kill('fail');
       setIsRecording(false);
       setError(code);
     };
@@ -229,8 +234,9 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       if (!s.rec) return;
       const lived = Date.now() - s.startedAt;
       const gotResult = s.gotResult;
+      voiceLog(`#${s.session} ended after ${lived}ms${gotResult ? '' : ' (heard nothing)'}`);
       flush(); // may pause us (the result triggers a read-back)
-      kill();
+      kill('ended');
       if (!s.wanted || s.paused) return;
 
       s.quickEnds = lived < QUICK_END_MS ? s.quickEnds + 1 : 0;
@@ -257,6 +263,10 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       rec.maxAlternatives = 5;
 
       s.rec = rec;
+      s.session += 1;
+      const id = s.session;
+      const log = (m: string) => voiceLog(`#${id} ${m}`);
+      log(`start() lang=${rec.lang}`);
       s.startedAt = s.lastEventAt = Date.now();
       s.confirmed = false;
       s.gotResult = false;
@@ -265,13 +275,25 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       const current = () => s.rec === rec;
 
       rec.onstart = () => {
+        log(`onstart${current() ? '' : ' (stale)'}`);
         if (!current()) return;
         s.confirmed = true;
         s.lastEventAt = Date.now();
         setIsListening(true);
       };
 
+      rec.onaudiostart = () => log('audiostart');
+      rec.onsoundstart = () => log('soundstart');
+      rec.onspeechstart = () => log('speechstart');
+      rec.onspeechend = () => log('speechend');
+      rec.onaudioend = () => log('audioend');
+      rec.onnomatch = () => log('nomatch');
+
       rec.onresult = (event) => {
+        {
+          const last = event.results[event.results.length - 1];
+          log(`result${last?.isFinal ? ' FINAL' : ''}: "${last?.[0]?.transcript ?? ''}"${current() ? '' : ' (stale)'}`);
+        }
         if (!current()) return;
         s.lastEventAt = Date.now();
         s.gotResult = s.everWorked = true;
@@ -298,6 +320,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       };
 
       rec.onerror = (event) => {
+        log(`error: ${event.error}${event.message ? ` (${event.message})` : ''}${current() ? '' : ' (stale)'}`);
         if (!current()) return;
         const code = event.error;
         if (FATAL_ERRORS.includes(code) || (FATAL_UNTIL_WORKING.includes(code) && !s.everWorked)) return fail(code);
@@ -309,12 +332,16 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
         endSession();
       };
 
-      rec.onend = () => { if (current()) endSession(); };
+      rec.onend = () => {
+        if (!current()) { log('onend (stale)'); return; }
+        endSession();
+      };
 
       try {
         rec.start();
       } catch (e) {
         console.warn('Speech recognition start() failed:', e);
+        log(`start() threw: ${e instanceof Error ? e.message : String(e)}`);
         s.rec = null;
         scheduleRestart(500);
       }
@@ -332,7 +359,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
         || now - s.lastEventAt > SILENCE_TIMEOUT_MS;
       if (dead) {
         console.warn('Speech recognition session unresponsive; replacing it');
-        kill();
+        kill(s.confirmed ? 'watchdog: silent 15s' : 'watchdog: never started');
         startSession();
       }
     };
@@ -343,14 +370,15 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
         setError('unsupported');
         return;
       }
+      voiceLog('== mic tapped: voice mode ON');
       clearRestart();
-      kill(); // a tap always starts fresh
+      kill('tap'); // a tap always starts fresh
       Object.assign(s, { wanted: true, paused: false, everWorked: false, quickEnds: 0, emptySessions: 0, transientErrors: 0 });
       setIsRecording(true);
       // start() must run synchronously in the tap handler (iOS needs the user
       // gesture), so check the microphone permission alongside it.
       navigator.permissions?.query({ name: 'microphone' as PermissionName })
-        .then(status => { if (status.state === 'denied' && s.wanted && !s.everWorked) fail('not-allowed'); })
+        .then(status => { voiceLog(`mic permission: ${status.state}`); if (status.state === 'denied' && s.wanted && !s.everWorked) fail('not-allowed'); })
         .catch(() => { /* Permissions API or 'microphone' not supported */ });
       startSession();
     };
@@ -358,16 +386,18 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     const stop = () => {
       s.wanted = false;
       s.paused = false;
+      voiceLog('== voice mode OFF');
       clearRestart();
-      kill();
+      kill('stop');
       setIsRecording(false);
     };
 
     const pause = () => {
       if (!s.wanted) return;
       s.paused = true;
+      voiceLog('pause (read-back)');
       clearRestart();
-      kill(); // so the read-back isn't captured as input
+      kill('pause'); // so the read-back isn't captured as input
     };
 
     const resume = () => {
@@ -375,13 +405,14 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       s.paused = false;
       if (!s.wanted) return;
       s.quickEnds = 0;
+      voiceLog('resume');
       scheduleRestart(RESUME_DELAY_MS); // cancelled if pause() comes first
     };
 
     /** Language changed: restart the running session with the new language. */
     const restartIfRunning = () => {
       if (!s.rec) return;
-      kill();
+      kill('language changed');
       startSession();
     };
 

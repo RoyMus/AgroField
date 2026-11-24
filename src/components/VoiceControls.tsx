@@ -1,7 +1,9 @@
 
 import { Button } from "@/components/ui/button";
 import { Mic, Square} from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import VoiceDebugPanel from "@/components/VoiceDebugPanel";
+import { isVoiceDebugEnabled, setVoiceDebugEnabled } from "@/lib/voice/debugLog";
 import { useTranslation } from 'react-i18next';
 
 interface VoiceControlsProps {
@@ -15,12 +17,25 @@ interface VoiceControlsProps {
 }
 
 const LAST_HEARD_VISIBLE_MS = 4000;
+const DEBUG_TAPS = 5;
+const DEBUG_TAP_WINDOW_MS = 3000;
 
 const VoiceControls = ({ isRecording, interimTranscript, isDraft, isListening, lastHeard, onStartRecording, onStopRecording }: VoiceControlsProps) => {
   const { t } = useTranslation();
   const phrases: string[] = t('voice.examples', { returnObjects: true }) as string[];
   const [currentExample, setCurrentExample] = useState(phrases[0]);
   const [showLastHeard, setShowLastHeard] = useState(false);
+
+  // Hidden: 5 quick taps on the listening indicator or the hint text toggle the voice log.
+  const tapsRef = useRef<number[]>([]);
+  const handleDebugTap = () => {
+    const now = Date.now();
+    tapsRef.current = [...tapsRef.current.filter(t => now - t < DEBUG_TAP_WINDOW_MS), now];
+    if (tapsRef.current.length >= DEBUG_TAPS) {
+      tapsRef.current = [];
+      setVoiceDebugEnabled(!isVoiceDebugEnabled());
+    }
+  };
 
   // Briefly show what was heard so misrecognitions are visible
   useEffect(() => {
@@ -66,7 +81,7 @@ const VoiceControls = ({ isRecording, interimTranscript, isDraft, isListening, l
         </Button>
 
         {isRecording && (
-          <div className="flex items-center gap-2 text-sm font-medium">
+          <div className="flex items-center gap-2 text-sm font-medium select-none" onClick={handleDebugTap}>
             <span
               className={`inline-block w-2.5 h-2.5 rounded-full ${
                 isListening ? 'bg-green-500 animate-pulse' : 'bg-amber-400'
@@ -102,9 +117,11 @@ const VoiceControls = ({ isRecording, interimTranscript, isDraft, isListening, l
           </div>
         )}
 
-        <div className="text-center text-gray-600 text-sm max-w-xs">
+        <div className="text-center text-gray-600 text-sm max-w-xs select-none" onClick={handleDebugTap}>
           {isRecording ? t('voice.stopVoice') : t('voice.startVoice')}
         </div>
+
+        <VoiceDebugPanel />
       </div>
     </div>
   );
