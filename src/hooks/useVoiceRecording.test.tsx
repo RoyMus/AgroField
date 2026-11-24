@@ -32,6 +32,11 @@ class FakeRecognition {
     this.running = false;
     setTimeout(() => this.onend?.(), 10);
   }
+  sayInterim(text: string) {
+    const alt = [{ transcript: text, confidence: 0.9 }];
+    const result = Object.assign(alt, { isFinal: false });
+    this.onresult?.({ resultIndex: 0, results: [result] });
+  }
   say(text: string) {
     const alt = [{ transcript: text, confidence: 0.9 }];
     const result = Object.assign(alt, { isFinal: true });
@@ -206,6 +211,35 @@ describe('useVoiceRecording', () => {
     await advance(200);
     expect(released).toBe(true);
     expect(abortSpy).toHaveBeenCalled();
+  });
+
+  it('accepts a stable, unconfirmed number early and listens again', async () => {
+    await run(() => { hook.startRecording(); });
+    await advance(700);
+    const first = rec();
+    const stopSpy = vi.spyOn(first, 'stop');
+    await run(() => first.sayInterim('five'));
+    await advance(500);
+    expect(results).toHaveLength(0);
+    await advance(500);
+    expect(results).toEqual([{ kind: 'number', value: '5' }]);
+    expect(stopSpy).toHaveBeenCalled();
+    await advance(300);
+    expect(rec()).not.toBe(first);
+    expect(rec().running).toBe(true);
+  });
+
+  it('waits for confirmation while the number is still changing, and never for text', async () => {
+    await run(() => { hook.startRecording(); });
+    await advance(700);
+    await run(() => rec().sayInterim('five'));
+    await advance(600);
+    await run(() => rec().sayInterim('hello there'));
+    await advance(2000);
+    expect(results).toHaveLength(0);
+    await run(() => { rec().say('hello there'); rec().stop(); });
+    await advance(100);
+    expect(results).toEqual([{ kind: 'text', text: 'hello there' }]);
   });
 
   it('does not start and abort a session between back-to-back read-backs', async () => {

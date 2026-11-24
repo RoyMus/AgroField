@@ -489,9 +489,19 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     setIsDraft(false);
   };
 
+  // Set when the read-back of a recorded value already announced the next
+  // cell, so arriving there doesn't announce it again.
+  const announcedCellRef = useRef<{ row: number; col: number } | null>(null);
+
   useEffect(() => {
     // Moving to another cell drops any pending dictation
     discardDraft();
+    const announced = announcedCellRef.current;
+    announcedCellRef.current = null;
+    if (announced && announced.row === currentRowIndex && announced.col === currentColumnIndex) {
+      setCurrentValue("");
+      return;
+    }
     speak(getValue(headers[currentColumnIndex]), () => {
       setCurrentValue("");
     });
@@ -516,8 +526,13 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     if (!trimmed) return;
     setValueNow(trimmed);
     const { row, col } = positionRef.current;
-    speak(trimmed, () => {
+    // One read-back for the value and the next cell's name ("1.2, חנקה טפטפת")
+    // instead of two: faster, and one fewer pause/resume of the mic.
+    const next = getNextCell(row, col);
+    const nextName = next ? getValue(headers[next.col]) : '';
+    speak(nextName ? `${trimmed}, ${nextName}` : trimmed, () => {
       if (positionRef.current.row === row && positionRef.current.col === col) {
+        if (nextName) announcedCellRef.current = next;
         recordCurrentValue(trimmed);
       }
     });
@@ -780,9 +795,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     [sheetData.hiddenRows]
   );
 
-  const moveToNextCell = () => {
-    let nextRow = currentRowIndex;
-    let nextCol = currentColumnIndex;
+  /** The next editable cell after (row, col), or null at the end of the sheet. */
+  const getNextCell = (row: number, col: number): { row: number; col: number } | null => {
+    let nextRow = row;
+    let nextCol = col;
 
     do {
       if (nextCol < maxColIndex) {
@@ -791,13 +807,20 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
         nextRow++;
         nextCol = minColIndex;
       } else {
-        return;
+        return null;
       }
     } while (
       sheetData.values[nextRow]?.[nextCol]?.original?.startsWith('=') ||
       hiddenColSet.has(nextCol) ||
       hiddenRowSet.has(nextRow)
     );
+    return { row: nextRow, col: nextCol };
+  };
+
+  const moveToNextCell = () => {
+    const next = getNextCell(currentRowIndex, currentColumnIndex);
+    if (!next) return;
+    const { row: nextRow, col: nextCol } = next;
 
     if (currentRowIndex !== nextRow) {
       calcAverages();

@@ -74,6 +74,10 @@ const RESUME_DELAY_MS = 300;
 const RESTART_DELAY_MS = 150;
 // Longest we wait for a recording session to release the mic before a read-back.
 const PAUSE_STOP_TIMEOUT_MS = 1000;
+// iOS confirms an utterance ~2s after the user stops talking. When the
+// not-yet-confirmed text is a number or command and hasn't changed for this
+// long, take it right away.
+const EARLY_ACCEPT_MS = 900;
 // A session that hasn't started after this long, or has been silent this
 // long, is considered dead and replaced.
 const START_TIMEOUT_MS = 4000;
@@ -177,6 +181,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     delivered: 0,       // segments of the current session already delivered
     restartTimer: null as ReturnType<typeof setTimeout> | null,
     settleTimer: null as ReturnType<typeof setTimeout> | null,
+    earlyTimer: null as ReturnType<typeof setTimeout> | null,
   }).current;
 
   const ctl = useMemo(() => {
@@ -187,6 +192,8 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     const clearSettle = () => {
       if (s.settleTimer) clearTimeout(s.settleTimer);
       s.settleTimer = null;
+      if (s.earlyTimer) clearTimeout(s.earlyTimer);
+      s.earlyTimer = null;
     };
 
     const deliver = (alternatives: string[]) => {
@@ -260,9 +267,33 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       scheduleRestart(s.quickEnds ? Math.min(2000, 100 * 2 ** s.quickEnds) : RESTART_DELAY_MS);
     };
 
+    /**
+     * Takes the current, not yet confirmed number/command as final: ends the
+     * session gracefully, delivers, and listens again once the mic is free.
+     */
+    const acceptEarly = () => {
+      const rec = s.rec;
+      if (!rec) return;
+      const id = s.session;
+      voiceLog(`#${id} accepting early (stable ${EARLY_ACCEPT_MS}ms)`);
+      s.rec = null;
+      rec.onstart = rec.onresult = rec.onerror = rec.onend = null;
+      setIsListening(false);
+      const released = release(rec, id);
+      s.segments = s.segments.map(seg => ({ ...seg, isFinal: true }));
+      flush(); // usually triggers a read-back, which pauses and waits for the release
+      if (!s.wanted || s.paused) return;
+      released.then(() => scheduleRestart(RESTART_DELAY_MS));
+    };
+
     const startSession = () => {
       clearRestart();
       if (!s.wanted || s.paused || s.rec) return;
+      // Never start while the previous recognizer is still releasing the mic.
+      if (s.releasing) {
+        s.releasing.then(() => scheduleRestart(0));
+        return;
+      }
       const Ctor = getRecognitionCtor();
       if (!Ctor) return fail('unsupported');
 
@@ -328,7 +359,12 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
         // iOS may split one utterance into several final segments: wait a
         // moment for more before delivering.
         clearSettle();
-        if (pending.length > 0 && pending.every(p => p.isFinal)) s.settleTimer = setTimeout(flush, UTTERANCE_SETTLE_MS);
+        if (pending.length > 0 && pending.every(p => p.isFinal)) {
+          s.settleTimer = setTimeout(flush, UTTERANCE_SETTLE_MS);
+        } else {
+          const kind = classifyTranscript(joinSegments(pending), configRef.current)?.kind;
+          if (kind === 'number' || kind === 'command') s.earlyTimer = setTimeout(acceptEarly, EARLY_ACCEPT_MS);
+        }
       };
 
       rec.onerror = (event) => {
@@ -363,7 +399,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     const watchdog = () => {
       if (!s.wanted || s.paused) return;
       if (!s.rec) {
-        if (!s.restartTimer) startSession();
+        if (!s.restartTimer && !s.releasing) startSession();
         return;
       }
       const now = Date.now();
@@ -434,6 +470,14 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
         return Promise.resolve();
       }
       voiceLog(`pause (read-back): stopping #${id} and waiting for the mic`);
+      return release(rec, id);
+    };
+
+    /**
+     * Stops a recognizer gracefully (its handlers already detached) and
+     * resolves once it has released the mic, or after a timeout (then abort).
+     */
+    const release = (rec: SpeechRecognition, id: number): Promise<void> => {
       const startedAt = Date.now();
       const releasing = new Promise<void>(resolve => {
         let done = false;
