@@ -148,6 +148,28 @@ export const classifyTranscript = (
   return text ? { kind: 'text', text } : null;
 };
 
+/**
+ * Tells Safari (iOS 17+) that this page records and plays audio. Without it,
+ * read-back speech uses audio that the silent switch mutes, and after a muted
+ * read-back the mic was seen receiving only silence until the page reloaded.
+ * "play-and-record" ignores the silent switch and keeps mic and speech in one
+ * audio mode.
+ */
+const setRecordingAudioSession = () => {
+  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+  if (!session) {
+    voiceLog('audioSession API not available');
+    return;
+  }
+  try {
+    const before = session.type;
+    session.type = 'play-and-record';
+    voiceLog(`audioSession.type ${before} -> ${session.type}`);
+  } catch (e) {
+    voiceLog(`audioSession.type failed: ${e instanceof Error ? e.message : String(e)}`);
+  }
+};
+
 const getRecognitionCtor = () =>
   typeof window === 'undefined' ? undefined : window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -419,6 +441,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
         return;
       }
       voiceLog('== mic tapped: voice mode ON');
+      setRecordingAudioSession();
       clearRestart();
       kill('tap'); // a tap always starts fresh
       Object.assign(s, { wanted: true, paused: false, everWorked: false, quickEnds: 0, emptySessions: 0, transientErrors: 0 });
@@ -442,9 +465,9 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
 
     /**
      * Stops listening before a read-back. If a session is recording, it is
-     * stopped gracefully and we wait until it has released the mic: aborting
-     * it and playing speech right away leaves iOS delivering only silence to
-     * every later session (seen in the field: audiostart, never soundstart).
+     * stopped gracefully and we wait until it has released the mic before
+     * speaking. (iOS field logs: when the mic went deaf after a read-back, the
+     * phone was in silent mode; see setRecordingAudioSession().)
      */
     const pause = (): Promise<void> => {
       if (!s.wanted) return Promise.resolve();
