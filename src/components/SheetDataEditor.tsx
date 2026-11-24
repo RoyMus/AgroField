@@ -727,11 +727,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     // (a known cause of onend never firing)
     speakingUtterancesRef.current.add(utterance);
 
-    // Stop listening while speaking so the read-back isn't captured as input
-    utterance.onstart = () => {
-      if (!finished) pauseRecording();
-    };
-
     utterance.onend = () => finish(true);
 
     utterance.onerror = (event) => {
@@ -740,6 +735,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       finish(event.error !== 'interrupted' && event.error !== 'canceled');
     };
 
+    // Stop listening while speaking so the read-back isn't captured as input.
+    // Done here rather than in utterance.onstart, which iOS doesn't always fire.
+    pauseRecording();
     window.speechSynthesis.speak(utterance);
   };
 

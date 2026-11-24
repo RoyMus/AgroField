@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { parseNumber, normalizeHebrew } from '@/lib/voice/hebrewNumbers';
 import { matchCommand, tokenize, CommandName, CommandWords, SHORT_UTTERANCE_WORDS } from '@/lib/voice/commands';
 
@@ -38,28 +38,43 @@ interface UseVoiceRecordingReturn {
   onResult: (callback: (result: VoiceResult) => void) => void;
 }
 
+/*
+ * How it works
+ * ------------
+ * Every listening session uses a brand-new recognizer. Its event handlers
+ * only act while it is still the current one, so we never wait for an engine
+ * to confirm a start or a stop (Android Chrome and iOS Safari sometimes never
+ * do, which used to leave voice input stuck). To stop or pause we simply drop
+ * the current recognizer; to start or resume we create a new one.
+ *
+ * A session ends after one utterance (or silence, or an error); if voice mode
+ * is still on, the next session starts right away. A once-a-second check
+ * restarts anything that went quiet.
+ */
+
 // Errors after which retrying is pointless.
 const FATAL_ERRORS = ['service-not-allowed', 'language-not-supported'];
-// Fatal only if voice input never worked since the user tapped the mic.
-// Once it has worked, Android also reports these briefly while the mic is
-// still busy (e.g. right after the read-back), so retry instead.
+// Fatal only if voice input never worked since the user tapped the mic; once
+// it has worked, Android also reports these briefly while the mic is busy.
 const FATAL_UNTIL_WORKING = ['not-allowed', 'audio-capture'];
+// Normal session endings, not worth reporting.
+const SILENT_ERRORS = ['no-speech', 'aborted'];
 // Results arriving this soon after TTS ends are likely the TTS echo.
 const ECHO_GUARD_MS = 350;
-// Some engines (Android Chrome, iOS Safari) occasionally never confirm a
-// stop (no onend after abort) or a start (no onstart). Treat the engine as
-// stopped after these delays instead of waiting forever.
-const ABORT_CONFIRM_MS = 1500;
-const START_CONFIRM_MS = 4000;
-// Transient errors in a row before we tell the user something is wrong.
-const MAX_TRANSIENT_ERRORS = 3;
-// Sessions in a row that end almost immediately before we give up. iOS does
-// this without any error event when the microphone was denied earlier on the
-// page, which used to leave the UI looking like it was listening.
+// A session that hasn't started after this long, or has been silent this
+// long, is considered dead and replaced.
+const START_TIMEOUT_MS = 4000;
+const SILENCE_TIMEOUT_MS = 15000;
+// A session shorter than this "ended instantly".
+const QUICK_END_MS = 500;
+// Instant ends in a row, before anything was recognized, before giving up
+// (iOS does this, without an error, when the mic was denied on the page).
 const MAX_QUICK_ENDS = 5;
-// Sessions in a row that end without hearing anything, before the first
-// result, after which we tell the user we can't hear them.
+// Sessions in a row that heard nothing, before the first result, before
+// telling the user we can't hear them.
 const MAX_EMPTY_SESSIONS = 2;
+// Unexpected errors in a row before telling the user.
+const MAX_TRANSIENT_ERRORS = 3;
 // iOS splits one utterance into several final segments ("אחת." + "שלוש").
 // Wait this long after the last final segment before treating the utterance
 // as complete, so the segments are parsed together.
@@ -116,352 +131,287 @@ export const classifyTranscript = (
   return text ? { kind: 'text', text } : null;
 };
 
+const getRecognitionCtor = () =>
+  typeof window === 'undefined' ? undefined : window.SpeechRecognition || window.webkitSpeechRecognition;
+
 export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordingReturn => {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [interim, setInterim] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [lastHeard, setLastHeard] = useState<{ text: string; at: number } | null>(null);
-  // Segments of the current session, and how many were already delivered.
-  const segmentsRef = useRef<Segment[]>([]);
-  const deliveredCountRef = useRef(0);
-  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const resultCallbackRef = useRef<((result: VoiceResult) => void) | null>(null);
-  const configRef = useRef(config);
 
-  // User intent: voice mode is on.
-  const wantsRecordingRef = useRef(false);
-  // Listening is suspended (TTS speaking).
-  const pausedRef = useRef(false);
-  // The engine is currently running (between onstart and onend).
-  const runningRef = useRef(false);
-  const ignoreUntilRef = useRef(0);
-  const lastStartRef = useRef(0);
-  // Last time the engine reported anything (start/result/end).
-  const lastEventRef = useRef(0);
-  const quickEndsRef = useRef(0);
-  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const transientErrorsRef = useRef(0);
-  // When we last asked the engine to abort, until it confirms with onend (0 = none pending).
-  const abortRequestedAtRef = useRef(0);
-  // Whether the engine confirmed the last start() with onstart.
-  const startConfirmedRef = useRef(false);
-  // Since the user last tapped the mic: has anything been recognized?
-  const hadResultRef = useRef(false);
-  // Did the current session produce any result? / Sessions in a row without one.
-  const sessionHadResultRef = useRef(false);
-  const emptySessionsRef = useRef(0);
+  const configRef = useRef(config);
+  configRef.current = config;
+  const resultCallbackRef = useRef<((result: VoiceResult) => void) | null>(null);
+
+  // All mutable state lives here, so the controller below is created once.
+  const s = useRef({
+    wanted: false,      // voice mode is on (user intent)
+    paused: false,      // suspended while TTS speaks
+    rec: null as SpeechRecognition | null, // the current session's recognizer
+    startedAt: 0,       // when the current session was created
+    lastEventAt: 0,     // last event from the current session
+    confirmed: false,   // current session fired onstart
+    gotResult: false,   // current session recognized something
+    everWorked: false,  // something was recognized since the user tapped the mic
+    quickEnds: 0,
+    emptySessions: 0,
+    transientErrors: 0,
+    segments: [] as Segment[],
+    delivered: 0,       // segments of the current session already delivered
+    ignoreUntil: 0,
+    restartTimer: null as ReturnType<typeof setTimeout> | null,
+    settleTimer: null as ReturnType<typeof setTimeout> | null,
+  }).current;
+
+  const ctl = useMemo(() => {
+    const clearRestart = () => {
+      if (s.restartTimer) clearTimeout(s.restartTimer);
+      s.restartTimer = null;
+    };
+    const clearSettle = () => {
+      if (s.settleTimer) clearTimeout(s.settleTimer);
+      s.settleTimer = null;
+    };
+
+    const deliver = (alternatives: string[]) => {
+      if (alternatives[0]?.trim()) setLastHeard({ text: alternatives[0].trim(), at: Date.now() });
+      const classified = classifyTranscript(alternatives, configRef.current);
+      if (classified) resultCallbackRef.current?.(classified);
+    };
+
+    /** Delivers everything heard since the last delivery as one utterance. */
+    const flush = () => {
+      clearSettle();
+      const pending = s.segments.slice(s.delivered);
+      s.delivered = s.segments.length;
+      setInterim('');
+      const alternatives = joinSegments(pending);
+      if (alternatives.length) deliver(alternatives);
+    };
+
+    /** Drops the current recognizer without waiting for it; discards unsent speech. */
+    const kill = () => {
+      clearSettle();
+      const rec = s.rec;
+      s.rec = null;
+      setInterim('');
+      setIsListening(false);
+      if (!rec) return;
+      rec.onstart = rec.onresult = rec.onerror = rec.onend = null;
+      try { rec.abort(); } catch { /* already stopped */ }
+    };
+
+    const scheduleRestart = (delay: number) => {
+      clearRestart();
+      s.restartTimer = setTimeout(() => { s.restartTimer = null; startSession(); }, delay);
+    };
+
+    /** Turns voice mode off and shows an error. */
+    const fail = (code: string) => {
+      console.error('Speech recognition stopped:', code);
+      s.wanted = false;
+      clearRestart();
+      kill();
+      setIsRecording(false);
+      setError(code);
+    };
+
+    /** The current session is over: deliver what's left and start the next one. */
+    const endSession = () => {
+      if (!s.rec) return;
+      const lived = Date.now() - s.startedAt;
+      const gotResult = s.gotResult;
+      flush(); // may pause us (the result triggers a read-back)
+      kill();
+      if (!s.wanted || s.paused) return;
+
+      s.quickEnds = lived < QUICK_END_MS ? s.quickEnds + 1 : 0;
+      if (!s.everWorked) {
+        if (s.quickEnds >= MAX_QUICK_ENDS) return fail('stalled');
+        if (!gotResult && lived >= QUICK_END_MS && ++s.emptySessions === MAX_EMPTY_SESSIONS) setError('no-input');
+      }
+      // Back off if the engine keeps ending instantly.
+      scheduleRestart(s.quickEnds ? Math.min(2000, 100 * 2 ** s.quickEnds) : 0);
+    };
+
+    const startSession = () => {
+      clearRestart();
+      if (!s.wanted || s.paused || s.rec) return;
+      const Ctor = getRecognitionCtor();
+      if (!Ctor) return fail('unsupported');
+
+      const rec = new Ctor();
+      // One utterance per session: continuous=true is unreliable on iOS
+      // Safari and duplicates results on Android Chrome.
+      rec.continuous = false;
+      rec.interimResults = true;
+      rec.lang = configRef.current.speechLang;
+      rec.maxAlternatives = 5;
+
+      s.rec = rec;
+      s.startedAt = s.lastEventAt = Date.now();
+      s.confirmed = false;
+      s.gotResult = false;
+      s.segments = [];
+      s.delivered = 0;
+      const current = () => s.rec === rec;
+
+      rec.onstart = () => {
+        if (!current()) return;
+        s.confirmed = true;
+        s.lastEventAt = Date.now();
+        setIsListening(true);
+      };
+
+      rec.onresult = (event) => {
+        if (!current()) return;
+        s.lastEventAt = Date.now();
+        if (Date.now() < s.ignoreUntil) return;
+        s.gotResult = s.everWorked = true;
+        s.emptySessions = 0;
+        s.transientErrors = 0;
+
+        // Snapshot every segment (resultIndex is unreliable on iOS).
+        const segments: Segment[] = [];
+        for (let i = 0; i < event.results.length; i++) {
+          const result = event.results[i];
+          const transcripts: string[] = [];
+          for (let j = 0; j < result.length; j++) transcripts.push(result[j].transcript);
+          segments.push({ transcripts, isFinal: result.isFinal });
+        }
+        s.segments = segments;
+        if (s.delivered > segments.length) s.delivered = 0;
+
+        const pending = segments.slice(s.delivered);
+        setInterim(pending.map(p => p.transcripts[0]?.trim() ?? '').join(' ').trim());
+        // iOS may split one utterance into several final segments: wait a
+        // moment for more before delivering.
+        clearSettle();
+        if (pending.length > 0 && pending.every(p => p.isFinal)) s.settleTimer = setTimeout(flush, UTTERANCE_SETTLE_MS);
+      };
+
+      rec.onerror = (event) => {
+        if (!current()) return;
+        const code = event.error;
+        if (FATAL_ERRORS.includes(code) || (FATAL_UNTIL_WORKING.includes(code) && !s.everWorked)) return fail(code);
+        if (!SILENT_ERRORS.includes(code)) {
+          console.warn('Speech recognition error:', code);
+          if (++s.transientErrors === MAX_TRANSIENT_ERRORS) setError(code);
+        }
+        // Don't rely on onend following an error.
+        endSession();
+      };
+
+      rec.onend = () => { if (current()) endSession(); };
+
+      try {
+        rec.start();
+      } catch (e) {
+        console.warn('Speech recognition start() failed:', e);
+        s.rec = null;
+        scheduleRestart(500);
+      }
+    };
+
+    /** Replaces a session that never started or went silent; restarts if none is running. */
+    const watchdog = () => {
+      if (!s.wanted || s.paused) return;
+      if (!s.rec) {
+        if (!s.restartTimer) startSession();
+        return;
+      }
+      const now = Date.now();
+      const dead = (!s.confirmed && now - s.startedAt > START_TIMEOUT_MS)
+        || now - s.lastEventAt > SILENCE_TIMEOUT_MS;
+      if (dead) {
+        console.warn('Speech recognition session unresponsive; replacing it');
+        kill();
+        startSession();
+      }
+    };
+
+    const start = () => {
+      setError(null);
+      if (!getRecognitionCtor()) {
+        setError('unsupported');
+        return;
+      }
+      clearRestart();
+      kill(); // a tap always starts fresh
+      Object.assign(s, { wanted: true, paused: false, everWorked: false, quickEnds: 0, emptySessions: 0, transientErrors: 0 });
+      setIsRecording(true);
+      // start() must run synchronously in the tap handler (iOS needs the user
+      // gesture), so check the microphone permission alongside it.
+      navigator.permissions?.query({ name: 'microphone' as PermissionName })
+        .then(status => { if (status.state === 'denied' && s.wanted && !s.everWorked) fail('not-allowed'); })
+        .catch(() => { /* Permissions API or 'microphone' not supported */ });
+      startSession();
+    };
+
+    const stop = () => {
+      s.wanted = false;
+      s.paused = false;
+      clearRestart();
+      kill();
+      setIsRecording(false);
+    };
+
+    const pause = () => {
+      if (!s.wanted) return;
+      s.paused = true;
+      clearRestart();
+      kill(); // so the read-back isn't captured as input
+    };
+
+    const resume = () => {
+      if (!s.paused) return;
+      s.paused = false;
+      if (!s.wanted) return;
+      s.ignoreUntil = Date.now() + ECHO_GUARD_MS;
+      s.quickEnds = 0;
+      startSession();
+    };
+
+    /** Language changed: restart the running session with the new language. */
+    const restartIfRunning = () => {
+      if (!s.rec) return;
+      kill();
+      startSession();
+    };
+
+    return { start, stop, pause, resume, watchdog, restartIfRunning };
+  }, [s]);
 
   useEffect(() => {
-    configRef.current = config;
-  });
+    const timer = setInterval(ctl.watchdog, 1000);
+    return () => {
+      clearInterval(timer);
+      ctl.stop();
+    };
+  }, [ctl]);
+
+  const langRef = useRef(config.speechLang);
+  useEffect(() => {
+    if (langRef.current === config.speechLang) return;
+    langRef.current = config.speechLang;
+    ctl.restartIfRunning();
+  }, [config.speechLang, ctl]);
 
   const onResult = useCallback((callback: (result: VoiceResult) => void) => {
     resultCallbackRef.current = callback;
   }, []);
 
-  const clearRestartTimer = () => {
-    if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
-    restartTimerRef.current = null;
-  };
-
-  const clearSettleTimer = () => {
-    if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
-    settleTimerRef.current = null;
-  };
-
-  const resetSegments = () => {
-    clearSettleTimer();
-    segmentsRef.current = [];
-    deliveredCountRef.current = 0;
-  };
-
-  /** Delivers everything heard since the last delivery as one utterance. */
-  const flushUtterance = () => {
-    clearSettleTimer();
-    const pending = segmentsRef.current.slice(deliveredCountRef.current);
-    deliveredCountRef.current = segmentsRef.current.length;
-    setInterim('');
-    const alternatives = joinSegments(pending);
-    if (alternatives.length) deliver(alternatives);
-  };
-
-  const deliver = (alternatives: string[]) => {
-    console.log('Final alternatives:', alternatives);
-    if (alternatives[0]?.trim()) setLastHeard({ text: alternatives[0].trim(), at: Date.now() });
-    const classified = classifyTranscript(alternatives, configRef.current);
-    if (classified) {
-      console.log('Voice result:', classified);
-      resultCallbackRef.current?.(classified);
-    }
-  };
-
-  const safeStart = useCallback(() => {
-    const recognition = recognitionRef.current;
-    if (!recognition || runningRef.current) return;
-    if (!wantsRecordingRef.current || pausedRef.current) return;
-    try {
-      lastStartRef.current = Date.now();
-      lastEventRef.current = Date.now();
-      // Mark as running right away so the watchdog doesn't double-start
-      // before onstart arrives; onend/onerror clear it.
-      runningRef.current = true;
-      startConfirmedRef.current = false;
-      abortRequestedAtRef.current = 0;
-      recognition.start();
-    } catch {
-      // start() throws if already started; onend (or the watchdog) will retry.
-      runningRef.current = false;
-    }
-  }, []);
-
-  useEffect(() => {
-    const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognitionCtor) {
-      setError('unsupported');
-      return;
-    }
-
-    const recognition = new SpeechRecognitionCtor();
-    // One utterance per session: the engine finalizes quickly after the user
-    // stops talking, and onend restarts it. continuous=true is unreliable on
-    // iOS Safari and duplicates results on Android Chrome.
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.lang = config.speechLang;
-    recognition.maxAlternatives = 5;
-
-    recognition.onstart = () => {
-      lastEventRef.current = Date.now();
-      runningRef.current = true;
-      startConfirmedRef.current = true;
-      sessionHadResultRef.current = false;
-      resetSegments();
-      setIsRecording(true);
-      if (!pausedRef.current) setIsListening(true);
-    };
-
-    recognition.onresult = (event) => {
-      lastEventRef.current = Date.now();
-      transientErrorsRef.current = 0;
-      hadResultRef.current = true;
-      sessionHadResultRef.current = true;
-      emptySessionsRef.current = 0;
-      if (pausedRef.current || Date.now() < ignoreUntilRef.current) return;
-
-      // Snapshot every segment of the session. resultIndex is unreliable on
-      // iOS, so always read the full list.
-      const segments: Segment[] = [];
-      for (let i = 0; i < event.results.length; i++) {
-        const result = event.results[i];
-        const transcripts: string[] = [];
-        for (let j = 0; j < result.length; j++) transcripts.push(result[j].transcript);
-        segments.push({ transcripts, isFinal: result.isFinal });
-      }
-      segmentsRef.current = segments;
-      if (deliveredCountRef.current > segments.length) deliveredCountRef.current = 0;
-
-      const pending = segments.slice(deliveredCountRef.current);
-      setInterim(pending.map(s => s.transcripts[0]?.trim() ?? '').join(' ').trim());
-
-      clearSettleTimer();
-      if (pending.length > 0 && pending.every(s => s.isFinal)) {
-        settleTimerRef.current = setTimeout(flushUtterance, UTTERANCE_SETTLE_MS);
-      }
-    };
-
-    recognition.onerror = (event) => {
-      const fatal = FATAL_ERRORS.includes(event.error)
-        || (FATAL_UNTIL_WORKING.includes(event.error) && !hadResultRef.current);
-      if (fatal) {
-        console.error('Speech recognition error:', event.error);
-        wantsRecordingRef.current = false;
-        clearRestartTimer();
-        setError(event.error);
-        setIsRecording(false);
-        setIsListening(false);
-      } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
-        console.warn('Speech recognition transient error:', event.error);
-        // e.g. 'network' when the device can't reach the speech service:
-        // keep retrying, but let the user know after a few failures.
-        transientErrorsRef.current += 1;
-        if (transientErrorsRef.current === MAX_TRANSIENT_ERRORS) setError(event.error);
-      }
-    };
-
-    recognition.onend = () => {
-      lastEventRef.current = Date.now();
-      runningRef.current = false;
-      abortRequestedAtRef.current = 0;
-      setIsListening(false);
-
-      // Session over: deliver whatever is left, including segments that were
-      // never marked final (Android Chrome sometimes skips the final result).
-      if (wantsRecordingRef.current && !pausedRef.current) flushUtterance();
-      else resetSegments();
-      setInterim('');
-
-      if (!wantsRecordingRef.current) {
-        setIsRecording(false);
-        return;
-      }
-      if (pausedRef.current) return; // resume() will restart
-
-      // Back off if the engine keeps ending immediately (e.g. network trouble).
-      const lived = Date.now() - lastStartRef.current;
-      quickEndsRef.current = lived < 500 ? quickEndsRef.current + 1 : 0;
-
-      // Nothing heard at all since the mic was tapped: tell the user once,
-      // but keep listening (they may just not have spoken yet).
-      if (!sessionHadResultRef.current && lived >= 500 && !hadResultRef.current) {
-        emptySessionsRef.current += 1;
-        if (emptySessionsRef.current === MAX_EMPTY_SESSIONS) setError('no-input');
-      }
-
-      // Give up only if it never worked: that's a blocked mic (iOS ends every
-      // session instantly without an error). Once it has worked, an instant
-      // end is a transient hiccup, so keep retrying with backoff.
-      if (quickEndsRef.current >= MAX_QUICK_ENDS && !hadResultRef.current) {
-        console.error('Speech recognition keeps ending immediately; giving up');
-        wantsRecordingRef.current = false;
-        quickEndsRef.current = 0;
-        setIsRecording(false);
-        setError('stalled');
-        return;
-      }
-      const delay = quickEndsRef.current === 0 ? 0 : Math.min(2000, 100 * 2 ** quickEndsRef.current);
-      clearRestartTimer();
-      restartTimerRef.current = setTimeout(() => {
-        restartTimerRef.current = null;
-        safeStart();
-      }, delay);
-    };
-
-    recognitionRef.current = recognition;
-
-    // Watchdog: if voice mode is on but the engine silently stopped (a missed
-    // onend, or a start() that threw), start it again.
-    const watchdog = setInterval(() => {
-      const now = Date.now();
-      // Asked to stop but never confirmed: consider it stopped, so voice
-      // input doesn't stay dead after a read-back or a stop/start.
-      if (runningRef.current && abortRequestedAtRef.current && now - abortRequestedAtRef.current > ABORT_CONFIRM_MS) {
-        console.warn('Speech recognition never confirmed abort; treating as stopped');
-        runningRef.current = false;
-        abortRequestedAtRef.current = 0;
-      }
-      // Asked to start but it never did: reset and try again.
-      if (runningRef.current && !startConfirmedRef.current && !abortRequestedAtRef.current
-          && now - lastStartRef.current > START_CONFIRM_MS) {
-        console.warn('Speech recognition never started; retrying');
-        runningRef.current = false;
-        try { recognition.abort(); } catch { /* ignore */ }
-      }
-      // A session that has said nothing for 15s is hung (normal ones end
-      // within ~10s of silence): reset it.
-      if (runningRef.current && !pausedRef.current && Date.now() - lastEventRef.current > 15000) {
-        console.warn('Speech recognition appears stuck; restarting');
-        runningRef.current = false;
-        lastEventRef.current = Date.now();
-        try { recognition.abort(); } catch { /* ignore */ }
-        return;
-      }
-      if (wantsRecordingRef.current && !pausedRef.current && !runningRef.current && !restartTimerRef.current) {
-        safeStart();
-      }
-    }, 1000);
-
-    return () => {
-      clearInterval(watchdog);
-      clearRestartTimer();
-      clearSettleTimer();
-      recognition.onend = null;
-      recognition.abort();
-      runningRef.current = false;
-      recognitionRef.current = null;
-      // A language change creates a new engine; keep voice mode going if it was on.
-      if (wantsRecordingRef.current) setTimeout(safeStart, 0);
-    };
-  }, [config.speechLang, safeStart]);
-
-  const startRecording = useCallback(async () => {
-    setError(null);
-    if (!recognitionRef.current) {
-      setError('unsupported');
-      return;
-    }
-    wantsRecordingRef.current = true;
-    pausedRef.current = false;
-    quickEndsRef.current = 0;
-    transientErrorsRef.current = 0;
-    hadResultRef.current = false;
-    emptySessionsRef.current = 0;
-    clearRestartTimer();
-    // After stop(), some browsers (Android Chrome) never confirm the old
-    // session ended, which used to block restarting. The user just tapped,
-    // so start fresh; if the old session is in fact still closing, start()
-    // throws and its onend (or the watchdog) restarts us.
-    if (runningRef.current) {
-      runningRef.current = false;
-      abortRequestedAtRef.current = 0;
-      try { recognitionRef.current.abort(); } catch { /* ignore */ }
-    }
-    // start() must run synchronously in the tap handler (iOS needs the user
-    // gesture), so check the microphone permission alongside it, not before.
-    navigator.permissions?.query({ name: 'microphone' as PermissionName })
-      .then(status => {
-        if (status.state !== 'denied' || !wantsRecordingRef.current) return;
-        wantsRecordingRef.current = false;
-        clearRestartTimer();
-        recognitionRef.current?.abort();
-        setIsRecording(false);
-        setIsListening(false);
-        setError('not-allowed');
-      })
-      .catch(() => { /* Permissions API or 'microphone' name not supported */ });
-    safeStart();
-  }, [safeStart]);
-
-  const stopRecording = useCallback(async () => {
-    wantsRecordingRef.current = false;
-    pausedRef.current = false;
-    clearRestartTimer();
-    resetSegments();
-    setInterim('');
-    setIsRecording(false);
-    setIsListening(false);
-    if (runningRef.current) abortRequestedAtRef.current = Date.now();
-    recognitionRef.current?.abort();
-  }, []);
-
-  const pause = useCallback(() => {
-    if (!wantsRecordingRef.current) return;
-    pausedRef.current = true;
-    clearRestartTimer();
-    resetSegments();
-    setInterim('');
-    setIsListening(false);
-    // abort() discards any pending result so TTS isn't captured as input.
-    if (runningRef.current) abortRequestedAtRef.current = Date.now();
-    recognitionRef.current?.abort();
-  }, []);
-
-  const resume = useCallback(() => {
-    if (!pausedRef.current) return;
-    pausedRef.current = false;
-    if (!wantsRecordingRef.current) return;
-    ignoreUntilRef.current = Date.now() + ECHO_GUARD_MS;
-    quickEndsRef.current = 0;
-    safeStart(); // if still shutting down, onend restarts it
-  }, [safeStart]);
+  const startRecording = useCallback(async () => ctl.start(), [ctl]);
+  const stopRecording = useCallback(async () => ctl.stop(), [ctl]);
 
   return {
     isRecording,
     startRecording,
     stopRecording,
-    pause,
-    resume,
+    pause: ctl.pause,
+    resume: ctl.resume,
     error,
     interim,
     isListening,
