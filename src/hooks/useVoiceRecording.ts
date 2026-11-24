@@ -59,8 +59,15 @@ const FATAL_ERRORS = ['service-not-allowed', 'language-not-supported'];
 const FATAL_UNTIL_WORKING = ['not-allowed', 'audio-capture'];
 // Normal session endings, not worth reporting.
 const SILENT_ERRORS = ['no-speech', 'aborted'];
-// Results arriving this soon after TTS ends are likely the TTS echo.
-const ECHO_GUARD_MS = 350;
+// After a read-back, wait this long before listening again. Read-backs often
+// come in pairs (the value, then the next column's name); without the wait a
+// session would start and be aborted a moment later, and starting/aborting
+// a recognizer before it is ready can leave Safari unable to listen. It also
+// lets the audio switch from playback back to the mic, and skips the echo.
+const RESUME_DELAY_MS = 300;
+// Gap between one session ending and the next starting, so the engine can
+// release the mic first.
+const RESTART_DELAY_MS = 150;
 // A session that hasn't started after this long, or has been silent this
 // long, is considered dead and replaced.
 const START_TIMEOUT_MS = 4000;
@@ -160,7 +167,6 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     transientErrors: 0,
     segments: [] as Segment[],
     delivered: 0,       // segments of the current session already delivered
-    ignoreUntil: 0,
     restartTimer: null as ReturnType<typeof setTimeout> | null,
     settleTimer: null as ReturnType<typeof setTimeout> | null,
   }).current;
@@ -233,7 +239,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
         if (!gotResult && lived >= QUICK_END_MS && ++s.emptySessions === MAX_EMPTY_SESSIONS) setError('no-input');
       }
       // Back off if the engine keeps ending instantly.
-      scheduleRestart(s.quickEnds ? Math.min(2000, 100 * 2 ** s.quickEnds) : 0);
+      scheduleRestart(s.quickEnds ? Math.min(2000, 100 * 2 ** s.quickEnds) : RESTART_DELAY_MS);
     };
 
     const startSession = () => {
@@ -268,7 +274,6 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       rec.onresult = (event) => {
         if (!current()) return;
         s.lastEventAt = Date.now();
-        if (Date.now() < s.ignoreUntil) return;
         s.gotResult = s.everWorked = true;
         s.emptySessions = 0;
         s.transientErrors = 0;
@@ -369,9 +374,8 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       if (!s.paused) return;
       s.paused = false;
       if (!s.wanted) return;
-      s.ignoreUntil = Date.now() + ECHO_GUARD_MS;
       s.quickEnds = 0;
-      startSession();
+      scheduleRestart(RESUME_DELAY_MS); // cancelled if pause() comes first
     };
 
     /** Language changed: restart the running session with the new language. */

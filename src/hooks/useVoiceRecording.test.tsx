@@ -146,7 +146,7 @@ describe('useVoiceRecording', () => {
     await run(() => { hook.startRecording(); });
     await speakValue();
     await run(() => rec().error('network'));
-    await advance(100);
+    await advance(300);
     expect(rec().running).toBe(true);
     expect(hook.isListening).toBe(true);
   });
@@ -169,9 +169,25 @@ describe('useVoiceRecording', () => {
     expect(hook.isListening).toBe(false);
     await advance(1000);
     await run(() => hook.resume());
-    await advance(50);
+    await advance(400);
     expect(rec().running).toBe(true);
     expect(hook.isListening).toBe(true);
+  });
+
+  it('does not start and abort a session between back-to-back read-backs', async () => {
+    await run(() => { hook.startRecording(); });
+    await speakValue();
+    await run(() => hook.pause());   // read the value back
+    await run(() => hook.resume());
+    await advance(20);
+    await run(() => hook.pause());   // then the next column's name
+    const count = FakeRecognition.instances.length;
+    await advance(1000);
+    expect(FakeRecognition.instances.length).toBe(count);
+    await run(() => hook.resume());
+    await advance(400);
+    expect(FakeRecognition.instances.length).toBe(count + 1);
+    expect(rec().running).toBe(true);
   });
 
   it('ignores late events from a dropped session', async () => {
@@ -181,7 +197,7 @@ describe('useVoiceRecording', () => {
     const { onresult, onend } = old;
     await run(() => hook.pause());
     await run(() => hook.resume());
-    await advance(50);
+    await advance(400);
     await run(() => { onresult?.call(old, { resultIndex: 0, results: [Object.assign([{ transcript: 'five', confidence: 1 }], { isFinal: true })] }); onend?.call(old); });
     await advance(1000);
     expect(results).toHaveLength(0);
@@ -215,7 +231,7 @@ describe('useVoiceRecording', () => {
     for (let i = 0; i < 2; i++) {
       await advance(5000);
       await run(() => rec().error('no-speech', true));
-      await advance(50);
+      await advance(200);
     }
     expect(hook.error).toBe('no-input');
     expect(hook.isRecording).toBe(true);
