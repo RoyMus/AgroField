@@ -680,6 +680,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     loadVoices();
   }, []);
 
+  const TTS_START_TIMEOUT_MS = 1200;
+  const ttsWarnedRef = useRef(false);
+
   const speak = (text: string, onEndCallback?: () => void) => {
     if (!("speechSynthesis" in window)) {
       if (onEndCallback) onEndCallback();
@@ -715,6 +718,7 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       if (finished) return;
       finished = true;
       clearTimeout(safetyTimer);
+      clearTimeout(startTimer);
       if (activeSpeechRef.current === finish) activeSpeechRef.current = null;
       speakingUtterancesRef.current.delete(utterance);
       resumeRecording();
@@ -722,11 +726,24 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     };
     // Generous upper bound on speaking time, so the mic never reopens mid-speech
     const safetyTimer = setTimeout(() => finish(true), 4000 + text.length * 150);
+    // If speech hasn't started shortly after asking, TTS isn't working on this
+    // device: don't keep the mic off waiting for it.
+    let started = false;
+    const startTimer = setTimeout(() => {
+      if (started || window.speechSynthesis.speaking) return;
+      console.warn('Speech synthesis did not start; continuing without read-back');
+      if (!ttsWarnedRef.current) {
+        ttsWarnedRef.current = true;
+        toast({ title: t('voice.ttsUnavailable'), description: t('voice.ttsUnavailableDesc') });
+      }
+      finish(true);
+    }, TTS_START_TIMEOUT_MS);
     activeSpeechRef.current = finish;
     // Holding a reference stops Chrome from garbage-collecting the utterance
     // (a known cause of onend never firing)
     speakingUtterancesRef.current.add(utterance);
 
+    utterance.onstart = () => { started = true; };
     utterance.onend = () => finish(true);
 
     utterance.onerror = (event) => {
