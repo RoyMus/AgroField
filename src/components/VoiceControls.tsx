@@ -1,7 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Mic, Square, Volume2, VolumeX } from "lucide-react";
-import { useReadBack, setReadBackEnabled } from "@/lib/voice/readBack";
+import { Mic, Square } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import VoiceDebugPanel from "@/components/VoiceDebugPanel";
 import { isVoiceDebugEnabled, setVoiceDebugEnabled } from "@/lib/voice/debugLog";
@@ -26,7 +25,6 @@ const VoiceControls = ({ isRecording, interimTranscript, isDraft, isListening, l
   const phrases: string[] = t('voice.examples', { returnObjects: true }) as string[];
   const [currentExample, setCurrentExample] = useState(phrases[0]);
   const [showLastHeard, setShowLastHeard] = useState(false);
-  const readBack = useReadBack();
 
   // Hidden: 5 quick taps on the listening indicator, the hint text or the build
   // id toggle the voice log. Counted on pointerdown with touch-action:
@@ -88,17 +86,6 @@ const VoiceControls = ({ isRecording, interimTranscript, isDraft, isListening, l
             <Mic className="w-8 h-8 text-white" />
           )}
         </Button>
-
-        <button
-          type="button"
-          onClick={() => setReadBackEnabled(!readBack)}
-          className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${
-            readBack ? 'border-gray-300 text-gray-600' : 'border-amber-300 bg-amber-50 text-amber-700'
-          }`}
-        >
-          {readBack ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-          {readBack ? t('voice.readBackOn') : t('voice.readBackOff')}
-        </button>
 
         {isRecording && (
           <div className="flex items-center gap-2 text-sm font-medium select-none touch-manipulation" onPointerDown={handleDebugTap}>

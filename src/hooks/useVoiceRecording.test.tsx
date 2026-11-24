@@ -102,14 +102,48 @@ const speakValue = async (text = 'five') => {
 };
 
 describe('useVoiceRecording', () => {
-  it('keeps listening between utterances and delivers each one', async () => {
+  it('loops one session per utterance and delivers each one', async () => {
     await run(() => { hook.startRecording(); });
     await advance(20);
     expect(hook.isListening).toBe(true);
     for (let i = 0; i < 3; i++) await speakValue();
-    expect(results).toHaveLength(3);
+    expect(results).toEqual([
+      { kind: 'number', value: '5' }, { kind: 'number', value: '5' }, { kind: 'number', value: '5' },
+    ]);
     expect(hook.isRecording).toBe(true);
     expect(rec().running).toBe(true);
+  });
+
+  it('never stops or aborts a working session itself', async () => {
+    const abortSpy = vi.spyOn(FakeRecognition.prototype, 'abort');
+    const stopSpy = vi.spyOn(FakeRecognition.prototype, 'stop');
+    await run(() => { hook.startRecording(); });
+    await advance(700);
+    await run(() => rec().sayInterim('five'));
+    await advance(5000);              // however long the engine takes to confirm
+    expect(abortSpy).not.toHaveBeenCalled();
+    expect(stopSpy).not.toHaveBeenCalled();
+    expect(results).toHaveLength(0);  // delivered when the session ends
+    abortSpy.mockRestore();
+    stopSpy.mockRestore();
+  });
+
+  it('delivers an utterance split into several segments as one (iOS)', async () => {
+    await run(() => { hook.startRecording(); });
+    await advance(700);
+    const r = rec();
+    const seg = (t: string) => Object.assign([{ transcript: t, confidence: 1 }], { isFinal: true });
+    await run(() => { r.onresult?.({ resultIndex: 0, results: [seg('twenty'), seg('five')] }); r.stop(); });
+    await advance(50);
+    expect(results).toHaveLength(1);
+  });
+
+  it('delivers what was heard even if the final result never comes (Android)', async () => {
+    await run(() => { hook.startRecording(); });
+    await advance(700);
+    await run(() => { rec().sayInterim('five'); rec().stop(); });
+    await advance(50);
+    expect(results).toEqual([{ kind: 'number', value: '5' }]);
   });
 
   it('keeps going when sessions end instantly after it already worked (Android)', async () => {
@@ -151,125 +185,25 @@ describe('useVoiceRecording', () => {
     await run(() => { hook.startRecording(); });
     await speakValue();
     await run(() => rec().error('network'));
-    await advance(300);
-    expect(rec().running).toBe(true);
-    expect(hook.isListening).toBe(true);
-  });
-
-  it('can be re-activated right after stop', async () => {
-    await run(() => { hook.startRecording(); });
-    await speakValue();
-    await run(() => { hook.stopRecording(); });
-    expect(hook.isRecording).toBe(false);
-    await run(() => { hook.startRecording(); });
-    await advance(50);
-    expect(rec().running).toBe(true);
-    expect(hook.isListening).toBe(true);
-  });
-
-  it('listens again right after the read-back', async () => {
-    await run(() => { hook.startRecording(); });
-    await speakValue();
-    await run(() => hook.pause());
-    expect(hook.isListening).toBe(false);
-    await advance(1000);
-    await run(() => hook.resume());
     await advance(400);
     expect(rec().running).toBe(true);
     expect(hook.isListening).toBe(true);
   });
 
-  it('pause stops a recording session gracefully and resolves once the mic is released', async () => {
-    await run(() => { hook.startRecording(); });
-    await advance(700);
-    const live = rec();
-    const stopSpy = vi.spyOn(live, 'stop');
-    const abortSpy = vi.spyOn(live, 'abort');
-    let released = false;
-    await run(() => { hook.pause().then(() => { released = true; }); });
-    expect(stopSpy).toHaveBeenCalled();
-    expect(abortSpy).not.toHaveBeenCalled();
-    expect(released).toBe(false);   // still releasing the mic
-    await advance(20);              // engine fires onend
-    expect(released).toBe(true);
-    // A second pause while nothing runs resolves right away.
-    let second = false;
-    await run(() => { hook.pause().then(() => { second = true; }); });
-    expect(second).toBe(true);
-  });
-
-  it('pause falls back to abort when the engine never ends', async () => {
-    await run(() => { hook.startRecording(); });
-    await advance(700);
-    const live = rec();
-    live.stop = () => { /* never ends */ };
-    const abortSpy = vi.spyOn(live, 'abort');
-    let released = false;
-    await run(() => { hook.pause().then(() => { released = true; }); });
-    await advance(900);
-    expect(released).toBe(false);
-    await advance(200);
-    expect(released).toBe(true);
-    expect(abortSpy).toHaveBeenCalled();
-  });
-
-  it('accepts a stable, unconfirmed number early and listens again', async () => {
-    await run(() => { hook.startRecording(); });
-    await advance(700);
-    const first = rec();
-    const stopSpy = vi.spyOn(first, 'stop');
-    await run(() => first.sayInterim('five'));
-    await advance(500);
-    expect(results).toHaveLength(0);
-    await advance(500);
-    expect(results).toEqual([{ kind: 'number', value: '5' }]);
-    expect(stopSpy).toHaveBeenCalled();
-    await advance(300);
-    expect(rec()).not.toBe(first);
-    expect(rec().running).toBe(true);
-  });
-
-  it('waits for confirmation while the number is still changing, and never for text', async () => {
-    await run(() => { hook.startRecording(); });
-    await advance(700);
-    await run(() => rec().sayInterim('five'));
-    await advance(600);
-    await run(() => rec().sayInterim('hello there'));
-    await advance(2000);
-    expect(results).toHaveLength(0);
-    await run(() => { rec().say('hello there'); rec().stop(); });
-    await advance(100);
-    expect(results).toEqual([{ kind: 'text', text: 'hello there' }]);
-  });
-
-  it('does not start and abort a session between back-to-back read-backs', async () => {
-    await run(() => { hook.startRecording(); });
-    await speakValue();
-    await run(() => hook.pause());   // read the value back
-    await run(() => hook.resume());
-    await advance(20);
-    await run(() => hook.pause());   // then the next column's name
-    const count = FakeRecognition.instances.length;
-    await advance(1000);
-    expect(FakeRecognition.instances.length).toBe(count);
-    await run(() => hook.resume());
-    await advance(400);
-    expect(FakeRecognition.instances.length).toBe(count + 1);
-    expect(rec().running).toBe(true);
-  });
-
-  it('ignores late events from a dropped session', async () => {
+  it('can be re-activated right after stop, ignoring the old session', async () => {
     await run(() => { hook.startRecording(); });
     await advance(700);
     const old = rec();
     const { onresult, onend } = old;
-    await run(() => hook.pause());
-    await run(() => hook.resume());
-    await advance(400);
-    await run(() => { onresult?.call(old, { resultIndex: 0, results: [Object.assign([{ transcript: 'five', confidence: 1 }], { isFinal: true })] }); onend?.call(old); });
-    await advance(1000);
-    expect(results).toHaveLength(0);
+    await run(() => { hook.stopRecording(); });
+    expect(hook.isRecording).toBe(false);
+    await run(() => { hook.startRecording(); });
+    await advance(50);
     expect(rec()).not.toBe(old);
+    expect(hook.isListening).toBe(true);
+    // Late events from the old session change nothing.
+    await run(() => { onresult?.call(old, { resultIndex: 0, results: [Object.assign([{ transcript: 'five', confidence: 1 }], { isFinal: true })] }); onend?.call(old); });
+    expect(results).toHaveLength(0);
     expect(rec().running).toBe(true);
   });
 
@@ -278,18 +212,20 @@ describe('useVoiceRecording', () => {
     await speakValue();
     FakeRecognition.swallowNextStart = true;
     await run(() => rec().stop());
-    await advance(100);
+    await advance(300);
     expect(hook.isListening).toBe(false);
     await advance(6000);
     expect(rec().running).toBe(true);
     expect(hook.isListening).toBe(true);
   });
 
-  it('replaces a session that goes silent without ending', async () => {
+  it('replaces a session that reports nothing for 30s', async () => {
     await run(() => { hook.startRecording(); });
     await speakValue();
     const stuck = rec();
-    await advance(17000);
+    await advance(20000);
+    expect(rec()).toBe(stuck);        // a quiet session is left alone for a while
+    await advance(12000);
     expect(rec()).not.toBe(stuck);
     expect(rec().running).toBe(true);
   });
@@ -299,20 +235,22 @@ describe('useVoiceRecording', () => {
     for (let i = 0; i < 2; i++) {
       await advance(5000);
       await run(() => rec().error('no-speech', true));
-      await advance(200);
+      await advance(300);
     }
     expect(hook.error).toBe('no-input');
     expect(hook.isRecording).toBe(true);
     expect(rec().running).toBe(true);
   });
 
-  it('does not deliver speech after stop', async () => {
+  it('does not deliver speech after stop, and starts nothing new', async () => {
     await run(() => { hook.startRecording(); });
     await advance(700);
-    await run(() => rec().say('five')); // waiting to settle
+    await run(() => rec().sayInterim('five'));
+    const count = FakeRecognition.instances.length;
     await run(() => { hook.stopRecording(); });
-    await advance(2000);
+    await advance(40000);
     expect(results).toHaveLength(0);
+    expect(FakeRecognition.instances.length).toBe(count);
     expect(FakeRecognition.instances.every(r => !r.running)).toBe(true);
   });
 });

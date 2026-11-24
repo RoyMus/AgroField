@@ -1,6 +1,4 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { isReadBackEnabled } from '@/lib/voice/readBack';
-import { voiceLog } from '@/lib/voice/debugLog';
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecording, VoiceResult } from "@/hooks/useVoiceRecording";
 import { parseNumber } from "@/lib/voice/hebrewNumbers";
@@ -49,7 +47,7 @@ function detectValueType(value: string): 'text' | 'percent' | 'number' | null{
 }
 const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSaveProgress, copiedFileId, onFetchSheetData }: SheetDataEditorProps) => {
   const { t } = useTranslation();
-  const { speechLang, numberWords, commands, ttsLangPrefix, locale, timeZone } = useLang();
+  const { speechLang, numberWords, commands, locale, timeZone } = useLang();
 
   const voiceConfig = useMemo(() => ({
     speechLang,
@@ -119,9 +117,9 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const [currentCount, setCurrentCount] = useState(1);
   const [currentValue, setCurrentValue] = useState<string>("");
   const { toast } = useToast();
-  const { isRecording, startRecording, stopRecording, pause: pauseRecording, resume: resumeRecording, error: recordingError, interim, isListening, lastHeard, onResult } = useVoiceRecording(voiceConfig);
+  const { isRecording, startRecording, stopRecording, error: recordingError, interim, isListening, lastHeard, onResult } = useVoiceRecording(voiceConfig);
   const dataRows = sheetData.values.slice(0, commentIndex);
-  // Latest values for use inside timers / TTS callbacks.
+  // Latest values for use inside timers.
   const currentValueRef = useRef(currentValue);
   currentValueRef.current = currentValue;
   const positionRef = useRef({ row: currentRowIndex, col: currentColumnIndex });
@@ -490,22 +488,10 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     setIsDraft(false);
   };
 
-  // Set when the read-back of a recorded value already announced the next
-  // cell, so arriving there doesn't announce it again.
-  const announcedCellRef = useRef<{ row: number; col: number } | null>(null);
-
   useEffect(() => {
     // Moving to another cell drops any pending dictation
     discardDraft();
-    const announced = announcedCellRef.current;
-    announcedCellRef.current = null;
-    if (announced && announced.row === currentRowIndex && announced.col === currentColumnIndex) {
-      setCurrentValue("");
-      return;
-    }
-    speak(getValue(headers[currentColumnIndex]), () => {
-      setCurrentValue("");
-    });
+    setCurrentValue("");
   }, [currentRowIndex, currentColumnIndex]);
 
   useEffect(() => () => clearDraftTimer(), []);
@@ -520,23 +506,13 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     setCurrentValue(value);
   };
 
-  /** Reads the value back, then records it if the user is still on the same cell. */
+  /** Records the value in the current cell and moves on (confirmed on screen, not read aloud). */
   const commitVoiceValue = (value: string) => {
     discardDraft();
     const trimmed = value.trim();
     if (!trimmed) return;
     setValueNow(trimmed);
-    const { row, col } = positionRef.current;
-    // One read-back for the value and the next cell's name ("1.2, חנקה טפטפת")
-    // instead of two: faster, and one fewer pause/resume of the mic.
-    const next = getNextCell(row, col);
-    const nextName = next ? getValue(headers[next.col]) : '';
-    speak(nextName ? `${trimmed}, ${nextName}` : trimmed, () => {
-      if (positionRef.current.row === row && positionRef.current.col === col) {
-        if (nextName) announcedCellRef.current = next;
-        recordCurrentValue(trimmed);
-      }
-    });
+    recordCurrentValue(trimmed);
   };
 
   // Always use the latest render's closure when the silence timer fires
@@ -570,14 +546,12 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
           } else {
             resetCurrentCell();
           }
-          speak(t('voice.deleting'));
           break;
         case 'stop':
           // Keep any dictated text in the input (unsaved) so it can be saved by hand
           clearDraftTimer();
           setIsDraft(false);
           stopVoiceRecording();
-          speak(t('voice.stopping'));
           break;
         case 'save': {
           let value: string;
@@ -638,19 +612,12 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     sheetData.values[currentRowIndex][currentColumnIndex] = setValue(sheetData.values[currentRowIndex][currentColumnIndex], value);
     handleSaveProgress();
     toast({
-      title: t('editor.valueRecorded'),
+      title: `${t('editor.valueRecorded')}: ${value}`,
       description: t('editor.valueRecordedDesc', { header: getValue(headers[currentColumnIndex]) }),
     });
     setCurrentValue("");
     moveToNextCell();
   };
-
-  function unlockSpeechIOS() {
-    if (!window.speechSynthesis) return;
-    const utterance = new SpeechSynthesisUtterance('');
-    utterance.volume = 0;
-    window.speechSynthesis.speak(utterance);
-  }
 
   // Without this, a blocked microphone or disabled Dictation on iOS fails silently.
   useEffect(() => {
@@ -667,7 +634,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const startVoiceRecording = async () => {
     if (!isRecording) {
       console.log('Starting voice recording...');
-      unlockSpeechIOS();
       await startRecording();
       toast({
         title: t('editor.recordingStarted'),
@@ -682,118 +648,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       await stopRecording();
     }
   };
-
-  const [voices, setVoices] = useState([]);
-  const activeSpeechRef = useRef<((runCallback: boolean) => void) | null>(null);
-  const speakingUtterancesRef = useRef(new Set<SpeechSynthesisUtterance>());
-
-  useEffect(() => {
-    const loadVoices = () => {
-      const allVoices = window.speechSynthesis.getVoices();
-      setVoices(allVoices);
-    };
-
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-    loadVoices();
-  }, []);
-
-  const TTS_START_TIMEOUT_MS = 1200;
-  const ttsWarnedRef = useRef(false);
-  // Read-backs in a row that never started while voice mode was on.
-  const ttsFailuresRef = useRef(0);
-  const isRecordingRef = useRef(isRecording);
-  isRecordingRef.current = isRecording;
-
-  const speak = (text: string, onEndCallback?: () => void) => {
-    if (!isReadBackEnabled()) {
-      voiceLog(`read-back off, not speaking "${text}"`);
-      if (onEndCallback) onEndCallback();
-      return;
-    }
-    voiceLog(`TTS speak "${text}"`);
-    if (!("speechSynthesis" in window)) {
-      if (onEndCallback) onEndCallback();
-      return;
-    }
-
-    // Settle the previous utterance (its end/error events are not always delivered)
-    activeSpeechRef.current?.(false);
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-
-    // Always declare the language so the engine never falls back to its default (English) voice
-    utterance.lang = speechLang;
-
-    // Read the voice list fresh (the cached state may still be empty on first use).
-    // Android reports Hebrew with the legacy code "iw".
-    const available = window.speechSynthesis.getVoices();
-    const voiceList = available.length ? available : voices;
-    const prefixes = ttsLangPrefix === 'he' ? ['he', 'iw'] : [ttsLangPrefix];
-    const normalizedLang = (v: SpeechSynthesisVoice) => v.lang.replace('_', '-').toLowerCase();
-    const targetVoice =
-      voiceList.find((v) => normalizedLang(v) === speechLang.toLowerCase()) ??
-      voiceList.find((v) => prefixes.some((p) => normalizedLang(v).startsWith(p)));
-    if (targetVoice) {
-      utterance.voice = targetVoice;
-    }
-
-    // Browsers sometimes never fire onend/onerror, which used to leave the mic
-    // paused and the value unsaved. finish() runs exactly once, from whichever
-    // comes first: end, error, a replacement utterance, or the safety timeout.
-    let finished = false;
-    const finish = (runCallback: boolean) => {
-      if (finished) return;
-      finished = true;
-      clearTimeout(safetyTimer);
-      clearTimeout(startTimer);
-      if (activeSpeechRef.current === finish) activeSpeechRef.current = null;
-      speakingUtterancesRef.current.delete(utterance);
-      resumeRecording();
-      if (runCallback && onEndCallback) onEndCallback();
-    };
-    // Generous upper bound on speaking time, so the mic never reopens mid-speech
-    const safetyTimer = setTimeout(() => { voiceLog('TTS safety timeout'); finish(true); }, 5000 + text.length * 150);
-    let started = false;
-    let startTimer: ReturnType<typeof setTimeout> | undefined;
-    activeSpeechRef.current = finish;
-    // Holding a reference stops Chrome from garbage-collecting the utterance
-    // (a known cause of onend never firing)
-    speakingUtterancesRef.current.add(utterance);
-
-    utterance.onstart = () => { started = true; ttsFailuresRef.current = 0; voiceLog('TTS onstart'); };
-    utterance.onend = () => { voiceLog('TTS onend'); finish(true); };
-
-    utterance.onerror = (event) => {
-      voiceLog(`TTS error: ${event.error}`);
-      // "interrupted"/"canceled" means another utterance replaced this one
-      // (e.g. the cell changed); otherwise TTS failed and we still proceed.
-      finish(event.error !== 'interrupted' && event.error !== 'canceled');
-    };
-
-    // Stop listening before speaking so the read-back isn't captured as
-    // input, and wait until the mic is released: speaking while iOS is still
-    // tearing down the recording leaves the mic deaf afterwards.
-    pauseRecording().then(() => {
-      if (finished) return; // replaced or timed out meanwhile
-      // If speech hasn't started shortly after asking, TTS isn't working on
-      // this device: don't keep the mic off waiting for it.
-      startTimer = setTimeout(() => {
-        if (started || window.speechSynthesis.speaking) return;
-        voiceLog('TTS did not start within timeout');
-        // Speech before the first tap is always blocked on iOS (e.g. the column
-        // name read when the page opens), so only warn about repeated failures
-        // in voice mode.
-        if (isRecordingRef.current) ttsFailuresRef.current += 1;
-        if (ttsFailuresRef.current >= 2 && !ttsWarnedRef.current) {
-          ttsWarnedRef.current = true;
-          toast({ title: t('voice.ttsUnavailable'), description: t('voice.ttsUnavailableDesc') });
-        }
-        finish(true);
-      }, TTS_START_TIMEOUT_MS);
-      window.speechSynthesis.speak(utterance);
-    });
-  };
-
 
   const skipCurrentValue = () => {
     moveToNextCell();
