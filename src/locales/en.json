@@ -53,7 +53,8 @@
     "valueRecorded": "Value Recorded",
     "valueRecordedDesc": "Recorded value for {{header}}",
     "recordingStarted": "Recording Started",
-    "recordingStartedDesc": "Speak now... Click Stop to finish."
+    "recordingStartedDesc": "Speak now... Click Stop to finish.",
+    "rowCompleted": "✓ Row {{row}} done – moving to row {{next}}"
   },
   "table": {
     "addRow": "Add Row",
@@ -102,7 +103,9 @@
       "Save \\ Done",
       "Delete",
       "Stop"
-    ]
+    ],
+    "beepsOn": "Beeps on",
+    "beepsOff": "Beeps off"
   },
   "fetch": {
     "errorTitle": "Error",

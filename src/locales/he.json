@@ -53,7 +53,8 @@
     "valueRecorded": "הערך נרשם",
     "valueRecordedDesc": "נרשם ערך עבור {{header}}",
     "recordingStarted": "ההקלטה התחילה",
-    "recordingStartedDesc": "דבר עכשיו... לחץ עצור כדי לסיים."
+    "recordingStartedDesc": "דבר עכשיו... לחץ עצור כדי לסיים.",
+    "rowCompleted": "✓ שורה {{row}} הושלמה – עוברים לשורה {{next}}"
   },
   "table": {
     "addRow": "הוסף שורה",
@@ -102,7 +103,9 @@
       "שמור \\ סיום",
       "מחק",
       "עצור"
-    ]
+    ],
+    "beepsOn": "צפצופים פועלים",
+    "beepsOff": "צפצופים כבויים"
   },
   "fetch": {
     "errorTitle": "שגיאה",

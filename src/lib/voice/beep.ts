@@ -1,16 +1,35 @@
+import { useSyncExternalStore } from 'react';
 import { voiceLog } from './debugLog';
 
 /**
  * Short generated tones for voice-mode feedback (no speech, so the recognizer
  * doesn't transcribe them). The AudioContext must be created/resumed during a
  * user tap on iOS, so call unlockBeep() from the mic button handler.
- * Disable for testing: localStorage.voiceBeep = '0'.
+ *
+ * Off by default: on iPhone, audio activity while the mic is in use may make
+ * speech recognition unreliable (a test with beeps on went deaf right away).
+ * The user can turn it on next to the mic; the choice is remembered.
  */
 let ctx: AudioContext | null = null;
 
-const beepEnabled = () => {
-  try { return localStorage.getItem('voiceBeep') !== '0'; } catch { return true; }
+const KEY = 'voiceBeep';
+let enabled = (() => {
+  try { return localStorage.getItem(KEY) === '1'; } catch { return false; }
+})();
+const listeners = new Set<() => void>();
+const beepEnabled = () => enabled;
+
+export const setBeepEnabled = (on: boolean) => {
+  enabled = on;
+  try { localStorage.setItem(KEY, on ? '1' : '0'); } catch { /* ignore */ }
+  voiceLog(`beeps ${on ? 'ON' : 'OFF'}`);
+  listeners.forEach(l => l());
 };
+
+export const useBeepEnabled = () => useSyncExternalStore(
+  (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; },
+  beepEnabled,
+);
 
 export const unlockBeep = () => {
   if (!beepEnabled()) return;
@@ -19,6 +38,7 @@ export const unlockBeep = () => {
     if (!Ctor) return;
     ctx ??= new Ctor();
     if (ctx.state !== 'running') ctx.resume().catch(() => {});
+    voiceLog('beep audio unlocked');
   } catch (e) {
     voiceLog(`beep unavailable: ${e instanceof Error ? e.message : String(e)}`);
   }

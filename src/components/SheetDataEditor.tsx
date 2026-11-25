@@ -612,15 +612,26 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const recordCurrentValue = async (value) => {
     sheetData.values[currentRowIndex][currentColumnIndex] = setValue(sheetData.values[currentRowIndex][currentColumnIndex], value);
     handleSaveProgress();
-    toast({
-      title: `${t('editor.valueRecorded')}: ${value}`,
-      description: t('editor.valueRecordedDesc', { header: getValue(headers[currentColumnIndex]) }),
-    });
+    const next = getNextCell(currentRowIndex, currentColumnIndex);
+    const newRow = !!next && next.row !== currentRowIndex;
+    if (newRow) {
+      // Make the move to the next row hard to miss
+      const rowNumber = currentRowIndex - headersRowIndex + 1;
+      toast({
+        title: t('editor.rowCompleted', { row: rowNumber, next: rowNumber + 1 }),
+        description: `${t('editor.valueRecorded')}: ${value}`,
+        className: 'border-green-500 bg-green-50 text-green-800',
+      });
+    } else {
+      toast({
+        title: `${t('editor.valueRecorded')}: ${value}`,
+        description: t('editor.valueRecordedDesc', { header: getValue(headers[currentColumnIndex]) }),
+      });
+    }
     setCurrentValue("");
-    // Audible cue in voice mode: a tick per value, a double beep for a new row
+    // Optional audible cue in voice mode: a tick per value, a double beep for a new row
     if (isRecording) {
-      const next = getNextCell(currentRowIndex, currentColumnIndex);
-      if (next && next.row !== currentRowIndex) beepNewRow(); else beepValue();
+      if (newRow) beepNewRow(); else beepValue();
     }
     moveToNextCell();
   };

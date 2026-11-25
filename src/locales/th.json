@@ -53,7 +53,8 @@
     "valueRecorded": "บันทึกค่าแล้ว",
     "valueRecordedDesc": "บันทึกค่าสำหรับ {{header}}",
     "recordingStarted": "เริ่มบันทึกเสียงแล้ว",
-    "recordingStartedDesc": "พูดได้เลย... คลิกหยุดเพื่อสิ้นสุด"
+    "recordingStartedDesc": "พูดได้เลย... คลิกหยุดเพื่อสิ้นสุด",
+    "rowCompleted": "✓ แถว {{row}} เสร็จแล้ว – ไปที่แถว {{next}}"
   },
   "table": {
     "addRow": "เพิ่มแถว",
@@ -101,7 +102,9 @@
       "บันทึก",
       "ลบ",
       "หยุด"
-    ]
+    ],
+    "beepsOn": "เปิดเสียงบี๊บ",
+    "beepsOff": "ปิดเสียงบี๊บ"
   },
   "fetch": {
     "errorTitle": "ข้อผิดพลาด",
