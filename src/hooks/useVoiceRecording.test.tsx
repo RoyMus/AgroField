@@ -290,6 +290,18 @@ describe('useVoiceRecording', () => {
       expect(results).toEqual([{ kind: 'number', value: '5' }, { kind: 'text', text: 'hello' }]);
     });
 
+    it('does not take a punctuation-only placeholder as a phrase (iOS shows "." first)', async () => {
+      await run(() => { hook.startRecording(); });
+      await advance(700);
+      const r = rec();
+      await run(() => emit(r, [['\u200f.', false]]));
+      await advance(2000);
+      expect(results).toHaveLength(0);
+      await run(() => emit(r, [['five', true]]));
+      await advance(700);
+      expect(results).toEqual([{ kind: 'number', value: '5' }]);
+    });
+
     it('waits while the phrase is still changing', async () => {
       await run(() => { hook.startRecording(); });
       await advance(700);

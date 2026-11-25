@@ -103,9 +103,7 @@
       "Save \\ Done",
       "Delete",
       "Stop"
-    ],
-    "beepsOn": "Beeps on",
-    "beepsOff": "Beeps off"
+    ]
   },
   "fetch": {
     "errorTitle": "Error",

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { beepNewRow, beepValue, unlockBeep } from '@/lib/voice/beep';
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecording, VoiceResult } from "@/hooks/useVoiceRecording";
 import { parseNumber } from "@/lib/voice/hebrewNumbers";
@@ -629,10 +628,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       });
     }
     setCurrentValue("");
-    // Optional audible cue in voice mode: a tick per value, a double beep for a new row
-    if (isRecording) {
-      if (newRow) beepNewRow(); else beepValue();
-    }
     moveToNextCell();
   };
 
@@ -651,7 +646,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
   const startVoiceRecording = async () => {
     if (!isRecording) {
       console.log('Starting voice recording...');
-      unlockBeep(); // must happen during the tap on iOS
       await startRecording();
       toast({
         title: t('editor.recordingStarted'),

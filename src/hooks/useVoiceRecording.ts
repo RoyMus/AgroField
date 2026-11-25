@@ -149,6 +149,9 @@ const shouldUseContinuousMode = (): boolean => {
 const wordsOf = (segments: Segment[]) =>
   segments.flatMap(seg => (seg.transcripts[0] ?? '').trim().split(/\s+/).filter(Boolean));
 
+/** True if the text has an actual letter or digit (iOS sometimes shows just "."). */
+const hasContent = (text: string) => /[\p{L}\p{N}]/u.test(text);
+
 const getRecognitionCtor = () =>
   typeof window === 'undefined' ? undefined : window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -226,9 +229,11 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       clearPhrase();
       const words = wordsOf(s.segments);
       const from = Math.min(s.deliveredWords, words.length);
+      // Punctuation only: not a phrase yet, and don't count it as delivered
+      // (the recognizer usually replaces it with the real word).
+      if (!hasContent(words.slice(from).join(' '))) return;
       s.deliveredWords = words.length;
       setInterim('');
-      if (from >= words.length) return;
       // Keep the recognizer's alternatives when the new part is exactly one
       // whole segment (they help with misheard commands); otherwise top text.
       let alternatives = [words.slice(from).join(' ')];
@@ -338,7 +343,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
         // it once it is final, or once the words stop changing.
         if (rec.continuous) {
           clearPhrase();
-          if (pending) {
+          if (hasContent(pending)) {
             s.phraseTimer = setTimeout(
               () => { if (current()) deliverPending(allFinal ? 'final' : 'pause'); },
               allFinal ? FINAL_SETTLE_MS : PHRASE_PAUSE_MS,

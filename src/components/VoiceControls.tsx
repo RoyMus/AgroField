@@ -1,7 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Mic, Square, Bell, BellOff } from "lucide-react";
-import { useBeepEnabled, setBeepEnabled } from "@/lib/voice/beep";
+import { Mic, Square } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import VoiceDebugPanel from "@/components/VoiceDebugPanel";
 import { isVoiceDebugEnabled, setVoiceDebugEnabled } from "@/lib/voice/debugLog";
@@ -26,7 +25,6 @@ const VoiceControls = ({ isRecording, interimTranscript, isDraft, isListening, l
   const phrases: string[] = t('voice.examples', { returnObjects: true }) as string[];
   const [currentExample, setCurrentExample] = useState(phrases[0]);
   const [showLastHeard, setShowLastHeard] = useState(false);
-  const beeps = useBeepEnabled();
 
   // Hidden: 5 quick taps on the listening indicator, the hint text or the build
   // id toggle the voice log. Counted on pointerdown with touch-action:
@@ -88,15 +86,6 @@ const VoiceControls = ({ isRecording, interimTranscript, isDraft, isListening, l
             <Mic className="w-8 h-8 text-white" />
           )}
         </Button>
-
-        <button
-          type="button"
-          onClick={() => setBeepEnabled(!beeps)}
-          className="flex items-center gap-1.5 rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-600"
-        >
-          {beeps ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
-          {beeps ? t('voice.beepsOn') : t('voice.beepsOff')}
-        </button>
 
         {isRecording && (
           <div className="flex items-center gap-2 text-sm font-medium select-none touch-manipulation" onPointerDown={handleDebugTap}>
