@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { beepNewRow, unlockBeep } from '@/lib/voice/beep';
+import { beepNewRow, beepValue, unlockBeep } from '@/lib/voice/beep';
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecording, VoiceResult } from "@/hooks/useVoiceRecording";
 import { parseNumber } from "@/lib/voice/hebrewNumbers";
@@ -617,6 +617,11 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
       description: t('editor.valueRecordedDesc', { header: getValue(headers[currentColumnIndex]) }),
     });
     setCurrentValue("");
+    // Audible cue in voice mode: a tick per value, a double beep for a new row
+    if (isRecording) {
+      const next = getNextCell(currentRowIndex, currentColumnIndex);
+      if (next && next.row !== currentRowIndex) beepNewRow(); else beepValue();
+    }
     moveToNextCell();
   };
 
@@ -695,8 +700,6 @@ const SheetDataEditor = ({ sheetData, onSaveProgress, onSaveToNewSheet,handleSav
     if (currentRowIndex !== nextRow) {
       calcAverages();
       setRowChangeCounter(rowChangeCounter + 1);
-      // Audible cue in voice mode that the next row has started
-      if (isRecording) beepNewRow();
     }
     setCurrentRowIndex(nextRow);
     setCurrentColumnIndex(nextCol);

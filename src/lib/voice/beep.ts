@@ -26,7 +26,11 @@ export const unlockBeep = () => {
 
 /** Plays tones (Hz) one after another, each `ms` long. */
 const playTones = (tones: number[], ms = 110, gap = 40) => {
-  if (!ctx || !beepEnabled()) return;
+  if (!beepEnabled()) return;
+  if (!ctx) {
+    voiceLog('beep skipped: audio not unlocked');
+    return;
+  }
   try {
     if (ctx.state !== 'running') ctx.resume().catch(() => {});
     let t = ctx.currentTime + 0.02;
@@ -49,6 +53,9 @@ const playTones = (tones: number[], ms = 110, gap = 40) => {
     voiceLog(`beep failed: ${e instanceof Error ? e.message : String(e)}`);
   }
 };
+
+/** One short tick: a value was recorded. */
+export const beepValue = () => playTones([1046], 70);
 
 /** Two rising tones: moved on to a new row. */
 export const beepNewRow = () => playTones([880, 1320]);
