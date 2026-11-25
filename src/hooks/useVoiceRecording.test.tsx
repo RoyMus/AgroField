@@ -253,4 +253,74 @@ describe('useVoiceRecording', () => {
     expect(FakeRecognition.instances.length).toBe(count);
     expect(FakeRecognition.instances.every(r => !r.running)).toBe(true);
   });
+
+  describe('continuous mode (iOS)', () => {
+    const emit = (r: FakeRecognition, segs: [string, boolean][]) =>
+      r.onresult?.({ resultIndex: 0, results: segs.map(([t, fin]) => Object.assign([{ transcript: t, confidence: 1 }], { isFinal: fin })) });
+
+    beforeEach(() => { localStorage.setItem('voiceContinuous', '1'); });
+    afterEach(() => { localStorage.removeItem('voiceContinuous'); });
+
+    it('uses one session and delivers each phrase after a pause, without ending it', async () => {
+      await run(() => { hook.startRecording(); });
+      await advance(700);
+      const r = rec();
+      expect(r.continuous).toBe(true);
+      await run(() => emit(r, [['five', false]]));
+      await advance(1300);
+      expect(results).toEqual([{ kind: 'number', value: '5' }]);
+      // iOS keeps growing the same transcript; only the new words count.
+      await run(() => emit(r, [['five hello there', false]]));
+      await advance(1300);
+      expect(results).toEqual([{ kind: 'number', value: '5' }, { kind: 'text', text: 'hello there' }]);
+      expect(rec()).toBe(r);
+      expect(r.running).toBe(true);
+      expect(FakeRecognition.instances).toHaveLength(1);
+    });
+
+    it('delivers final segments shortly after they arrive', async () => {
+      await run(() => { hook.startRecording(); });
+      await advance(700);
+      const r = rec();
+      await run(() => emit(r, [['five', true]]));
+      await advance(700);
+      expect(results).toEqual([{ kind: 'number', value: '5' }]);
+      await run(() => emit(r, [['five', true], ['hello', true]]));
+      await advance(700);
+      expect(results).toEqual([{ kind: 'number', value: '5' }, { kind: 'text', text: 'hello' }]);
+    });
+
+    it('waits while the phrase is still changing', async () => {
+      await run(() => { hook.startRecording(); });
+      await advance(700);
+      const r = rec();
+      await run(() => emit(r, [['hello', false]]));
+      await advance(800);
+      await run(() => emit(r, [['hello there', false]]));
+      await advance(800);
+      expect(results).toHaveLength(0);
+      await advance(500);
+      expect(results).toEqual([{ kind: 'text', text: 'hello there' }]);
+    });
+
+    it('leaves a quiet session alone', async () => {
+      await run(() => { hook.startRecording(); });
+      await advance(700);
+      const r = rec();
+      await advance(120000);
+      expect(rec()).toBe(r);
+      expect(FakeRecognition.instances).toHaveLength(1);
+    });
+
+    it('delivers the rest and starts a new session if iOS ends it', async () => {
+      await run(() => { hook.startRecording(); });
+      await advance(700);
+      const r = rec();
+      await run(() => { emit(r, [['five', false]]); r.stop(); });
+      await advance(400);
+      expect(results).toEqual([{ kind: 'number', value: '5' }]);
+      expect(rec()).not.toBe(r);
+      expect(rec().running).toBe(true);
+    });
+  });
 });

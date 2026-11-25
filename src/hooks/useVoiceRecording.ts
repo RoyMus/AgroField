@@ -63,6 +63,11 @@ const RESTART_DELAY_MS = 250;
 // this long, is replaced.
 const START_TIMEOUT_MS = 5000;
 const SILENCE_TIMEOUT_MS = 30000;
+// Continuous mode (iOS): a phrase is delivered this long after its words
+// stop changing, or shortly after the recognizer marks it final (iOS may
+// split one phrase into several final segments: "אחת." + "שלוש").
+const PHRASE_PAUSE_MS = 1200;
+const FINAL_SETTLE_MS = 600;
 // A session shorter than this "ended instantly".
 const QUICK_END_MS = 500;
 // Instant ends in a row, before anything was recognized, before giving up
@@ -125,6 +130,25 @@ export const classifyTranscript = (
   return text ? { kind: 'text', text } : null;
 };
 
+/**
+ * Use one continuous session for the whole of voice mode? On iOS Safari,
+ * starting a new session after the previous one ended often gives a deaf
+ * session (field logs), so iOS uses a single continuous session and splits
+ * phrases itself. Elsewhere one session per utterance works.
+ * Override for testing: localStorage.voiceContinuous = '1' | '0'.
+ */
+const shouldUseContinuousMode = (): boolean => {
+  try {
+    const override = localStorage.getItem('voiceContinuous');
+    if (override === '1' || override === '0') return override === '1';
+  } catch { /* ignore */ }
+  const ua = navigator.userAgent;
+  return /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+};
+
+const wordsOf = (segments: Segment[]) =>
+  segments.flatMap(seg => (seg.transcripts[0] ?? '').trim().split(/\s+/).filter(Boolean));
+
 const getRecognitionCtor = () =>
   typeof window === 'undefined' ? undefined : window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -148,6 +172,8 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
     lastEventAt: 0,
     confirmed: false,   // current session fired onstart
     segments: [] as Segment[], // what the current session has heard so far
+    deliveredWords: 0,  // words of the current session already delivered
+    phraseTimer: null as ReturnType<typeof setTimeout> | null,
     everWorked: false,  // something was recognized since the user tapped the mic
     quickEnds: 0,
     emptySessions: 0,
@@ -168,6 +194,7 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
 
     /** Drops the current recognizer immediately. Not used in the normal flow. */
     const kill = (reason: string) => {
+      clearPhrase();
       const rec = s.rec;
       s.rec = null;
       setInterim('');
@@ -189,10 +216,35 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       setError(code);
     };
 
-    const deliver = (segments: Segment[]) => {
-      const alternatives = joinSegments(segments);
-      if (!alternatives.length) return;
-      voiceLog(`deliver: ${JSON.stringify(alternatives.slice(0, 3))}`);
+    const clearPhrase = () => {
+      if (s.phraseTimer) clearTimeout(s.phraseTimer);
+      s.phraseTimer = null;
+    };
+
+    /** Delivers what the current session heard since the last delivery. */
+    const deliverPending = (why: string) => {
+      clearPhrase();
+      const words = wordsOf(s.segments);
+      const from = Math.min(s.deliveredWords, words.length);
+      s.deliveredWords = words.length;
+      setInterim('');
+      if (from >= words.length) return;
+      // Keep the recognizer's alternatives when the new part is exactly one
+      // whole segment (they help with misheard commands); otherwise top text.
+      let alternatives = [words.slice(from).join(' ')];
+      let at = 0;
+      for (const seg of s.segments) {
+        const n = wordsOf([seg]).length;
+        if (at === from && at + n === words.length) alternatives = seg.transcripts;
+        at += n;
+      }
+      if (from === 0 && s.segments.length > 1) alternatives = joinSegments(s.segments);
+      voiceLog(`deliver (${why}): ${JSON.stringify(alternatives.slice(0, 3))}`);
+      deliver(alternatives);
+    };
+
+    const deliver = (alternatives: string[]) => {
+      if (!alternatives.length || !alternatives[0]?.trim()) return;
       setLastHeard({ text: alternatives[0].trim(), at: Date.now() });
       const classified = classifyTranscript(alternatives, configRef.current);
       if (classified) resultCallbackRef.current?.(classified);
@@ -207,9 +259,8 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       voiceLog(`#${s.session} ended after ${lived}ms`);
       rec.onstart = rec.onresult = rec.onerror = rec.onend = null;
       s.rec = null;
-      setInterim('');
       setIsListening(false);
-      deliver(segments);
+      deliverPending('session ended');
       if (!s.wanted) return;
 
       s.quickEnds = lived < QUICK_END_MS ? s.quickEnds + 1 : 0;
@@ -228,7 +279,9 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       if (!Ctor) return fail('unsupported');
 
       const rec = new Ctor();
-      rec.continuous = false; // one utterance per session; it ends by itself
+      // One utterance per session (it ends by itself), or on iOS a single
+      // continuous session for the whole of voice mode.
+      rec.continuous = shouldUseContinuousMode();
       rec.interimResults = true;
       rec.lang = configRef.current.speechLang;
       rec.maxAlternatives = 5;
@@ -238,10 +291,12 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       s.startedAt = s.lastEventAt = Date.now();
       s.confirmed = false;
       s.segments = [];
+      s.deliveredWords = 0;
+      clearPhrase();
       const id = s.session;
       const log = (m: string) => voiceLog(`#${id} ${m}`);
       const current = () => s.rec === rec;
-      log(`start() lang=${rec.lang}`);
+      log(`start() lang=${rec.lang} continuous=${rec.continuous}`);
 
       rec.onstart = () => {
         log('onstart');
@@ -270,9 +325,26 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
           segments.push({ transcripts, isFinal: result.isFinal });
         }
         s.segments = segments;
-        const text = segments.map(p => p.transcripts[0]?.trim() ?? '').join(' ').trim();
-        log(`heard: "${text}"${segments.every(p => p.isFinal) ? ' (final)' : ''}`);
-        setInterim(text);
+        const words = wordsOf(segments);
+        if (s.deliveredWords > words.length) {
+          log(`transcript shrank below what was delivered (${words.length} < ${s.deliveredWords})`);
+          s.deliveredWords = words.length;
+        }
+        const pending = words.slice(s.deliveredWords).join(' ');
+        const allFinal = segments.every(p => p.isFinal);
+        log(`heard: "${pending}"${allFinal ? ' (final)' : ''}`);
+        setInterim(pending);
+        // In continuous mode the session doesn't end after a phrase: deliver
+        // it once it is final, or once the words stop changing.
+        if (rec.continuous) {
+          clearPhrase();
+          if (pending) {
+            s.phraseTimer = setTimeout(
+              () => { if (current()) deliverPending(allFinal ? 'final' : 'pause'); },
+              allFinal ? FINAL_SETTLE_MS : PHRASE_PAUSE_MS,
+            );
+          }
+        }
       };
 
       rec.onerror = (event) => {
@@ -309,7 +381,8 @@ export const useVoiceRecording = (config: VoiceRecordingConfig): UseVoiceRecordi
       if (!s.confirmed && now - s.startedAt > START_TIMEOUT_MS) {
         kill('never started');
         startSession();
-      } else if (now - s.lastEventAt > SILENCE_TIMEOUT_MS) {
+      } else if (!s.rec.continuous && now - s.lastEventAt > SILENCE_TIMEOUT_MS) {
+        // (A continuous session is quiet whenever the user is; leave it.)
         kill('no events for 30s');
         startSession();
       }
